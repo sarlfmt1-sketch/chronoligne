@@ -152,6 +152,52 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   </div>
 </div>
 
+<!-- ══ VIEW: ÉDITEUR TRAJET ══ -->
+<div class="view" id="view-editor">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" onclick="showView('view-lines')">← Retour</button>
+      <div class="card-title" style="margin:0;flex:1" id="editor-title">Éditeur</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input type="text" id="editor-label" placeholder="Nom du trajet" style="flex:1;min-width:160px;padding:8px 10px;font-size:14px">
+      <select id="editor-dir" style="padding:7px 8px;font-size:13px">
+        <option value="aller">Aller</option>
+        <option value="retour">Retour</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🕐 Heure de départ + intervalle</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">1er arrêt</div>
+        <input type="time" id="editor-start-time" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace">
+      </div>
+      <div style="width:80px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Intervalle (min)</div>
+        <input type="number" id="editor-interval" value="1" min="1" max="60" style="width:100%;padding:7px 8px;font-size:15px;text-align:center">
+      </div>
+      <button class="btn btn-sm" onclick="editorRecalcAll()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recalculer tout</button>
+    </div>
+  </div>
+
+  <div class="card" id="editor-stops-card">
+    <div class="card-title">📍 Arrêts</div>
+    <div id="editor-stops-list"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <input type="text" id="editor-new-stop" placeholder="Nom du nouvel arrêt" style="flex:1;padding:7px 10px;font-size:13px">
+      <button class="btn btn-sm" onclick="editorAddStop()" style="background:var(--green);color:#000;font-weight:700">+ Ajouter</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px">
+    <button class="btn" onclick="saveEditorTrip()" style="flex:1;background:var(--green);color:#000;font-weight:700;font-size:15px">💾 Enregistrer</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteEditorTrip()">🗑 Supprimer</button>
+  </div>
+</div>
+
 <!-- ══ VIEW: SERVICE ══ -->
 <div class="view" id="view-roadmap">
 
@@ -1152,6 +1198,24 @@ const PRELOADED_TRIPS = {
         {name:'Cergy Saint-Christophe RER', intervalAfter:0},
       ]
     },
+    {
+      direction: 'aller', label: 'Cergy Saint-Christophe RER → Parc Saint-Christophe (4 arrêts)',
+      stops: [
+        {name:'Cergy Saint-Christophe RER', intervalAfter:1},
+        {name:'Mondétour', intervalAfter:1},
+        {name:'Lycée St Christophe', intervalAfter:1},
+        {name:'Parc Saint-Christophe', intervalAfter:0},
+      ]
+    },
+    {
+      direction: 'retour', label: 'Parc Saint-Christophe → Cergy Saint-Christophe RER (4 arrêts)',
+      stops: [
+        {name:'Parc Saint-Christophe', intervalAfter:1},
+        {name:'Lycée St Christophe', intervalAfter:1},
+        {name:'Mondétour', intervalAfter:1},
+        {name:'Cergy Saint-Christophe RER', intervalAfter:0},
+      ]
+    },
   ],
   '1232': [
     {
@@ -1825,6 +1889,37 @@ const PRELOADED_TRIPS = {
         {name:'Les Forboeufs', intervalAfter:1},
         {name:'Le Noyer', intervalAfter:1},
         {name:'Les Tremblays', intervalAfter:0},
+      ]
+    },
+    {
+      direction: 'aller', label: 'La Marnière → Gare de Cergy Le Haut RER (7 arrêts)',
+      stops: [
+        {name:'La Marnière', intervalAfter:2},
+        {name:'La Croix Lieu', intervalAfter:1},
+        {name:'La Bussie', intervalAfter:1},
+        {name:'Boris Vian', intervalAfter:1},
+        {name:'Rond-Point du Golf', intervalAfter:1},
+        {name:'L\'Orangerie', intervalAfter:1},
+        {name:'Gare de Cergy Le Haut RER', intervalAfter:0},
+      ]
+    },
+    {
+      direction: 'aller', label: 'La Marnière → Gare de Neuville Université (14 arrêts)',
+      stops: [
+        {name:'La Marnière', intervalAfter:1},
+        {name:'Les Valanchards', intervalAfter:3},
+        {name:'Les Tremblays', intervalAfter:1},
+        {name:'Le Noyer', intervalAfter:1},
+        {name:'Les Forboeufs', intervalAfter:1},
+        {name:'Théâtre de Jouy-Le-Moutier', intervalAfter:1},
+        {name:'Les Jouannes', intervalAfter:1},
+        {name:'Vignes Blanches', intervalAfter:0},
+        {name:'Croix Saint-Jacques', intervalAfter:2},
+        {name:'Le Pont', intervalAfter:0},
+        {name:'Mairie / Neuville', intervalAfter:2},
+        {name:'Les Trembles', intervalAfter:1},
+        {name:'Gay Lussac', intervalAfter:1},
+        {name:'Gare de Neuville Université', intervalAfter:0},
       ]
     },
   ],
@@ -2727,9 +2822,10 @@ function renderLineDetail(idx) {
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1">
         <div style="font-size:14px;font-weight:700">${t.label}</div>
-        <div style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts</div>
+        <div style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts · ${t.stops[0]?.time||'--:--'} → ${t.stops[t.stops.length-1]?.time||'--:--'}</div>
       </div>
-      <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶ Activer</button>
+      <button class="btn btn-sm btn-ghost" onclick="openTripEditor(${idx},${i})" style="font-size:12px">✏ Éditer</button>
+      <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶</button>
     </div>`).join('');
 }
 
@@ -2819,6 +2915,114 @@ function resetAll() {
   localStorage.removeItem(ROADMAP_KEY);
   initDB(); activeTrip=null; activeLine=null;
   toast('Réinitialisé ✓');
+}
+
+// ══ ÉDITEUR TRAJET ═══════════════════════════════════════════
+let editorLineIdx = -1;
+let editorTripIdx = -1;
+let editorStops = [];
+
+function openTripEditor(lineIdx, tripIdx) {
+  editorLineIdx = lineIdx;
+  editorTripIdx = tripIdx;
+  const line = db.lines[lineIdx];
+  const trip = line.trips[tripIdx];
+  document.getElementById('editor-title').innerHTML = `<span style="background:${line.color};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>Éditer trajet`;
+  document.getElementById('editor-label').value = trip.label;
+  document.getElementById('editor-dir').value = trip.direction||'aller';
+  editorStops = JSON.parse(JSON.stringify(trip.stops));
+  renderEditorStops();
+  showView('view-editor');
+}
+
+function renderEditorStops() {
+  const el = document.getElementById('editor-stops-list');
+  if(!editorStops.length) { el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Aucun arrêt</div>'; return; }
+  el.innerHTML = editorStops.map((s,i) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--muted);font-size:11px;width:22px">${String(i+1).padStart(2,'0')}</span>
+      <span style="flex:1;font-size:13px">${s.name}</span>
+      <input type="time" id="edt-stop-${i}" value="${s.time||'00:00'}" step="60"
+        style="width:110px;padding:4px 6px;font-size:14px;font-family:'Share Tech Mono',monospace;
+               border:2px solid var(--accent);border-radius:6px;background:rgba(0,212,255,.08);color:var(--text)"
+        onchange="editorUpdateStop(${i},this.value)">
+      <button class="del-btn" onclick="editorRemoveStop(${i})">✕</button>
+    </div>`).join('');
+}
+
+function editorUpdateStop(i, val) {
+  if(!/^\d{2}:\d{2}$/.test(val)) return;
+  editorStops[i].time = val;
+  const interval = parseInt(document.getElementById('editor-interval').value)||1;
+  const [h,m] = val.split(':').map(Number);
+  let curMin = h*60+m;
+  for(let j=i+1; j<editorStops.length; j++) {
+    curMin += interval;
+    editorStops[j].time = `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
+    const inp = document.getElementById(`edt-stop-${j}`);
+    if(inp) { inp.value = editorStops[j].time; flashGreen(inp); }
+  }
+  const cur = document.getElementById(`edt-stop-${i}`);
+  if(cur) flashGreen(cur);
+}
+
+function editorRecalcAll() {
+  const startVal = document.getElementById('editor-start-time').value;
+  const interval = parseInt(document.getElementById('editor-interval').value)||1;
+  if(!startVal) { toast('Entrez une heure de départ'); return; }
+  const [h,m] = startVal.split(':').map(Number);
+  let curMin = h*60+m;
+  editorStops.forEach((s,i) => {
+    s.time = `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
+    s.intervalAfter = interval;
+    if(i < editorStops.length-1) curMin += interval;
+  });
+  renderEditorStops();
+  toast('✓ Horaires recalculés');
+}
+
+function editorAddStop() {
+  const name = document.getElementById('editor-new-stop').value.trim();
+  if(!name) { toast('Entrez un nom d\'arrêt'); return; }
+  const last = editorStops[editorStops.length-1];
+  let time = '00:00';
+  if(last?.time) {
+    const [h,m] = last.time.split(':').map(Number);
+    const interval = parseInt(document.getElementById('editor-interval').value)||1;
+    const curMin = h*60+m+interval;
+    time = `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
+  }
+  editorStops.push({name, time, intervalAfter:1});
+  document.getElementById('editor-new-stop').value='';
+  renderEditorStops();
+}
+
+function editorRemoveStop(i) {
+  editorStops.splice(i,1);
+  renderEditorStops();
+}
+
+function saveEditorTrip() {
+  const label = document.getElementById('editor-label').value.trim();
+  if(!label) { toast('Entrez un nom de trajet'); return; }
+  db.lines[editorLineIdx].trips[editorTripIdx] = {
+    direction: document.getElementById('editor-dir').value,
+    label,
+    stops: JSON.parse(JSON.stringify(editorStops))
+  };
+  saveDB();
+  toast('✅ Trajet enregistré !');
+  showView('view-lines');
+  renderLineDetail(editorLineIdx);
+}
+
+function deleteEditorTrip() {
+  if(!confirm('Supprimer ce trajet ?')) return;
+  db.lines[editorLineIdx].trips.splice(editorTripIdx,1);
+  saveDB();
+  toast('Trajet supprimé');
+  showView('view-lines');
+  renderLineDetail(editorLineIdx);
 }
 
 // ══ FEUILLES DE SERVICE ═══════════════════════════════════════
