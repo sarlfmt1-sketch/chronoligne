@@ -3,638 +3,189 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0a0e1a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ChronoLigne">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<title>🚌 Chrono Ligne Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>🚌 ChronoLigne PRO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #08090f;
-  --bg2: #0d1117;
-  --panel: #111827;
-  --panel2: #161f2e;
-  --border: #1e293b;
-  --border2: #243044;
+  --bg: #0a0e1a;
+  --card: #111827;
+  --border: rgba(255,255,255,.08);
   --accent: #00d4ff;
-  --accent2: #0099bb;
-  --green: #00e676;
-  --orange: #ffab40;
-  --red: #ff5252;
-  --purple: #7c4dff;
-  --text: #e2e8f0;
-  --muted: #526070;
-  --muted2: #3d4f60;
+  --green: #27ae60;
+  --red: #e74c3c;
+  --text: #e8eaf0;
+  --muted: #6b7280;
 }
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html { font-size: 15px; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Exo 2', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-}
-body::after {
-  content:'';
-  position:fixed; inset:0;
-  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,212,255,0.012) 3px,rgba(0,212,255,0.012) 4px);
-  pointer-events:none; z-index:9999;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+#app { padding-bottom: 70px; }
 
-/* ── HEADER ── */
-#header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding: 10px 16px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top:0; z-index: 100;
-}
-.logo {
-  font-family:'Rajdhani',sans-serif;
-  font-size: 20px; font-weight:700;
-  color: var(--accent); letter-spacing:3px;
-}
-.logo em { color: var(--text); font-style:normal; }
-.logo small { font-size:10px; color:var(--muted); letter-spacing:2px; display:block; margin-top:-4px; }
+/* HEADER */
+#header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:rgba(0,0,0,.4); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+#header-logo { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; color:var(--accent); }
+#clock-header { font-family:'Share Tech Mono',monospace; font-size:clamp(28px,8vw,48px); color:var(--text); font-weight:700; }
 
-#clock-header {
-  font-family:'Share Tech Mono',monospace;
-  font-size: clamp(60px,16vw,130px);
-  color: var(--accent);
-  text-shadow: 0 0 20px rgba(0,212,255,0.4);
-  letter-spacing:2px;
-}
+/* NAV */
+nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:rgba(10,14,26,.95); border-top:1px solid var(--border); z-index:200; backdrop-filter:blur(10px); }
+.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 4px 10px; font-size:10px; font-weight:700; color:var(--muted); border:none; background:none; cursor:pointer; letter-spacing:.5px; }
+.nav-btn .ico { font-size:20px; }
+.nav-btn.active { color:var(--accent); }
 
-/* ── VIEWS ── */
+/* VIEWS */
 .view { display:none; flex-direction:column; padding:12px; gap:12px; max-width:900px; margin:0 auto; }
 .view.active { display:flex; }
 
-/* ── NAV TABS ── */
-#nav {
-  display:flex; background:var(--bg2);
-  border-top:1px solid var(--border);
-  position:fixed; bottom:0; left:0; right:0; z-index:100;
-}
-.nav-btn {
-  flex:1; padding:10px 4px;
-  background:none; border:none; color:var(--muted);
-  font-family:'Exo 2',sans-serif; font-size:10px;
-  cursor:pointer; transition:all .2s;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-}
-.nav-btn .ico { font-size:20px; }
-.nav-btn.active { color:var(--accent); }
-.nav-btn.active .ico { text-shadow:0 0 10px rgba(0,212,255,0.5); }
+/* CARDS */
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.card-title { font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; color:var(--accent); margin-bottom:10px; }
 
-/* bottom nav padding */
-.view { padding-bottom: 70px; }
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,.05); color:var(--text); font-size:14px; font-weight:600; cursor:pointer; font-family:'Exo 2',sans-serif; }
+.btn-sm { padding:6px 10px; font-size:12px; }
+.btn-ghost { background:transparent; }
+.btn-danger { background:rgba(231,76,60,.15); border-color:var(--red); color:var(--red); }
+.up-btn, .down-btn, .del-btn { padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,.05); color:var(--text); cursor:pointer; font-size:12px; }
+.del-btn { color:var(--red); border-color:rgba(231,76,60,.3); }
 
-/* ── CARDS ── */
-.card {
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:16px;
-  position:relative; overflow:hidden;
-}
-.card::before {
-  content:''; position:absolute;
-  top:0; left:0; right:0; height:2px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);
-  opacity:.35;
-}
-.card-title {
-  font-family:'Rajdhani',sans-serif;
-  font-size:11px; letter-spacing:3px;
-  text-transform:uppercase; color:var(--muted);
-  margin-bottom:12px;
-}
+/* LINE GRID */
+#line-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); gap:8px; }
+.line-chip { background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:8px; padding:8px 4px; text-align:center; cursor:pointer; }
+.line-chip.selected { border-color:var(--accent); background:rgba(0,212,255,.1); }
 
-/* ── BUTTONS ── */
-.btn {
-  background:var(--accent); color:#000;
-  border:none; border-radius:8px;
-  padding:8px 14px;
-  font-family:'Rajdhani',sans-serif;
-  font-size:13px; font-weight:700; letter-spacing:1px;
-  text-transform:uppercase; cursor:pointer; transition:all .2s;
-  white-space:nowrap;
-}
-.btn:hover { box-shadow:0 0 12px rgba(0,212,255,.35); }
-.btn:active { transform:scale(.97); }
-.btn-sm { padding:5px 10px; font-size:11px; }
-.btn-ghost {
-  background:transparent; border:1px solid var(--border2);
-  color:var(--text);
-}
-.btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
-.btn-danger { background:transparent; border:1px solid var(--red); color:var(--red); }
-.btn-danger:hover { background:rgba(255,82,82,.1); }
-.btn-success { background:var(--green); color:#000; }
-.btn-orange { background:var(--orange); color:#000; }
+/* LIVE */
+.live-block { border-radius:10px; padding:12px 14px; }
+.live-name { font-family:'Rajdhani',sans-serif; font-size:clamp(18px,5vw,26px); font-weight:700; }
+.live-time { font-family:'Share Tech Mono',monospace; font-size:clamp(36px,10vw,60px); font-weight:700; line-height:1; }
+.live-cd { font-family:'Rajdhani',sans-serif; font-size:clamp(28px,8vw,50px); font-weight:700; }
 
-/* ── INPUTS ── */
-input, select, textarea {
-  background:rgba(0,212,255,.05);
-  border:1px solid var(--border2);
-  border-radius:8px; color:var(--text);
-  font-family:'Exo 2',sans-serif; font-size:14px;
-  padding:8px 11px; outline:none;
-  transition:border-color .2s;
-  width:100%;
-}
-input:focus, select:focus, textarea:focus {
-  border-color:var(--accent);
-  box-shadow:0 0 0 2px rgba(0,212,255,.1);
-}
-select option { background:#0d1117; }
-input[type=time], input[type=number] { font-family:'Share Tech Mono',monospace; }
-.mono { font-family:'Share Tech Mono',monospace; }
-
-label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
-
-.form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-.form-col { flex:1; min-width:100px; }
-.form-col-sm { flex:0 0 80px; }
-.form-col-xs { flex:0 0 60px; }
-
-/* ── LINE SELECTOR ── */
-#line-grid {
-  display:grid;
-  grid-template-columns: repeat(auto-fill,minmax(80px,1fr));
-  gap:6px;
-}
-.line-chip {
-  background:var(--panel2); border:1px solid var(--border);
-  border-radius:8px; padding:8px 4px;
-  text-align:center; cursor:pointer; transition:all .2s;
-}
-.line-chip:hover { border-color:var(--accent2); }
-.line-chip.selected { border-color:var(--accent); background:rgba(0,212,255,.08); }
-.line-chip .line-num {
-  font-family:'Rajdhani',sans-serif; font-size:18px;
-  font-weight:700; color:var(--accent);
-}
-.line-chip .line-name {
-  font-size:9px; color:var(--muted); margin-top:1px;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-
-/* ── TRIPS ── */
-.trip-item {
-  background:var(--panel2); border:1px solid var(--border);
-  border-radius:10px; padding:12px;
-  display:flex; align-items:center; gap:10px;
-  cursor:pointer; transition:all .2s;
-}
-.trip-item:hover { border-color:var(--accent2); }
-.trip-item.active-trip { border-color:var(--accent); background:rgba(0,212,255,.06); }
-.trip-direction {
-  font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase;
-}
-.trip-info { flex:1; }
-.trip-time {
-  font-family:'Share Tech Mono',monospace;
-  font-size:16px; color:var(--text);
-}
-.trip-stops { font-size:11px; color:var(--muted); margin-top:2px; }
-
-/* ── LIVE VIEW ── */
-#live-big-next, #live-big-after {
-  border-radius:12px; padding:16px;
-  border:1px solid var(--border);
-}
-#live-big-next  { background:rgba(255,82,82,.12);  border-color:rgba(255,82,82,.5); }
-#live-big-after { background:rgba(0,212,255,.10);  border-color:rgba(0,212,255,.4); }
-#live-big-after2{ background:rgba(82,96,112,.12);  border-color:rgba(82,96,112,.4); border-radius:12px; padding:16px; }
-
-.live-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
-.live-stop-name { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; margin-bottom:6px; }
-.live-row { display:flex; justify-content:space-between; align-items:flex-end; }
-.live-scheduled { font-family:'Share Tech Mono',monospace; font-size:60px; color:var(--accent); }
-.live-countdown { font-family:'Share Tech Mono',monospace; font-size:60px; text-align:right; }
-.live-status {
-  display:inline-block; padding:3px 10px; border-radius:20px;
-  font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
-  margin-top:8px;
-}
-.s-ok { background:rgba(0,230,118,.12); color:var(--green); border:1px solid rgba(0,230,118,.3); }
-.s-warn { background:rgba(255,171,64,.12); color:var(--orange); border:1px solid rgba(255,171,64,.3); }
-.s-bad { background:rgba(255,82,82,.15); color:var(--red); border:1px solid rgba(255,82,82,.4); }
-.s-neutral { background:rgba(82,96,112,.2); color:var(--muted); border:1px solid var(--border); }
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-.pulse { animation:blink 1s infinite; }
-
-/* ── STOP TABLE ── */
+/* STOP TABLE */
 .stop-table { width:100%; border-collapse:collapse; }
-.stop-table th {
-  font-size:10px; letter-spacing:2px; text-transform:uppercase;
-  color:var(--muted); text-align:left; padding:6px 10px;
-  border-bottom:1px solid var(--border);
-}
-.stop-table td { padding:9px 10px; border-bottom:1px solid rgba(30,41,59,.5); font-size:13px; }
-.stop-table tr:last-child td { border-bottom:none; }
-.stop-table tr.row-current td { background:rgba(0,212,255,.06); color:var(--accent); font-weight:600; }
-.stop-table tr.row-passed td { opacity:.35; }
-.stop-table tr.row-next td { color:var(--green); }
+.stop-table th { font-size:11px; color:var(--muted); text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); }
+.stop-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,.03); vertical-align:middle; }
 
-.del-btn {
-  background:none; border:none; color:var(--red);
-  cursor:pointer; font-size:14px; padding:2px 6px;
-  border-radius:4px; opacity:.5; transition:opacity .2s;
-}
-.del-btn:hover { opacity:1; }
-.up-btn, .down-btn {
-  background:none; border:none; color:var(--muted);
-  cursor:pointer; font-size:13px; padding:2px 5px;
-  border-radius:4px; transition:color .2s;
-}
-.up-btn:hover, .down-btn:hover { color:var(--accent); }
+/* TOAST */
+#toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#1e293b; border:1px solid var(--accent); color:var(--text); padding:10px 20px; border-radius:20px; font-size:13px; font-weight:600; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; }
+#toast.show { opacity:1; }
 
-/* ── DIFF badge ── */
-.diff-badge {
-  font-family:'Share Tech Mono',monospace;
-  font-size:11px; padding:2px 7px; border-radius:10px;
-}
+/* PROGRESS */
+.prog-bar { height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin:8px 0; }
+.prog-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .5s; }
 
-/* ── PROGRESS BAR ── */
-.prog-bar { height:3px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:14px; }
-.prog-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--green)); transition:width 1s linear; }
+/* CONFIRM */
+#confirm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:500; align-items:center; justify-content:center; }
+#confirm-overlay.show { display:flex; }
+#confirm-box { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; max-width:300px; width:90%; }
 
-/* ── LEGEND ── */
-.legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:10px; }
-.legend span { display:flex; align-items:center; gap:5px; }
-.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
-.d-blue { background:var(--accent); box-shadow:0 0 5px var(--accent); }
-.d-green { background:var(--green); box-shadow:0 0 5px var(--green); }
-.d-orange { background:var(--orange); }
-.d-red { background:var(--red); }
-.d-grey { background:var(--muted); }
+/* INPUTS */
+input[type=text], input[type=number], input[type=time], select, textarea {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+}
+input:focus, select:focus { outline:none; border-color:var(--accent); }
 
-/* ── SECTION DIVIDER ── */
-.sec-divider {
-  font-size:10px; letter-spacing:3px; text-transform:uppercase;
-  color:var(--muted2); margin:8px 0 4px;
-}
+.empty-state { text-align:center; color:var(--muted); padding:30px 0; }
+.empty-state .ico { font-size:40px; display:block; margin-bottom:10px; }
 
-/* ── NO TRIP PLACEHOLDER ── */
-.empty-state {
-  text-align:center; color:var(--muted);
-  padding:32px 16px; font-size:14px;
-  line-height:1.7;
-}
-.empty-state .ico { font-size:36px; display:block; margin-bottom:8px; }
-
-/* ── TOAST ── */
-#toast {
-  position:fixed; bottom:75px; left:50%; transform:translateX(-50%) translateY(20px);
-  background:var(--accent); color:#000;
-  padding:8px 20px; border-radius:20px;
-  font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700;
-  letter-spacing:1px; opacity:0; transition:all .3s; z-index:200;
-  pointer-events:none; white-space:nowrap;
-}
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-/* Confirm delete modal */
-#confirm-overlay {
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
-  z-index:700; align-items:center; justify-content:center; padding:16px;
-}
-#confirm-overlay.open { display:flex; }
-#confirm-box {
-  background:var(--panel); border:1px solid var(--border2); border-radius:14px;
-  padding:24px; width:100%; max-width:340px; text-align:center;
-}
-#confirm-box .confirm-title { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; color:#e74c3c; margin-bottom:8px; }
-#confirm-box .confirm-msg { font-size:13px; color:var(--muted); margin-bottom:20px; }
-#confirm-box .confirm-btns { display:flex; gap:10px; justify-content:center; }
-
-/* ── Modal ── */
-#modal-overlay {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,.7); z-index:500;
-  align-items:center; justify-content:center; padding:16px;
-}
-#modal-overlay.open { display:flex; }
-#modal-box {
-  background:var(--panel); border:1px solid var(--border2);
-  border-radius:14px; padding:20px; width:100%; max-width:480px;
-  max-height:90vh; overflow-y:auto;
-}
-#modal-title {
-  font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700;
-  color:var(--accent); letter-spacing:2px; margin-bottom:16px;
-}
+hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 </style>
 </head>
 <body>
+<div id="toast"></div>
 
 <!-- HEADER -->
 <div id="header">
-  <div class="logo">🚌 Chrono<em>Ligne</em><small>PRO — Assistant Conducteur</small></div>
-  <button class="btn" onclick="confirmTerminus()" style="background:rgba(255,82,82,.2);border:1px solid rgba(255,82,82,.5);color:var(--red);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:8px;white-space:nowrap">
-    🏁 TERMINUS
-  </button>
+  <div id="header-logo">🚌 ChronoLigne PRO</div>
+  <div id="clock-header">--:--:--</div>
+  <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
 </div>
 
-<!-- ════════════════════════════════ VIEW: LIVE ════════════════════════════════ -->
+<div id="app">
+
+<!-- ══ VIEW: EN DIRECT ══ -->
 <div class="view active" id="view-live">
 
-  <!-- Horloge -->
-  <div style="text-align:center;padding:4px 0">
-    <div id="clock-header">00:00:00</div>
+  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4)">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
+    <div class="live-name" id="ln-name">—</div>
+    <div class="live-time" id="ln-time" style="color:var(--red)">--:--</div>
+    <div class="live-cd" id="ln-countdown" style="color:rgba(231,76,60,.7)">--</div>
   </div>
 
-  <!-- Next stop -->
-  <div id="live-big-next">
-    <div class="live-stop-name" id="ln-name">—</div>
-    <div class="live-row">
-      <div class="live-scheduled" id="ln-time">--:--</div>
-      <div class="live-countdown" id="ln-countdown">--:--</div>
-    </div>
-    <div id="ln-status" class="live-status s-neutral" style="display:none"></div>
+  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2)">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">👁 ARRÊT SUIVANT</div>
+    <div class="live-name" id="la-name">—</div>
+    <div class="live-time" id="la-time" style="color:var(--accent)">--:--</div>
+    <div class="live-cd" id="la-countdown" style="color:rgba(0,212,255,.5)">--</div>
   </div>
 
-  <!-- After stop -->
-  <div id="live-big-after">
-    <div class="live-stop-name" id="la-name" style="font-size:18px">—</div>
-    <div class="live-row">
-      <div class="live-scheduled" id="la-time" style="font-size:60px;color:var(--accent)">--:--</div>
-      <div class="live-countdown" id="la-countdown" style="font-size:60px;color:var(--accent)">--:--</div>
-    </div>
-    <div id="la-status" class="live-status s-neutral" style="display:none">—</div>
+  <div class="card" style="background:rgba(255,255,255,.02)">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">👁 ARRÊT +2</div>
+    <div class="live-name" id="lb-name" style="color:var(--muted)">—</div>
+    <div class="live-time" id="lb-time" style="color:var(--muted);font-size:clamp(24px,6vw,40px)">--:--</div>
   </div>
-
-  <!-- After+1 stop -->
-  <div id="live-big-after2">
-    <div class="live-stop-name" id="lb-name" style="font-size:18px">—</div>
-    <div class="live-row">
-      <div class="live-scheduled" id="lb-time" style="font-size:60px;color:var(--muted)">--:--</div>
-      <div class="live-countdown" id="lb-countdown" style="font-size:60px;color:var(--muted)">--:--</div>
-    </div>
-    <div id="lb-status" class="live-status s-neutral" style="display:none">—</div>
-  </div>
-
-  <!-- Trajet actif -->
-  <div class="card" id="live-trip-bar" style="padding:10px 14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Trajet actif</div>
-        <div id="live-trip-label" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text)">Aucun trajet sélectionné</div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="showView('view-lines')">Changer</button>
-    </div>
-    <div class="prog-bar" style="margin-top:8px"><div class="prog-fill" id="live-prog" style="width:0%"></div></div>
-  </div>
-
-  <!-- GPS Banner -->
-  <div id="gps-banner" class="card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div id="gps-dot" style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s"></div>
-      <div>
-        <div id="gps-status-text" style="font-size:12px;color:var(--muted)">GPS inactif</div>
-        <div id="gps-accuracy-text" style="font-size:10px;color:var(--muted)"></div>
-      </div>
-    </div>
-    <div style="display:flex;gap:6px;align-items:center">
-      <div id="gps-nearest-badge" style="display:none;font-size:11px;background:rgba(0,212,255,.15);color:var(--accent);padding:3px 8px;border-radius:10px"></div>
-      <button id="gps-toggle-btn" class="btn btn-sm" onclick="toggleGPS()" style="font-size:11px">📡 Activer GPS</button>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════ VIEW: LINES ════════════════════════════════ -->
-<div class="view" id="view-lines">
 
   <div class="card">
-    <div class="card-title">🚍 Mes 30 lignes</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div id="live-trip-label" style="font-size:13px;color:var(--muted)">Aucun trajet sélectionné</div>
+      <button class="btn btn-sm btn-ghost" onclick="showView('view-lines')">Changer</button>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="live-prog" style="width:0%"></div></div>
+  </div>
+
+</div>
+
+<!-- ══ VIEW: TRAJET ══ -->
+<div class="view" id="view-lines">
+  <div class="card">
+    <div class="card-title">🚍 Mes lignes</div>
     <div id="line-grid"></div>
   </div>
-
-  <!-- Line detail panel (hidden until a line is selected) -->
   <div id="line-detail" style="display:none">
-
     <div class="card">
-      <div class="card-title" id="line-detail-title">LIGNE —</div>
-
-      <div class="form-row" style="margin-bottom:12px">
-        <div class="form-col">
-          <label>Nom de la ligne</label>
-          <input type="text" id="edit-line-name" placeholder="ex: Gare → Université" maxlength="40">
-        </div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn btn-sm" onclick="saveLineName()">✓ OK</button>
-        </div>
-      </div>
-
-      <div class="sec-divider">Trajets (départs &amp; retours)</div>
-
-      <div id="trip-list-panel" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-success" onclick="openNewTripModal('aller')">+ Départ (aller)</button>
-        <button class="btn btn-sm btn-orange" onclick="openNewTripModal('retour')">+ Retour</button>
-        <button class="btn btn-sm" style="background:var(--purple);color:#fff" onclick="openPreloadModal()" id="btn-preload" style="display:none">⚡ Charger arrêts officiels</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ════════════════════════════════ VIEW: TRIP EDITOR ════════════════════════════════ -->
-<div class="view" id="view-editor">
-  <div class="card">
-    <div class="card-title" id="editor-title">ÉDITEUR DE TRAJET</div>
-
-    <div class="form-row" style="margin-bottom:14px">
-      <div class="form-col">
-        <label>Direction / Nom du trajet</label>
-        <input type="text" id="trip-label" placeholder="ex: Direction Gare">
-      </div>
-    </div>
-
-    <div class="sec-divider">Arrêts — heure individuelle ou intervalle automatique</div>
-
-    <!-- Auto-fill tool -->
-    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;margin:10px 0">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">🔧 Remplissage auto à partir du 1er arrêt</div>
-      <div class="form-row">
-        <div class="form-col-sm">
-          <label>1er arrêt</label>
-          <input type="time" id="auto-first" step="60" onchange="autoFillTimes()">
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:6px">
-          <button class="btn btn-sm btn-ghost" onclick="autoFillTimes()">Calculer ↓</button>
-          <button class="btn btn-sm" onclick="saveTrip()">💾 Enregistrer</button>
-          <button class="btn btn-sm" onclick="if(editingTrip){activateTrip(editingTrip.lineIdx,editingTrip.tripIdx)}" style="background:var(--green);color:#000;font-weight:700">▶ Activer</button>
-          <button class="btn btn-sm" onclick="addEditorTripToRoadmap()" style="background:rgba(0,212,255,.2);border:1px solid var(--accent);color:var(--accent);font-weight:700">🗺 + Service</button>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Les intervalles sont définis arrêt par arrêt dans le tableau ci-dessous.</div>
-    </div>
-
-    <div id="stop-editor-container" style="overflow-x:auto">
-      <table class="stop-table" id="stop-editor-table">
-        <thead><tr>
-          <th>#</th>
-          <th>Nom de l'arrêt</th>
-          <th>Heure prévue</th>
-          <th>+min suivant</th>
-          <th></th>
-        </tr></thead>
-        <tbody id="stop-editor-body"></tbody>
-      </table>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-ghost" onclick="addEditorStop()">+ Ajouter un arrêt</button>
-      <button class="btn btn-sm btn-danger" onclick="cancelEditor()">Annuler</button>
+      <div id="line-detail-title" class="card-title"></div>
+      <div id="trip-list"></div>
     </div>
   </div>
 </div>
 
-<!-- ════════════════════════════════ VIEW: SETTINGS ════════════════════════════════ -->
-<div class="view" id="view-settings">
-  <div class="card">
-    <div class="card-title">⚙ Paramètres</div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div>
-        <label>Tolérance avance (sec)</label>
-        <input type="number" id="set-tolerance-early" min="0" max="120" value="0" style="width:100px">
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Avance autorisée avant l'arrêt (défaut: 0 sec)</div>
-      </div>
-      <div>
-        <label>Tolérance retard (sec)</label>
-        <input type="number" id="set-tolerance-late" min="0" max="300" value="120" style="width:100px">
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Retard toléré après l'arrêt (défaut: 120 sec = 2 min)</div>
-      </div>
-      <div>
-        <button class="btn btn-sm" onclick="saveSettings()">Enregistrer</button>
-      </div>
-      <hr style="border-color:var(--border)">
-      <div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">💾 Sauvegarde / Restauration</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="saveHTMLCopy()">💾 Sauvegarder une copie</button>
-          <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
-          <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">💾 Copie complète du fichier HTML avec tous vos trajets intégrés.</div>
-        <hr style="border-color:var(--border);margin-bottom:10px">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">🗺 Feuilles de service</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-ghost" onclick="exportServices()">⬇ Exporter feuilles</button>
-          <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer feuilles<input type="file" accept=".json" style="display:none" onchange="importServices(event)"></label>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">Sauvegarde uniquement vos feuilles de service.</div>
-      </div>
-      <hr style="border-color:var(--border)">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="reloadOfficialTrips()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recharger les trajets officiels</button>
-        <button class="btn btn-sm btn-danger" onclick="resetAll()">⚠ Tout réinitialiser</button>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">ℹ À propos</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.8">
-      <div>Chrono Ligne Pro — Assistant conducteur de bus</div>
-      <div style="margin-top:4px">✓ 30 lignes configurables</div>
-      <div>✓ Trajets aller &amp; retour illimités par ligne</div>
-      <div>✓ Intervalles variables entre chaque arrêt (1–99 min)</div>
-      <div>✓ Sauvegarde automatique dans le navigateur</div>
-      <div>✓ Prime : 0 avance · retard max 2 min</div>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════ VIEW: HISTORY ════════════════════════════════ -->
-<div class="view" id="view-history">
-  <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      <span>📋 Historique des services</span>
-      <button class="btn btn-sm btn-danger" onclick="clearHistory()">🗑 Effacer</button>
-    </div>
-    <div id="history-list"><div class="empty-state"><span class="ico">📋</span>Aucun service enregistré<br>L'historique se remplit automatiquement<br>quand vous activez un trajet</div></div>
-  </div>
-</div>
-
-
-<!-- ════════════════════════════════ VIEW: ROADMAP ════════════════════════════════ -->
+<!-- ══ VIEW: SERVICE ══ -->
 <div class="view" id="view-roadmap">
 
-  <!-- PAGE 1 : LISTE DES FEUILLES -->
+  <!-- Page liste -->
   <div id="svc-page-list">
 
-    <!-- Bannière cloud -->
-    <div id="cloud-banner" class="card" style="padding:12px 14px;margin-bottom:8px;border:2px solid var(--accent)">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span id="cloud-status-icon" style="font-size:22px">☁️</span>
-        <div style="flex:1">
-          <div id="cloud-status-text" style="font-size:13px;font-weight:700;color:var(--text)">Sync désactivée</div>
-          <div id="cloud-status-sub" style="font-size:11px;color:var(--muted)">Appuyez sur le bouton pour activer</div>
-        </div>
-        <button class="btn" onclick="showCloudSetup()" style="background:var(--accent);color:#000;font-weight:700;font-size:13px;padding:8px 14px">⚙ Configurer</button>
-      </div>
-      <div id="cloud-sync-row" style="display:none;margin-top:8px">
-        <button class="btn btn-sm btn-ghost" onclick="cloudSync()" id="cloud-sync-btn" style="width:100%;font-size:12px">🔄 Synchroniser maintenant</button>
-      </div>
-    </div>
-
-    <!-- Setup code PIN -->
-    <div id="cloud-setup-panel" class="card" style="display:none;border:2px solid var(--accent)">
-      <div class="card-title">☁️ Synchronisation entre appareils</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        Choisissez un <strong style="color:var(--accent)">code à 4 chiffres</strong> personnel.<br>
-        Entrez le même code sur votre PC et votre téléphone — vos feuilles seront identiques partout !
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-        <input type="number" id="cloud-pin" placeholder="Ex: 2847" min="1000" max="9999"
-          style="flex:1;padding:12px;font-size:24px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;letter-spacing:8px">
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">⚠️ Choisissez un code que vous seul connaissez. Ne partagez pas votre code.</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" onclick="saveCloudConfig()" style="flex:1;background:var(--green);color:#000;font-weight:700;font-size:15px">✅ Activer la sync</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('cloud-setup-panel').style.display='none'">Annuler</button>
-      </div>
-    </div>
-
-    <!-- Service en cours d'exécution -->
+    <!-- Service en cours -->
     <div class="card" id="roadmap-active-card" style="display:none;border:2px solid var(--green)">
       <div class="card-title" style="color:var(--green)">🚦 Service en cours</div>
-      <div id="roadmap-active-info" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent);margin-bottom:8px"></div>
+      <div id="roadmap-active-info" style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px"></div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-sm" onclick="roadmapNext()" style="background:var(--green);color:#000;font-weight:700;flex:1">⏭ Trajet suivant</button>
-        <button class="btn btn-ghost btn-sm" onclick="stopRoadmap()">⏹ Arrêter</button>
+        <button class="btn btn-sm btn-ghost" onclick="stopRoadmap()">⏹ Arrêter</button>
       </div>
     </div>
 
-    <!-- Filtres jour -->
+    <!-- Filtres -->
     <div class="card" style="padding:10px 14px">
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <button class="btn btn-sm" id="svc-filter-sem" onclick="setSvcFilter('semaine')" style="flex:1;font-weight:700">Semaine</button>
         <button class="btn btn-sm btn-ghost" id="svc-filter-sam" onclick="setSvcFilter('samedi')" style="flex:1">Samedi</button>
         <button class="btn btn-sm btn-ghost" id="svc-filter-dim" onclick="setSvcFilter('dimanche')" style="flex:1">Dimanche</button>
       </div>
-      <input type="text" id="svc-search" placeholder="🔍 Rechercher un service..." oninput="renderSvcList()" style="width:100%;padding:8px 10px;font-size:13px;box-sizing:border-box">
+      <input type="text" id="svc-search" placeholder="🔍 Rechercher..." oninput="renderSvcList()" style="width:100%;padding:8px 10px;font-size:13px">
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px 4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px 4px;flex-wrap:wrap;gap:6px">
       <div style="display:flex;align-items:center;gap:6px">
         <div id="svc-count" style="font-size:12px;color:var(--muted)"></div>
-        <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:12px" title="Importer une feuille depuis un fichier">
+        <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:12px">
           📂 Importer
           <input type="file" accept=".json" style="display:none" onchange="importSvcFile(event)">
         </label>
+        <button class="btn btn-sm btn-ghost" onclick="downloadAllSvc()" style="font-size:12px">📥 Tout télécharger</button>
       </div>
       <button class="btn btn-sm" onclick="openSvcEditor(-1)" style="background:var(--green);color:#000;font-weight:700">+ Nouvelle feuille</button>
     </div>
@@ -642,17 +193,15 @@ label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
     <div id="svc-list-container"></div>
   </div>
 
-  <!-- PAGE 2 : ÉDITEUR DE FEUILLE -->
+  <!-- Page éditeur -->
   <div id="svc-page-editor" style="display:none">
-
     <div class="card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
         <button class="btn btn-ghost btn-sm" onclick="closeSvcEditor()">← Retour</button>
         <div class="card-title" style="margin:0;flex:1" id="svc-editor-title">Nouvelle feuille</div>
       </div>
-
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <input type="text" id="svc-num" placeholder="N° service (ex: 2030)" style="flex:1;min-width:130px;padding:8px 10px;font-size:16px;font-weight:700">
+        <input type="text" id="svc-num" placeholder="N° service (ex: 2030)" style="flex:1;min-width:130px;padding:8px 10px;font-size:18px;font-weight:700">
         <select id="svc-jour" style="flex:1;min-width:110px;padding:7px 8px;font-size:13px">
           <option value="semaine">📅 Semaine</option>
           <option value="samedi">📅 Samedi</option>
@@ -661,10 +210,8 @@ label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
       </div>
     </div>
 
-    <!-- Trajets de la feuille -->
     <div id="svc-trips-container"></div>
 
-    <!-- Ajouter un trajet -->
     <div class="card">
       <div class="card-title">➕ Ajouter un trajet</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -675,7 +222,7 @@ label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
           <option value="">— Trajet —</option>
         </select>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end">
         <div style="flex:1">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Heure 1er arrêt</div>
           <input type="time" id="svc-first-time" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace">
@@ -698,19 +245,51 @@ label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
 
 </div>
 
-<!-- ════════════════════════════════ NAV ════════════════════════════════ -->
+<!-- ══ VIEW: OPTIONS ══ -->
+<div class="view" id="view-settings">
+  <div class="card">
+    <div class="card-title">⚙ Paramètres</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Avance tolérée (sec)</div>
+      <input type="number" id="set-tolerance-early" value="0" min="0" max="120" style="width:100%;padding:8px;font-size:16px">
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Retard toléré (sec)</div>
+      <input type="number" id="set-tolerance-late" value="120" min="0" max="300" style="width:100%;padding:8px;font-size:16px">
+    </div>
+    <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
+  </div>
+  <div class="card">
+    <div class="card-title">💾 Sauvegarde</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn btn-sm" style="background:var(--green);color:#000;font-weight:700" onclick="saveHTMLCopy()">💾 Copie HTML</button>
+      <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
+      <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+    </div>
+    <hr>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn btn-sm" onclick="reloadOfficialTrips()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recharger trajets officiels</button>
+      <button class="btn btn-sm btn-danger" onclick="resetAll()">⚠ Réinitialiser</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">ℹ À propos</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8">
+      ChronoLigne PRO — Assistant conducteur<br>
+      Réseau Cergy-Pontoise
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<!-- NAV -->
 <nav id="nav">
   <button class="nav-btn active" data-view="view-live" onclick="showView('view-live')">
     <span class="ico">⏱</span>EN DIRECT
   </button>
-  <button class="nav-btn" id="nav-gps-btn" onclick="showView('view-live');setTimeout(()=>document.getElementById('gps-banner').scrollIntoView({behavior:'smooth'}),100);toggleGPS()" style="color:var(--muted)">
-    <span class="ico">📡</span>GPS
-  </button>
   <button class="nav-btn" data-view="view-lines" onclick="showView('view-lines')">
     <span class="ico">🚌</span>TRAJET
-  </button>
-  <button class="nav-btn" data-view="view-editor" onclick="showView('view-editor')" id="nav-editor" style="display:none">
-    <span class="ico">✏</span>ÉDITEUR
   </button>
   <button class="nav-btn" data-view="view-roadmap" onclick="showView('view-roadmap')">
     <span class="ico">🗺</span>SERVICE
@@ -720,291 +299,38 @@ label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
   </button>
 </nav>
 
-<!-- MODAL: new trip -->
-<div id="modal-overlay" onclick="closeModal(event)">
-  <div id="modal-box">
-    <div id="modal-title">NOUVEAU TRAJET</div>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-col">
-        <label>Nom / Direction</label>
-        <input type="text" id="modal-trip-label" placeholder="ex: Départ Terminus 08h00">
-      </div>
-    </div>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-col-sm">
-        <label>1er arrêt</label>
-        <input type="time" id="modal-first-time" step="60">
-      </div>
-    </div>
-
-    <!-- Smart mode: official stops detected -->
-    <div id="modal-smart-block" style="display:none;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);border-radius:8px;padding:10px 12px;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:4px">⚡ Arrêts officiels détectés</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Choisissez le trajet à utiliser comme modèle :</div>
-      <select id="modal-template-select" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px"></select>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Les noms d'arrêts et intervalles réels seront appliqués automatiquement.</div>
-    </div>
-
-    <!-- Manual mode: no official stops -->
-    <div id="modal-manual-block" style="margin-bottom:12px">
-      <div class="form-row">
-        <div class="form-col-xs">
-          <label>Nb arrêts</label>
-          <input type="number" id="modal-stop-count" value="12" min="2" max="50">
-        </div>
-        <div class="form-col-xs">
-          <label>Intervalle (min)</label>
-          <input type="number" id="modal-interval" value="3" min="0" max="60">
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Intervalle uniforme — ajustable arrêt par arrêt dans l'éditeur.</div>
-    </div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" onclick="createTripFromModal()">Créer &amp; Éditer</button>
-      <button class="btn btn-ghost" onclick="closeModalDirect()">Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: preload official stops -->
-<div id="preload-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;align-items:center;justify-content:center;padding:16px" onclick="closePreload(event)">
-  <div style="background:var(--panel);border:1px solid var(--border2);border-radius:14px;padding:20px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto">
-    <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--purple);letter-spacing:2px;margin-bottom:4px">⚡ CHARGER ARRÊTS OFFICIELS</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Choisissez le trajet et l'heure de premier arrêt</div>
-    <div id="preload-trip-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
-    <div style="margin-bottom:14px">
-      <label>Heure du 1er arrêt</label>
-      <input type="time" id="preload-start-time" value="07:00" step="60" style="width:140px">
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" style="background:var(--purple)" onclick="applyPreload()">⚡ Charger ce trajet</button>
-      <button class="btn" style="background:var(--green);color:#fff" onclick="openNewTemplateModal()">+ Nouveau temps</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('preload-overlay').style.display='none'">Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: créer nouveau temps de trajet -->
-<div id="newtemplate-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:700;align-items:center;justify-content:center;padding:16px">
-  <div style="background:var(--panel);border:1px solid var(--border2);border-radius:14px;padding:20px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto">
-    <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--green);letter-spacing:2px;margin-bottom:4px">+ NOUVEAU TEMPS DE TRAJET</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Basez-vous sur un trajet existant et modifiez les intervalles</div>
-
-    <div style="margin-bottom:12px">
-      <label>Nom du nouveau temps</label>
-      <input type="text" id="nt-label" placeholder="ex: 🚦 Aller 27 min - pointe soir" style="width:100%;padding:8px 10px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px;box-sizing:border-box">
-    </div>
-
-    <div style="margin-bottom:12px">
-      <label>Direction</label>
-      <select id="nt-direction" style="width:100%;padding:8px 10px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px">
-        <option value="aller">🚌 Aller</option>
-        <option value="retour">🔄 Retour</option>
-      </select>
-    </div>
-
-    <div style="margin-bottom:12px">
-      <label>Copier les arrêts depuis</label>
-      <select id="nt-base-select" onchange="renderNewTemplateStops()" style="width:100%;padding:8px 10px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px"></select>
-    </div>
-
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Intervalles (min) entre chaque arrêt</div>
-    <div id="nt-stops-table" style="margin-bottom:14px"></div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" style="background:var(--green);color:#fff" onclick="saveNewTemplate()">💾 Enregistrer ce temps</button>
-      <button class="btn btn-ghost" onclick="closeNewTemplateModal()">Annuler</button>
-    </div>
-  </div>
-</div>
-
-<script>
-let selectedPreloadIdx = 0;
-
-// ═══════════════════════════════════════════════════════════════
-//  NOUVEAU TEMPS DE TRAJET (modèle personnalisé)
-// ═══════════════════════════════════════════════════════════════
-let ntLineNum = null;
-
-function openNewTemplateModal() {
-  // Get current line number
-  if(activeLine === null) return;
-  ntLineNum = db.lines[activeLine].num;
-  const templates = PRELOADED_TRIPS[ntLineNum] || [];
-
-  // Populate base select
-  const sel = document.getElementById('nt-base-select');
-  sel.innerHTML = templates.map((t, i) =>
-    `<option value="${i}">${t.direction==='retour'?'🔄':'🚌'} ${t.label}</option>`
-  ).join('');
-
-  document.getElementById('nt-label').value = '';
-  renderNewTemplateStops();
-  document.getElementById('newtemplate-overlay').style.display = 'flex';
-}
-
-function closeNewTemplateModal() {
-  document.getElementById('newtemplate-overlay').style.display = 'none';
-}
-
-function renderNewTemplateStops() {
-  if(ntLineNum === null) return;
-  const templates = PRELOADED_TRIPS[ntLineNum] || [];
-  const idx = parseInt(document.getElementById('nt-base-select').value) || 0;
-  const base = templates[idx];
-  if(!base) return;
-
-  const container = document.getElementById('nt-stops-table');
-  container.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr>
-        <th style="text-align:left;padding:4px 6px;color:var(--muted);font-weight:600">#</th>
-        <th style="text-align:left;padding:4px 6px;color:var(--muted);font-weight:600">Arrêt</th>
-        <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:600">+min</th>
-      </tr></thead>
-      <tbody>
-        ${base.stops.map((s, i) => `
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:5px 6px;color:var(--muted)">${i+1}</td>
-            <td style="padding:5px 6px">${s.name}</td>
-            <td style="padding:5px 4px;text-align:center">
-              ${i < base.stops.length-1
-                ? `<input type="number" value="${s.intervalAfter}" min="0" max="99"
-                    id="nt-interval-${i}"
-                    style="width:52px;padding:4px;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:5px;text-align:center">`
-                : '<span style="color:var(--muted)">—</span>'}
-            </td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-function saveNewTemplate() {
-  if(ntLineNum === null) return;
-  const label = document.getElementById('nt-label').value.trim();
-  if(!label) { toast('⚠ Donnez un nom au trajet !'); return; }
-
-  const direction = document.getElementById('nt-direction').value;
-  const templates = PRELOADED_TRIPS[ntLineNum] || [];
-  const idx = parseInt(document.getElementById('nt-base-select').value) || 0;
-  const base = templates[idx];
-  if(!base) return;
-
-  // Build new stops with updated intervals
-  const newStops = base.stops.map((s, i) => {
-    const input = document.getElementById(`nt-interval-${i}`);
-    return {
-      name: s.name,
-      intervalAfter: input ? (parseInt(input.value) || 0) : 0
-    };
-  });
-
-  // Save to PRELOADED_TRIPS
-  if(!PRELOADED_TRIPS[ntLineNum]) PRELOADED_TRIPS[ntLineNum] = [];
-  PRELOADED_TRIPS[ntLineNum].push({ direction, label, stops: newStops });
-
-  // Also persist in localStorage so it survives reload
-  const customKey = 'chronoligne_custom_templates';
-  let custom = {};
-  try { custom = JSON.parse(localStorage.getItem(customKey)) || {}; } catch(e) {}
-  if(!custom[ntLineNum]) custom[ntLineNum] = [];
-  custom[ntLineNum].push({ direction, label, stops: newStops });
-  localStorage.setItem(customKey, JSON.stringify(custom));
-
-  closeNewTemplateModal();
-  document.getElementById('preload-overlay').style.display = 'none';
-  toast(`✓ "${label}" enregistré !`);
-}
-
-function loadCustomTemplates() {
-  try {
-    const custom = JSON.parse(localStorage.getItem('chronoligne_custom_templates')) || {};
-    Object.keys(custom).forEach(lineNum => {
-      if(!PRELOADED_TRIPS[lineNum]) PRELOADED_TRIPS[lineNum] = [];
-      custom[lineNum].forEach(t => PRELOADED_TRIPS[lineNum].push(t));
-    });
-  } catch(e) {}
-}
-
-function openPreloadModal() {
-  if(activeLine===null) return;
-  const line = db.lines[activeLine];
-  const trips = PRELOADED_TRIPS[line.num];
-  if(!trips) return;
-
-  selectedPreloadIdx = 0;
-  const listEl = document.getElementById('preload-trip-list');
-  listEl.innerHTML = '';
-  trips.forEach((t,i) => {
-    const div = document.createElement('div');
-    div.style.cssText = `background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .2s`;
-    div.innerHTML = `<div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">${t.direction==='retour'?'🔄 RETOUR':'🚌 ALLER'} · ${t.stops.length} arrêts</div>
-      <div style="font-size:13px;margin-top:3px">${t.label}</div>`;
-    div.onclick = () => {
-      selectedPreloadIdx = i;
-      listEl.querySelectorAll('div').forEach((d,j) => {
-        d.style.borderColor = j===i ? 'var(--purple)' : 'var(--border)';
-        d.style.background = j===i ? 'rgba(124,77,255,.1)' : 'var(--panel2)';
-      });
-    };
-    if(i===0) { div.style.borderColor='var(--purple)'; div.style.background='rgba(124,77,255,.1)'; }
-    listEl.appendChild(div);
-  });
-
-  document.getElementById('preload-overlay').style.display = 'flex';
-}
-
-function closePreload(e) {
-  if(e.target===document.getElementById('preload-overlay'))
-    document.getElementById('preload-overlay').style.display='none';
-}
-
-function applyPreload() {
-  if(activeLine===null) return;
-  const line = db.lines[activeLine];
-  const trips = PRELOADED_TRIPS[line.num];
-  if(!trips) return;
-  const tripDef = trips[selectedPreloadIdx];
-  const startTime = document.getElementById('preload-start-time').value || '07:00';
-  const stopsWithTime = buildStopsWithTime(tripDef.stops, startTime);
-  const trip = {
-    id: Date.now(),
-    direction: tripDef.direction,
-    label: tripDef.label,
-    stops: stopsWithTime
-  };
-  db.lines[activeLine].trips.push(trip);
-  saveDB();
-  document.getElementById('preload-overlay').style.display='none';
-  renderLineDetail(activeLine);
-  toast(`✓ ${trip.stops.length} arrêts chargés !`);
-}
-</script>
-
-<!-- TOAST -->
+<!-- CONFIRM -->
 <div id="confirm-overlay">
   <div id="confirm-box">
-    <div class="confirm-title">⚠ Supprimer ce trajet ?</div>
-    <div class="confirm-msg" id="confirm-msg">Cette action est irréversible.</div>
-    <div class="confirm-btns">
-      <button class="btn btn-danger" id="confirm-yes-btn">✕ Supprimer</button>
-      <button class="btn btn-ghost" onclick="closeConfirm()">Annuler</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">Supprimer ?</div>
+    <div id="confirm-msg" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" id="confirm-yes-btn" style="flex:1">Supprimer</button>
+      <button class="btn btn-ghost" onclick="closeConfirm()" style="flex:1">Annuler</button>
     </div>
   </div>
 </div>
 
-<div id="toast"></div>
-
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  DATA STRUCTURE
-//  lines[i] = { name, trips: [ { id, direction, label, stops:[{name,time,intervalAfter}] } ] }
-// ═══════════════════════════════════════════════════════════════
+// ══ DATA ══════════════════════════════════════════════════════
+const STORAGE_KEY = 'chronoligne_v2';
+const ROADMAP_KEY = 'chronoligne_roadmaps';
 
-const NUM_LINES = 22;
+let db = { lines: [], settings: { toleranceEarly: 0, toleranceLate: 120 } };
+let activeTrip = null;
+let activeLine = null;
 
-// Vraies lignes de bus avec numéros et couleurs officielles
+// Variables service
+let roadmapServices = [];
+let currentRoadmap = [];
+let roadmapCursor = -1;
+let svcTrips = [];
+let editingServiceIdx = -1;
+let svcFilter = 'semaine';
+
+</script>
+<script>
+// ══ LIGNES RÉELLES ════════════════════════════════════════════
 const REAL_LINES = [
   { num:'1201', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#9b59b6' },
   { num:'1202', name:'Gare Cergy-Préfecture → Les Beurriers', color:'#e67e22' },
@@ -1030,17 +356,7 @@ const REAL_LINES = [
   { num:'1242', name:'Gare Cergy-Préfecture → Osny Clinique Sainte Marie', color:'#c62828' },
 ];
 
-let db = { lines:[], settings:{ toleranceEarly:0, toleranceLate:120 } };
-let activeLine = null;   // index 0-29
-let activeTrip = null;   // { lineIdx, tripIdx }
-let editingTrip = null;  // { lineIdx, tripIdx (or null=new), direction }
-let tempStops = [];      // for editor
-let clockInterval = null;
-
-// ── Arrêts pré-chargés depuis les PDFs Moovit ───────────────────
-// Intervalles estimés à partir de la durée totale / nombre d'arrêts
-// Vous pouvez affiner dans l'éditeur arrêt par arrêt
-
+// ══ TRAJETS PRÉCHARGÉS ════════════════════════════════════════
 const PRELOADED_TRIPS = {
   '1239': [
     {
@@ -3260,42 +2576,31 @@ const PRELOADED_TRIPS = {
   ],
 };
 
-// Génère les horaires à partir d'une heure de départ et des intervalles
-function buildStopsWithTime(stopDefs, startHHMM) {
-  const [h, m] = startHHMM.split(':').map(Number);
-  let cur = h * 60 + m;
-  return stopDefs.map(s => {
-    const time = minutesToHHMM(cur);
-    cur += s.intervalAfter || 0;
-    return { name: s.name, time, intervalAfter: s.intervalAfter };
-  });
-}
-
-// ── Init ────────────────────────────────────────────────────────
+</script>
+<script>
+// ══ DB ════════════════════════════════════════════════════════
 function initDB() {
-  const saved = localStorage.getItem('chronoligne_v2');
-  if (saved) {
-    try { db = JSON.parse(saved); } catch(e){}
-    while (db.lines.length < REAL_LINES.length) {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved) {
+    try { db = JSON.parse(saved); } catch(e) {}
+    while(db.lines.length < REAL_LINES.length) {
       const rl = REAL_LINES[db.lines.length];
       db.lines.push({ num:rl.num, name:rl.name, color:rl.color, trips:[] });
     }
   } else {
     db.lines = REAL_LINES.map(rl => ({ num:rl.num, name:rl.name, color:rl.color, trips:[] }));
   }
-  if (!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
-
-  // Toujours forcer le chargement des trajets officiels pour chaque ligne
+  if(!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
+  // Toujours charger les trajets officiels
   db.lines.forEach(line => {
     const templates = PRELOADED_TRIPS[line.num] || [];
     if(templates.length > 0) {
-      // Garder les trajets personnalisés (ceux qui ne sont pas dans PRELOADED_TRIPS)
       const preloadedLabels = templates.map(t => t.label);
       const custom = line.trips.filter(t => !preloadedLabels.includes(t.label));
       const official = templates.map(t => ({
         direction: t.direction,
         label: t.label,
-        stops: t.stops.map(s => ({ name: s.name, time: '00:00', intervalAfter: s.intervalAfter || 0 }))
+        stops: t.stops.map(s => ({ name:s.name, time:'00:00', intervalAfter:s.intervalAfter||0 }))
       }));
       line.trips = [...official, ...custom];
     }
@@ -3303,133 +2608,100 @@ function initDB() {
   saveDB();
 }
 
-function saveDB() {
-  localStorage.setItem('chronoligne_v2', JSON.stringify(db));
+function saveDB() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+
+// ══ NAV ══════════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === id);
+  });
+  const v = document.getElementById(id);
+  if(v) v.classList.add('active');
+  if(id === 'view-lines') renderLineGrid();
+  if(id === 'view-roadmap') renderRoadmapView();
+  if(id === 'view-settings') loadSettings();
 }
 
-// ── Clock ─────────────────────────────────────────────────────
+// ══ CLOCK ════════════════════════════════════════════════════
 function updateClock() {
   const now = new Date();
   const h = String(now.getHours()).padStart(2,'0');
   const m = String(now.getMinutes()).padStart(2,'0');
   const s = String(now.getSeconds()).padStart(2,'0');
-  const timeStr = `${h}:${m}:${s}`;
-  document.getElementById('clock-header').textContent = timeStr;
-  const cl = document.getElementById('clock-live');
-  if(cl) cl.textContent = timeStr;
+  document.getElementById('clock-header').textContent = `${h}:${m}:${s}`;
   updateLive();
 }
 
+// ══ LIVE ═════════════════════════════════════════════════════
+function updateLive() {
+  if(!activeTrip) return;
+  const { lineIdx, tripIdx } = activeTrip;
+  const trip = db.lines[lineIdx]?.trips[tripIdx];
+  if(!trip) return;
+
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+
+  let nextIdx = trip.stops.length - 1;
+  for(let i = 0; i < trip.stops.length; i++) {
+    const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
+    if(h*60+m >= nowMin) { nextIdx = i; break; }
+  }
+
+  function fmt(t) { return t ? t.substring(0,5) : '--:--'; }
+  function cd(t) {
+    if(!t) return '--';
+    const [h,m] = t.split(':').map(Number);
+    const diff = h*60+m - nowMin;
+    if(diff < 0) return 'Passé';
+    if(diff === 0) return '⚡ Maintenant';
+    return diff + ' min';
+  }
+
+  const s0 = trip.stops[nextIdx];
+  const s1 = trip.stops[nextIdx+1];
+  const s2 = trip.stops[nextIdx+2];
+
+  document.getElementById('ln-name').textContent = s0?.name || '—';
+  document.getElementById('ln-time').textContent = fmt(s0?.time);
+  document.getElementById('ln-countdown').textContent = cd(s0?.time);
+  document.getElementById('la-name').textContent = s1?.name || '—';
+  document.getElementById('la-time').textContent = fmt(s1?.time);
+  document.getElementById('la-countdown').textContent = cd(s1?.time);
+  document.getElementById('lb-name').textContent = s2?.name || '—';
+  document.getElementById('lb-time').textContent = fmt(s2?.time);
+
+  const prog = Math.round(nextIdx / Math.max(trip.stops.length-1,1) * 100);
+  document.getElementById('live-prog').style.width = prog + '%';
+}
+
 function confirmTerminus() {
-  if(!activeTrip) { toast('Aucun trajet actif'); return; }
   activeTrip = null;
   document.getElementById('live-trip-label').textContent = 'Aucun trajet sélectionné';
   document.getElementById('live-prog').style.width = '0%';
   document.getElementById('ln-name').textContent = '—';
   document.getElementById('ln-time').textContent = '--:--';
-  document.getElementById('ln-countdown').textContent = '--:--';
+  document.getElementById('ln-countdown').textContent = '--';
   document.getElementById('la-name').textContent = '—';
   document.getElementById('la-time').textContent = '--:--';
-  document.getElementById('la-countdown').textContent = '--:--';
+  document.getElementById('la-countdown').textContent = '--';
   document.getElementById('lb-name').textContent = '—';
   document.getElementById('lb-time').textContent = '--:--';
-  document.getElementById('lb-countdown').textContent = '--:--';
-  saveDB();
-  toast('✅ Trajet terminé — Bon repos !');
+  document.getElementById('terminus-btn').style.display = 'none';
+  toast('🏁 Terminus — trajet terminé');
 }
 
-// ── View switching ──────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════
-//  HISTORIQUE
-// ═══════════════════════════════════════════════════════════════
-const HISTORY_KEY = 'chronoligne_history';
-
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
-  catch(e) { return []; }
-}
-
-function saveHistory(history) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-}
-
-function recordService(lineIdx, tripIdx) {
-  const line = db.lines[lineIdx];
-  const trip = line.trips[tripIdx];
-  if(!line || !trip) return;
-  const now = new Date();
-  const entry = {
-    date: now.toLocaleDateString('fr-FR', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'}),
-    time: now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}),
-    lineNum: line.num,
-    lineName: line.name,
-    lineColor: line.color || '#00d4ff',
-    tripLabel: trip.label,
-    direction: trip.direction,
-    stops: trip.stops.length,
-  };
-  const history = loadHistory();
-  history.unshift(entry); // most recent first
-  if(history.length > 200) history.pop(); // limit to 200 entries
-  saveHistory(history);
-}
-
-function renderHistory() {
-  const history = loadHistory();
-  const el = document.getElementById('history-list');
-  if(!history.length) {
-    el.innerHTML = '<div class="empty-state"><span class="ico">📋</span>Aucun service enregistré<br>L\'historique se remplit automatiquement<br>quand vous activez un trajet</div>';
-    return;
-  }
-  el.innerHTML = history.map((e, i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="background:${e.lineColor};color:#fff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;padding:4px 10px;border-radius:6px;min-width:52px;text-align:center">${e.lineNum}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${e.direction==='retour'?'🔄':'🚌'} ${e.tripLabel}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">📅 ${e.date} · ${e.time} · ${e.stops} arrêts</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function clearHistory() {
-  localStorage.removeItem(HISTORY_KEY);
-  renderHistory();
-  toast('Historique effacé ✓');
-}
-
-function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === id);
-  });
-  if(id==='view-lines') renderLineGrid();
-  if(id==='view-roadmap') renderRoadmapView();
-  if(id==='view-settings') loadSettings();
-  if(id==='view-history') renderHistory();
-}
-
-// ── Toast ───────────────────────────────────────────────────────
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  LINES VIEW
-// ═══════════════════════════════════════════════════════════════
+// ══ LIGNES / TRAJETS ═════════════════════════════════════════
 function renderLineGrid() {
   const grid = document.getElementById('line-grid');
   grid.innerHTML = '';
   db.lines.forEach((line,i) => {
     const chip = document.createElement('div');
     chip.className = 'line-chip' + (activeLine===i?' selected':'');
-    const col = line.color || '#00d4ff';
     chip.innerHTML = `
-      <div class="line-num" style="background:${col};color:#fff;border-radius:6px;padding:2px 6px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:1px">${line.num||i+1}</div>
-      <div class="line-name" style="font-size:9px;margin-top:3px;color:var(--muted)">${(line.name||'').split('→')[0].trim()}</div>`;
+      <div style="background:${line.color||'#00d4ff'};color:#fff;border-radius:6px;padding:2px 6px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif">${line.num}</div>
+      <div style="font-size:9px;margin-top:3px;color:var(--muted)">${(line.name||'').split('→')[0].trim()}</div>`;
     chip.onclick = () => selectLine(i);
     grid.appendChild(chip);
   });
@@ -3445,325 +2717,48 @@ function selectLine(idx) {
 function renderLineDetail(idx) {
   const line = db.lines[idx];
   const col = line.color || '#00d4ff';
-  document.getElementById('line-detail-title').innerHTML = `<span style="background:${col};color:#fff;padding:2px 10px;border-radius:6px;font-size:16px;margin-right:8px">${line.num}</span> ${line.name}`;
-  document.getElementById('edit-line-name').value = line.name;
-
-  // Show preload button only for lines that have pre-loaded data
-  const preloadBtn = document.getElementById('btn-preload');
-  if(preloadBtn) preloadBtn.style.display = PRELOADED_TRIPS[line.num] ? '' : 'none';
-
-  const panel = document.getElementById('trip-list-panel');
+  document.getElementById('line-detail-title').innerHTML = `<span style="background:${col};color:#fff;padding:2px 10px;border-radius:6px;font-size:16px;margin-right:8px">${line.num}</span>${line.name}`;
+  const list = document.getElementById('trip-list');
   if(!line.trips.length) {
-    const hint = PRELOADED_TRIPS[line.num] ? '<br><span style="color:var(--accent);font-size:12px">⚡ Cliquez "Charger arrêts officiels" pour démarrer vite !</span>' : '';
-    panel.innerHTML = `<div style="color:var(--muted);font-size:13px">Aucun trajet. Ajoutez un départ ou retour.${hint}</div>`;
+    list.innerHTML = '<div class="empty-state"><span class="ico">🚌</span>Aucun trajet</div>';
     return;
   }
-  const panel2 = document.getElementById('trip-list-panel');
-  panel2.innerHTML = '';
-  line.trips.forEach((trip,ti) => {
-    const isActive = activeTrip && activeTrip.lineIdx===idx && activeTrip.tripIdx===ti;
-    const firstTime = trip.stops.length ? trip.stops[0].time : '--:--';
-    const lastTime  = trip.stops.length ? trip.stops[trip.stops.length-1].time : '--:--';
-    const div = document.createElement('div');
-    div.className = 'trip-item' + (isActive?' active-trip':'');
-    div.innerHTML = `
-      <div style="font-size:20px">${trip.direction==='retour'?'🔄':'🚌'}</div>
-      <div class="trip-info">
-        <div class="trip-direction">${trip.direction==='retour'?'RETOUR':'ALLER'}</div>
-        <div class="trip-time">${firstTime} → ${lastTime}</div>
-        <div class="trip-stops">${trip.label} · ${trip.stops.length} arrêts</div>
+  list.innerHTML = line.trips.map((t,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700">${t.label}</div>
+        <div style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <button class="btn btn-sm" onclick="activateTrip(${idx},${ti})">▶ Activer</button>
-        <button class="btn btn-sm btn-ghost" onclick="editTrip(${idx},${ti})">✏ Éditer</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteTrip(${idx},${ti})">✕</button>
-      </div>`;
-    panel2.appendChild(div);
-  });
+      <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶ Activer</button>
+    </div>`).join('');
 }
 
-function saveLineName() {
-  if(activeLine===null) return;
-  db.lines[activeLine].name = document.getElementById('edit-line-name').value.trim() || `Ligne ${activeLine+1}`;
-  saveDB(); renderLineGrid(); renderLineDetail(activeLine);
-  toast('Nom sauvegardé ✓');
-}
-
-function _activateTripCore(lineIdx, tripIdx) {
+function activateTrip(lineIdx, tripIdx) {
   activeTrip = { lineIdx, tripIdx };
   const line = db.lines[lineIdx];
   const trip = line.trips[tripIdx];
   const col = line.color || '#00d4ff';
-  document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:14px;margin-right:6px">${line.num}</span>${trip.label} (${trip.direction==='retour'?'Retour':'Aller'})`;
-  renderLineDetail(lineIdx);
+  document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
+  document.getElementById('terminus-btn').style.display = '';
   updateLive();
   showView('view-live');
-  toast(`Trajet activé ✓`);
+  toast('▶ Trajet activé !');
 }
 
-function deleteTrip(lineIdx, tripIdx) {
-  const trip = db.lines[lineIdx].trips[tripIdx];
-  const label = trip ? trip.label : 'ce trajet';
-  document.getElementById('confirm-msg').textContent = label;
-  document.getElementById('confirm-yes-btn').onclick = function() {
-    closeConfirm();
-    db.lines[lineIdx].trips.splice(tripIdx, 1);
-    if(activeTrip && activeTrip.lineIdx===lineIdx && activeTrip.tripIdx===tripIdx) activeTrip=null;
-    saveDB();
-    renderLineDetail(lineIdx);
-    toast('Trajet supprimé ✓');
-  };
-  document.getElementById('confirm-overlay').classList.add('open');
+// ══ TOAST ════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-function closeConfirm() {
-  document.getElementById('confirm-overlay').classList.remove('open');
-}
+// ══ CONFIRM ══════════════════════════════════════════════════
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
 
-function confirmDeleteTrip(lineIdx, tripIdx) {
-  closeConfirm();
-  db.lines[lineIdx].trips.splice(tripIdx, 1);
-  if(activeTrip && activeTrip.lineIdx===lineIdx && activeTrip.tripIdx===tripIdx) activeTrip=null;
-  saveDB();
-  renderLineDetail(lineIdx);
-  toast('Trajet supprimé ✓');
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  NEW TRIP MODAL
-// ═══════════════════════════════════════════════════════════════
-let modalDirection = 'aller';
-
-function openNewTripModal(direction) {
-  modalDirection = direction;
-  document.getElementById('modal-title').textContent = direction==='retour' ? 'NOUVEAU RETOUR' : 'NOUVEAU DÉPART';
-  document.getElementById('modal-trip-label').value = '';
-  document.getElementById('modal-first-time').value = '';
-
-  // Check if official stops exist for this line
-  const lineNum = db.lines[activeLine]?.num;
-  const templates = PRELOADED_TRIPS[lineNum];
-
-  const smartBlock = document.getElementById('modal-smart-block');
-  const manualBlock = document.getElementById('modal-manual-block');
-  const select = document.getElementById('modal-template-select');
-
-  if(templates && templates.length > 0) {
-    // Filter by direction preferably, but show all
-    const preferred = templates.filter(t => t.direction === direction);
-    const others = templates.filter(t => t.direction !== direction);
-    const ordered = [...preferred, ...others];
-
-    select.innerHTML = '';
-    ordered.forEach((t, i) => {
-      const opt = document.createElement('option');
-      opt.value = templates.indexOf(t); // index in original array
-      opt.textContent = (t.direction === direction ? '✓ ' : '') + t.label;
-      select.appendChild(opt);
-    });
-
-    smartBlock.style.display = '';
-    manualBlock.style.display = 'none';
-  } else {
-    smartBlock.style.display = 'none';
-    manualBlock.style.display = '';
-  }
-
-  document.getElementById('modal-overlay').classList.add('open');
-}
-
-function closeModalDirect() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-
-function closeModal(e) {
-  if(e.target===document.getElementById('modal-overlay')) closeModalDirect();
-}
-
-function createTripFromModal() {
-  const label = document.getElementById('modal-trip-label').value.trim();
-  const firstTime = document.getElementById('modal-first-time').value;
-  if(!firstTime) { alert('Veuillez entrer l\'heure du 1er arrêt'); return; }
-
-  const lineNum = db.lines[activeLine]?.num;
-  const templates = PRELOADED_TRIPS[lineNum];
-  const smartBlock = document.getElementById('modal-smart-block');
-  let stops = [];
-
-  if(templates && smartBlock.style.display !== 'none') {
-    // Smart mode: use official stops + real intervals
-    const templateIdx = parseInt(document.getElementById('modal-template-select').value);
-    const tripDef = templates[templateIdx];
-    stops = buildStopsWithTime(tripDef.stops, firstTime);
-    const autoLabel = label || `${modalDirection==='retour'?'Retour':'Départ'} ${firstTime} (${tripDef.stops.length} arrêts)`;
-    const trip = { id: Date.now(), direction: modalDirection, label: autoLabel, stops };
-    db.lines[activeLine].trips.push(trip);
-    saveDB();
-    closeModalDirect();
-    editTrip(activeLine, db.lines[activeLine].trips.length - 1);
-    toast(`✓ ${tripDef.stops.length} arrêts officiels chargés`);
-  } else {
-    // Manual mode: uniform interval
-    const count = parseInt(document.getElementById('modal-stop-count').value)||12;
-    const interval = parseInt(document.getElementById('modal-interval').value)||3;
-    const [h,m] = firstTime.split(':').map(Number);
-    let baseMin = h*60+m;
-    for(let i=0;i<count;i++) {
-      stops.push({
-        name: i===0 ? 'Terminus Départ' : (i===count-1 ? 'Terminus Arrivée' : `Arrêt ${i+1}`),
-        time: minutesToHHMM(baseMin + i*interval),
-        intervalAfter: interval
-      });
-    }
-    const trip = { id: Date.now(), direction: modalDirection, label: label || `${modalDirection==='retour'?'Retour':'Départ'} ${firstTime}`, stops };
-    db.lines[activeLine].trips.push(trip);
-    saveDB();
-    closeModalDirect();
-    editTrip(activeLine, db.lines[activeLine].trips.length - 1);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  EDITOR
-// ═══════════════════════════════════════════════════════════════
-function editTrip(lineIdx, tripIdx) {
-  editingTrip = { lineIdx, tripIdx };
-  const line = db.lines[lineIdx];
-  const trip = line.trips[tripIdx];
-  tempStops = trip.stops.map(s=>({...s}));
-  const col = line.color || '#00d4ff';
-  document.getElementById('editor-title').innerHTML = `ÉDITEUR — <span style="background:${col};color:#fff;padding:2px 8px;border-radius:5px">${line.num}</span> · ${trip.label}`;
-  document.getElementById('trip-label').value = trip.label;
-
-  document.getElementById('nav-editor').style.display='flex';
-  renderEditorTable();
-  showView('view-editor');
-}
-
-function cancelEditor() {
-  document.getElementById('nav-editor').style.display='none';
-  showView('view-lines');
-}
-
-function renderEditorTable() {
-  const tbody = document.getElementById('stop-editor-body');
-  tbody.innerHTML = '';
-  tempStops.forEach((stop,i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="color:var(--muted);font-size:12px;font-family:'Share Tech Mono',monospace">${String(i+1).padStart(2,'0')}</td>
-      <td><input type="text" value="${stop.name}" style="padding:5px 8px;font-size:13px" oninput="tempStops[${i}].name=this.value"></td>
-      <td><input type="time" value="${stop.time}" step="60" style="padding:5px 8px;font-size:13px;width:120px" onchange="tempStops[${i}].time=this.value;autoRecalcFrom(${i})"></td>
-      <td>${i<tempStops.length-1 ? `<input type="number" value="${stop.intervalAfter||0}" min="0" max="99" style="padding:5px 6px;font-size:13px;width:58px" oninput="tempStops[${i}].intervalAfter=parseInt(this.value)||0;autoRecalcFrom(${i})">` : '<span style="color:var(--muted)">—</span>'}</td>
-      <td style="display:flex;gap:4px">
-        ${i>0?`<button class="up-btn" onclick="moveStop(${i},-1)">▲</button>`:''}
-        ${i<tempStops.length-1?`<button class="down-btn" onclick="moveStop(${i},1)">▼</button>`:''}
-        <button class="del-btn" onclick="removeEditorStop(${i})">✕</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function autoRecalcFrom(fromIdx) {
-  // Recalcule toutes les heures à partir de fromIdx
-  const [h,m] = tempStops[fromIdx].time.split(':').map(Number);
-  let cur = h*60+m;
-  for(let i=fromIdx; i<tempStops.length; i++) {
-    tempStops[i].time = minutesToHHMM(cur);
-    if(i<tempStops.length-1) cur += (tempStops[i].intervalAfter||0);
-  }
-  // Met à jour uniquement les champs heure après fromIdx sans re-render complet
-  const rows = document.querySelectorAll('#stop-editor-body tr');
-  for(let i=fromIdx; i<tempStops.length; i++) {
-    const input = rows[i]?.querySelector('input[type="time"]');
-    if(input) input.value = tempStops[i].time;
-  }
-}
-
-function addEditorStop() {
-  const lastTime = tempStops.length ? tempStops[tempStops.length-1].time : '08:00';
-  const lastInterval = tempStops.length ? (tempStops[tempStops.length-2]?.intervalAfter||3) : 3;
-  const [h,m] = lastTime.split(':').map(Number);
-  const newMin = h*60+m+lastInterval;
-  tempStops.push({ name:`Arrêt ${tempStops.length+1}`, time:minutesToHHMM(newMin), intervalAfter:lastInterval });
-  renderEditorTable();
-}
-
-function removeEditorStop(i) {
-  tempStops.splice(i,1);
-  renderEditorTable();
-}
-
-function moveStop(i, dir) {
-  const j = i+dir;
-  if(j<0||j>=tempStops.length) return;
-  [tempStops[i],tempStops[j]]=[tempStops[j],tempStops[i]];
-  renderEditorTable();
-}
-
-function autoFillTimes() {
-  const firstVal = document.getElementById('auto-first').value;
-  if(!firstVal) { alert('Entrez l\'heure du 1er arrêt'); return; }
-  const [h,m] = firstVal.split(':').map(Number);
-  let cur = h*60+m;
-  tempStops.forEach((s,i) => {
-    s.time = minutesToHHMM(cur);
-    if(i<tempStops.length-1) cur += (s.intervalAfter||3);
-  });
-  renderEditorTable();
-  toast('Horaires recalculés ✓');
-}
-
-function saveTrip() {
-  if(!editingTrip) return;
-  const { lineIdx, tripIdx } = editingTrip;
-  const label = document.getElementById('trip-label').value.trim();
-  db.lines[lineIdx].trips[tripIdx].label = label || db.lines[lineIdx].trips[tripIdx].label;
-  db.lines[lineIdx].trips[tripIdx].stops = tempStops.map(s=>({...s}));
-  saveDB();
-  document.getElementById('nav-editor').style.display='none';
-  editingTrip = null;
-  toast('Trajet enregistré ✓');
-  showView('view-lines');
-  renderLineDetail(lineIdx);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  LIVE VIEW
-// ═══════════════════════════════════════════════════════════════
-function nowTotalSec() {
-  const n = new Date();
-  return n.getHours()*3600 + n.getMinutes()*60 + n.getSeconds();
-}
-
-function stopTotalSec(timeStr) {
-  const [h,m] = timeStr.split(':').map(Number);
-  return h*3600 + m*60;
-}
-
-function diffSec(timeStr) { return stopTotalSec(timeStr) - nowTotalSec(); }
-
-function fmtCountdown(sec) {
-  const abs = Math.abs(Math.round(sec));
-  const mm = Math.floor(abs/60);
-  const ss = abs%60;
-  const sign = sec<0?'-':'+';
-  return `${sign}${mm}:${String(ss).padStart(2,'0')}`;
-}
-
-function getNextStopIdx(stops) {
-  const now = nowTotalSec();
-  const tol = db.settings.toleranceLate;
-  for(let i=0;i<stops.length;i++) {
-    const s = stopTotalSec(stops[i].time);
-    if(now < s + tol) return i;
-  }
-  return -1;
-}
-
-// ── GPS System replaces updateLive and renderLiveStopList above ──
-//  SETTINGS
-// ═══════════════════════════════════════════════════════════════
+// ══ SETTINGS ═════════════════════════════════════════════════
 function loadSettings() {
   document.getElementById('set-tolerance-early').value = db.settings.toleranceEarly;
   document.getElementById('set-tolerance-late').value = db.settings.toleranceLate;
@@ -3771,615 +2766,85 @@ function loadSettings() {
 function saveSettings() {
   db.settings.toleranceEarly = parseInt(document.getElementById('set-tolerance-early').value)||0;
   db.settings.toleranceLate = parseInt(document.getElementById('set-tolerance-late').value)||120;
-  saveDB(); toast('Paramètres enregistrés ✓');
+  saveDB(); toast('✓ Paramètres sauvegardés');
 }
 
+// ══ SAUVEGARDE ═══════════════════════════════════════════════
 function saveHTMLCopy() {
   const html = document.documentElement.outerHTML;
-  const dbJson = JSON.stringify(db);
-  const servicesJson = JSON.stringify(roadmapServices);
-
-  let injected = html.replace(
-    'const STORAGE_KEY',
-    `// Données sauvegardées le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}\nconst __INJECTED_DB = ${dbJson};\nconst __INJECTED_SERVICES = ${servicesJson};\nconst STORAGE_KEY`
-  );
-
-  const patched = injected.replace(
-    'function initDB() {',
-    `function initDB() {\n  if(typeof __INJECTED_DB !== 'undefined') { try { const stored = localStorage.getItem(STORAGE_KEY); if(!stored) { db = __INJECTED_DB; saveDB(); } } catch(e){} }\n  if(typeof __INJECTED_SERVICES !== 'undefined') { try { const stored = localStorage.getItem(ROADMAP_KEY); if(!stored) localStorage.setItem(ROADMAP_KEY, JSON.stringify(__INJECTED_SERVICES)); } catch(e){} }`
-  );
-
-  const blob = new Blob([patched], {type: 'text/html;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
-  const date = new Date();
-  const stamp = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
-  a.href = url;
-  a.download = `chauffeur-bus-pro-${stamp}.html`;
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `chronoligne-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.html`;
   a.click();
-  URL.revokeObjectURL(url);
-  toast('💾 Copie sauvegardée avec feuilles de service !');
+  URL.revokeObjectURL(a.href);
+  toast('💾 Copie sauvegardée !');
 }
 
 function exportData() {
   const blob = new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='chronoligne_backup.json'; a.click();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'chronoligne_backup.json';
+  a.click();
 }
 
 function importData(e) {
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      db = JSON.parse(ev.target.result);
-      saveDB(); toast('Import réussi ✓'); renderLineGrid();
-    } catch(err) { alert('Fichier invalide'); }
-  };
-  reader.readAsText(file);
-}
-
-function exportServices() {
-  loadRoadmapServices();
-  const data = { chronoligne_services: true, version: 1, services: roadmapServices };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  const date = new Date();
-  const stamp = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
-  a.href = URL.createObjectURL(blob);
-  a.download = `feuilles-service-${stamp}.json`;
-  a.click();
-  toast(`⬇ ${roadmapServices.length} feuille(s) exportée(s) !`);
-}
-
-function importServices(e) {
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      const services = data.chronoligne_services ? data.services : data;
-      if(!Array.isArray(services)) throw new Error('Format invalide');
-      loadRoadmapServices();
-      // Fusionner : ajouter sans écraser les existants
-      let added = 0;
-      services.forEach(s => {
-        const exists = roadmapServices.find(r => r.num === s.num && r.jour === s.jour);
-        if(!exists) { roadmapServices.push(s); added++; }
-      });
-      saveRoadmapServices();
-      toast(`✅ ${added} feuille(s) importée(s) !`);
-    } catch(err) { alert('Fichier invalide'); }
+    try { db = JSON.parse(ev.target.result); saveDB(); renderLineGrid(); toast('✓ Import réussi'); }
+    catch(err) { toast('❌ Fichier invalide'); }
   };
   reader.readAsText(file);
 }
 
 function reloadOfficialTrips() {
-  if(!confirm('Recharger tous les trajets officiels ?\nLes trajets personnalisés seront conservés, seules les lignes vides seront remplies.')) return;
   db.lines.forEach(line => {
     const templates = PRELOADED_TRIPS[line.num] || [];
     if(templates.length > 0) {
       line.trips = templates.map(t => ({
-        direction: t.direction,
-        label: t.label,
-        stops: t.stops.map(s => ({ name: s.name, time: '00:00', intervalAfter: s.intervalAfter || 0 }))
+        direction: t.direction, label: t.label,
+        stops: t.stops.map(s => ({ name:s.name, time:'00:00', intervalAfter:s.intervalAfter||0 }))
       }));
     }
   });
-  saveDB();
-  renderLineGrid();
-  toast('✅ Trajets officiels rechargés !');
+  saveDB(); renderLineGrid(); toast('✅ Trajets rechargés !');
 }
 
 function resetAll() {
-  if(!confirm('Supprimer toutes les données ?\nCette action est irréversible.')) return;
-  localStorage.removeItem('chronoligne_v2');
+  if(!confirm('Supprimer toutes les données ?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(ROADMAP_KEY);
   initDB(); activeTrip=null; activeLine=null;
-  document.getElementById('live-trip-label').textContent='Aucun trajet sélectionné';
-  const _lsl = document.getElementById('live-stop-list'); if(_lsl) _lsl.innerHTML='';
   toast('Réinitialisé ✓');
 }
 
-// ── Helpers ─────────────────────────────────────────────────────
-function minutesToHHMM(mins) {
-  const h = Math.floor(mins/60)%24;
-  const m = ((mins%60)+60)%60;
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  GPS SYSTEM
-// ═══════════════════════════════════════════════════════════════
-let gpsActive = false;
-let gpsWatchId = null;
-let gpsCoords = null;         // { lat, lon, accuracy }
-let stopCoords = {};          // cache: "stopName" -> { lat, lon } | null
-let fetchingCoords = new Set(); // stops currently being fetched
-const GPS_TRIGGER_DIST = 60;  // metres — auto-validate stop
-const GPS_NEAR_DIST = 150;    // metres — "vous approchez"
-
-// ── Haversine distance in metres ────────────────────────────────
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2-lat1)*Math.PI/180;
-  const dLon = (lon2-lon1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// ── Fetch coordinates for a stop name via Nominatim ─────────────
-async function fetchStopCoords(stopName) {
-  if(stopName in stopCoords) return; // already cached (even if null)
-  if(fetchingCoords.has(stopName)) return;
-  fetchingCoords.add(stopName);
-  try {
-    const q = encodeURIComponent(stopName + ' Cergy-Pontoise bus');
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=fr&viewbox=1.9,49.1,2.2,49.05&bounded=1`, {
-      headers: { 'Accept-Language': 'fr' }
-    });
-    const data = await res.json();
-    if(data && data.length > 0) {
-      stopCoords[stopName] = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-    } else {
-      // Retry without bounding box
-      const res2 = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(stopName + ' Cergy Val-d\'Oise France')}&format=json&limit=1&countrycodes=fr`, {
-        headers: { 'Accept-Language': 'fr' }
-      });
-      const data2 = await res2.json();
-      stopCoords[stopName] = data2.length > 0 ? { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon) } : null;
-    }
-  } catch(e) {
-    stopCoords[stopName] = null;
-  }
-  fetchingCoords.delete(stopName);
-}
-
-// ── Pre-fetch coordinates for active trip stops ──────────────────
-async function prefetchActiveStops() {
-  if(!activeTrip) return;
-  const trip = db.lines[activeTrip.lineIdx]?.trips[activeTrip.tripIdx];
-  if(!trip) return;
-  // Fetch stops sequentially with small delay to avoid rate-limiting Nominatim
-  for(const stop of trip.stops) {
-    if(!(stop.name in stopCoords)) {
-      await fetchStopCoords(stop.name);
-      await new Promise(r => setTimeout(r, 300)); // 300ms entre requêtes
-    }
-  }
-}
-
-// ── Toggle GPS on/off ────────────────────────────────────────────
-function toggleGPS() {
-  if(gpsActive) {
-    stopGPS();
-  } else {
-    startGPS();
-  }
-}
-
-function startGPS() {
-  if(!navigator.geolocation) {
-    toast('GPS non supporté par ce navigateur');
-    return;
-  }
-  setGPSUI('loading');
-  gpsWatchId = navigator.geolocation.watchPosition(
-    onGPSSuccess,
-    onGPSError,
-    { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-  );
-  gpsActive = true;
-  document.getElementById('gps-toggle-btn').textContent = '⏹ Désactiver GPS';
-  const nb = document.getElementById('nav-gps-btn');
-  if(nb) { nb.style.color = 'var(--green)'; nb.querySelector('.ico').textContent = '🛰'; }
-  // Start prefetching stop coordinates
-  prefetchActiveStops();
-}
-
-function stopGPS() {
-  if(gpsWatchId !== null) {
-    navigator.geolocation.clearWatch(gpsWatchId);
-    gpsWatchId = null;
-  }
-  gpsActive = false;
-  gpsCoords = null;
-  setGPSUI('off');
-  document.getElementById('gps-toggle-btn').textContent = '📡 Activer GPS';
-  document.getElementById('gps-nearest-badge').style.display = 'none';
-  const nb = document.getElementById('nav-gps-btn');
-  if(nb) { nb.style.color = 'var(--muted)'; nb.querySelector('.ico').textContent = '📡'; }
-}
-
-function onGPSSuccess(pos) {
-  gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) };
-  const acc = gpsCoords.accuracy;
-  setGPSUI(acc < 30 ? 'good' : acc < 80 ? 'ok' : 'poor');
-  document.getElementById('gps-accuracy-text').textContent = `Précision : ±${acc}m`;
-  checkGPSProximity();
-}
-
-function onGPSError(err) {
-  const msgs = { 1:'Permission refusée', 2:'Position indisponible', 3:'Délai dépassé' };
-  document.getElementById('gps-status-text').textContent = msgs[err.code] || 'Erreur GPS';
-  setGPSUI('error');
-}
-
-function setGPSUI(state) {
-  const dot = document.getElementById('gps-dot');
-  const txt = document.getElementById('gps-status-text');
-  const states = {
-    off:     { color:'var(--muted)',   text:'GPS inactif' },
-    loading: { color:'var(--orange)',  text:'Acquisition GPS...' },
-    good:    { color:'var(--green)',   text:'GPS actif ✓' },
-    ok:      { color:'var(--orange)',  text:'GPS actif (précision moyenne)' },
-    poor:    { color:'var(--red)',     text:'GPS actif (précision faible)' },
-    error:   { color:'var(--red)',     text:'Erreur GPS' },
-  };
-  const s = states[state] || states.off;
-  dot.style.background = s.color;
-  // Pulse animation for active states
-  dot.style.boxShadow = (state==='good'||state==='ok') ? `0 0 0 4px ${s.color}33` : 'none';
-  txt.textContent = s.text;
-  txt.style.color = s.color;
-}
-
-// ── Check proximity to stops & auto-validate ─────────────────────
-function checkGPSProximity() {
-  if(!gpsCoords || !activeTrip) return;
-  const trip = db.lines[activeTrip.lineIdx]?.trips[activeTrip.tripIdx];
-  if(!trip) return;
-
-  const stops = trip.stops;
-  const nextIdx = getNextStopIdx(stops);
-  if(nextIdx < 0) return;
-
-  // Check current next stop + 1 ahead
-  let nearestName = null;
-  let nearestDist = Infinity;
-
-  for(let i = Math.max(0, nextIdx-1); i <= Math.min(stops.length-1, nextIdx+2); i++) {
-    const s = stops[i];
-    const coords = stopCoords[s.name];
-    if(!coords) {
-      // Trigger fetch if not already done
-      fetchStopCoords(s.name);
-      continue;
-    }
-    const dist = haversine(gpsCoords.lat, gpsCoords.lon, coords.lat, coords.lon);
-    if(dist < nearestDist) {
-      nearestDist = dist;
-      nearestName = s.name;
-    }
-
-    // Auto-validate: within trigger distance of the NEXT stop
-    if(i === nextIdx && dist <= GPS_TRIGGER_DIST) {
-      autoValidateStop(nextIdx, s.name, dist);
-      return;
-    }
-  }
-
-  // Show nearest badge
-  const badge = document.getElementById('gps-nearest-badge');
-  if(nearestName && nearestDist < GPS_NEAR_DIST) {
-    badge.style.display = '';
-    badge.textContent = `📍 ${Math.round(nearestDist)}m de ${nearestName.split('/')[0].trim()}`;
-  } else if(nearestDist < 500) {
-    badge.style.display = '';
-    badge.textContent = `📍 ${Math.round(nearestDist)}m`;
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-// ── Auto-validate a stop (advance the trip time reference) ────────
-let lastAutoValidated = -1;
-function autoValidateStop(stopIdx, stopName, dist) {
-  if(stopIdx === lastAutoValidated) return; // already done this stop
-  lastAutoValidated = stopIdx;
-
-  // Visual feedback
-  toast(`📍 Arrêt détecté : ${stopName} (${Math.round(dist)}m)`);
-
-  // Flash the nearest badge green
-  const badge = document.getElementById('gps-nearest-badge');
-  badge.style.display = '';
-  badge.style.background = 'rgba(0,230,118,.25)';
-  badge.style.color = 'var(--green)';
-  badge.textContent = `✓ ${stopName.split('/')[0].trim()}`;
-  setTimeout(() => {
-    badge.style.background = 'rgba(0,212,255,.15)';
-    badge.style.color = 'var(--accent)';
-  }, 3000);
-
-  // Log GPS passage in stop (store gpsPassedAt timestamp)
-  const trip = db.lines[activeTrip.lineIdx]?.trips[activeTrip.tripIdx];
-  if(trip && trip.stops[stopIdx]) {
-    trip.stops[stopIdx].gpsPassedAt = new Date().toTimeString().slice(0,5);
-    saveDB();
-  }
-  updateLive();
-}
-
-// ── Augment renderLiveStopList to show GPS markers ───────────────
-function renderLiveStopList(stops, nextIdx) {
-  const container = document.getElementById('live-stop-list');
-  if(!container) return;
-  const now = nowTotalSec();
-  const tol = db.settings.toleranceLate;
-
-  let html = `<table class="stop-table"><thead><tr>
-    <th>#</th><th>Arrêt</th><th>Prévu</th><th>Écart</th>
-  </tr></thead><tbody>`;
-
-  stops.forEach((s,i) => {
-    const sec = stopTotalSec(s.time);
-    const diff = now - sec;
-    let rowClass='';
-    let badgeHtml='';
-
-    // GPS marker
-    const coords = stopCoords[s.name];
-    const gpsMarker = coords ? '📍' : (gpsActive ? '<span style="color:var(--muted);font-size:10px">○</span>' : '');
-    const gpsValidated = s.gpsPassedAt ? `<span style="font-size:10px;color:var(--green)"> ✓GPS ${s.gpsPassedAt}</span>` : '';
-
-    if(i===nextIdx) {
-      rowClass='row-current';
-      const d = diffSec(s.time);
-      if(d>0) badgeHtml=`<span class="diff-badge" style="background:rgba(0,212,255,.15);color:var(--accent)">dans ${fmtCountdown(d)}</span>`;
-      else if(-d<=tol) badgeHtml=`<span class="diff-badge" style="background:rgba(0,230,118,.15);color:var(--green)">${fmtCountdown(d)}</span>`;
-      else badgeHtml=`<span class="diff-badge" style="background:rgba(255,82,82,.2);color:var(--red)">${fmtCountdown(d)}</span>`;
-    } else if(diff > tol) {
-      rowClass='row-passed';
-    } else if(i===nextIdx+1) {
-      rowClass='row-next';
-    }
-
-    html+=`<tr class="${rowClass}">
-      <td class="mono" style="color:var(--muted);font-size:11px">${String(i+1).padStart(2,'0')}</td>
-      <td style="font-size:26px">${gpsMarker} ${s.name}${gpsValidated}</td>
-      <td class="mono" style="font-size:13px">${s.time}</td>
-      <td>${badgeHtml}</td>
-    </tr>`;
-  });
-
-  html+='</tbody></table>';
-  container.innerHTML=html;
-
-  const rows = container.querySelectorAll('tr.row-current');
-  if(rows[0]) rows[0].scrollIntoView({block:'nearest',behavior:'smooth'});
-}
-
-// ── Patch updateLive to also run GPS check ───────────────────────
-function updateLive() {
-  if(!activeTrip) return;
-  const { lineIdx, tripIdx } = activeTrip;
-  const trip = db.lines[lineIdx]?.trips[tripIdx];
-  if(!trip) return;
-  const stops = trip.stops;
-  if(!stops||!stops.length) return;
-
-  const nextIdx = getNextStopIdx(stops);
-  const tolLate = db.settings.toleranceLate;
-  const tolEarly = db.settings.toleranceEarly;
-
-  const totalSec = stopTotalSec(stops[stops.length-1].time) - stopTotalSec(stops[0].time);
-  const elapsed = nowTotalSec() - stopTotalSec(stops[0].time);
-  const pct = Math.min(100, Math.max(0, (elapsed/totalSec)*100));
-  document.getElementById('live-prog').style.width = pct+'%';
-
-  if(nextIdx>=0) {
-    const s = stops[nextIdx];
-    const sec = diffSec(s.time);
-    document.getElementById('ln-name').textContent = `${String(nextIdx+1).padStart(2,'0')}. ${s.name}`;
-    document.getElementById('ln-time').textContent = s.time;
-    document.getElementById('ln-countdown').textContent = fmtCountdown(sec);
-
-    const el = document.getElementById('ln-status');
-    const cd = document.getElementById('ln-countdown');
-    if(sec > 120) {
-      el.className='live-status s-neutral'; el.textContent='⏳ En route';
-      cd.style.color='var(--accent)';
-    } else if(sec > tolEarly) {
-      el.className='live-status s-warn'; el.textContent='⚠ Arrivée imminente';
-      cd.style.color='var(--orange)';
-    } else if(sec >= -tolLate) {
-      el.className='live-status s-ok'; el.textContent='✓ Dans la tolérance';
-      cd.style.color='var(--green)';
-    } else {
-      el.className='live-status s-bad pulse'; el.textContent='✗ Retard dépassé !';
-      cd.style.color='var(--red)';
-    }
-  } else {
-    document.getElementById('ln-name').textContent='Fin de trajet';
-    document.getElementById('ln-time').textContent='--:--';
-    document.getElementById('ln-countdown').textContent='--:--';
-    document.getElementById('ln-status').className='live-status s-neutral';
-    document.getElementById('ln-status').textContent='🏁 Terminus';
-  }
-
-  const afterIdx = nextIdx>=0 ? nextIdx+1 : -1;
-  if(afterIdx>=0 && afterIdx<stops.length) {
-    const s = stops[afterIdx];
-    document.getElementById('la-name').textContent = `${String(afterIdx+1).padStart(2,'0')}. ${s.name}`;
-    document.getElementById('la-time').textContent = s.time;
-    document.getElementById('la-countdown').textContent = fmtCountdown(diffSec(s.time));
-    document.getElementById('la-status').textContent='→ Prévoir';
-    document.getElementById('la-status').className='live-status s-neutral';
-  } else {
-    document.getElementById('la-name').textContent='—';
-    document.getElementById('la-time').textContent='--:--';
-    document.getElementById('la-countdown').textContent='--:--';
-    document.getElementById('la-status').textContent='—';
-  }
-
-  const after2Idx = nextIdx>=0 ? nextIdx+2 : -1;
-  if(after2Idx>=0 && after2Idx<stops.length) {
-    const s = stops[after2Idx];
-    document.getElementById('lb-name').textContent = `${String(after2Idx+1).padStart(2,'0')}. ${s.name}`;
-    document.getElementById('lb-time').textContent = s.time;
-    document.getElementById('lb-countdown').textContent = fmtCountdown(diffSec(s.time));
-    document.getElementById('lb-status').textContent='→ Prévoir';
-    document.getElementById('lb-status').className='live-status s-neutral';
-  } else {
-    document.getElementById('lb-name').textContent='—';
-    document.getElementById('lb-time').textContent='--:--';
-    document.getElementById('lb-countdown').textContent='--:--';
-    document.getElementById('lb-status').textContent='—';
-  }
-
-  renderLiveStopList(stops, nextIdx);
-
-  // GPS proximity check every second
-  if(gpsActive && gpsCoords) checkGPSProximity();
-}
-
-// Reset lastAutoValidated when a new trip is activated
-function activateTrip(lineIdx, tripIdx) {
-  lastAutoValidated = -1;
-  stopCoords = {}; // clear coords cache for new trip
-  recordService(lineIdx, tripIdx);
-  _activateTripCore(lineIdx, tripIdx);
-  if(gpsActive) prefetchActiveStops();
-}
-
-// ══════════════════════════════════════════════════════════════
-// FEUILLES DE SERVICE
-// ══════════════════════════════════════════════════════════════
-const ROADMAP_KEY = 'chronoligne_roadmaps';
-const CLOUD_PIN_KEY = 'chronoligne_pin';
-let roadmapServices = [];
-let currentRoadmap = [];
-let roadmapCursor = -1;
-let svcTrips = [];
-let editingServiceIdx = -1;
-let svcFilter = 'semaine';
-let cloudSyncing = false;
-
-// ── Helpers PIN ───────────────────────────────────────────────
-function getPin() { return localStorage.getItem(CLOUD_PIN_KEY) || ''; }
-
-function showCloudSetup() {
-  const pin = getPin();
-  const input = document.getElementById('cloud-pin');
-  if(input) input.value = pin;
-  document.getElementById('cloud-setup-panel').style.display = 'block';
-}
-
-function saveCloudConfig() {
-  const pin = document.getElementById('cloud-pin').value.trim();
-  if(!pin || pin.length < 4) { toast('Entrez un code à 4 chiffres'); return; }
-  localStorage.setItem(CLOUD_PIN_KEY, pin);
-  document.getElementById('cloud-setup-panel').style.display = 'none';
-  toast('☁️ Code activé ! Synchronisation...');
-  cloudSync();
-}
-
-function updateCloudStatus(state, sub) {
-  const icon = document.getElementById('cloud-status-icon');
-  const text = document.getElementById('cloud-status-text');
-  const subEl = document.getElementById('cloud-status-sub');
-  const syncRow = document.getElementById('cloud-sync-row');
-  const pin = getPin();
-  if(!pin) {
-    if(icon) icon.textContent = '☁️';
-    if(text) text.textContent = 'Sync désactivée';
-    if(subEl) subEl.textContent = 'Appuyez sur ⚙ Configurer pour activer';
-    if(syncRow) syncRow.style.display = 'none';
-    return;
-  }
-  if(syncRow) syncRow.style.display = '';
-  if(state==='syncing') { if(icon) icon.textContent='🔄'; if(text) text.textContent='Synchronisation...'; }
-  else if(state==='ok') { if(icon) icon.textContent='✅'; if(text) text.textContent=`Sync active — Code ${pin}`; }
-  else if(state==='error') { if(icon) icon.textContent='❌'; if(text) text.textContent='Hors ligne — données locales'; }
-  if(subEl && sub) subEl.textContent = sub;
-}
-
-// ── Sync via Claude Artifact Storage (persistant, multi-appareils) ──
-async function cloudSync() {
-  const pin = getPin();
-  if(!pin) { showCloudSetup(); return; }
-  if(cloudSyncing) return;
-  cloudSyncing = true;
-  updateCloudStatus('syncing');
-
-  try {
-    if(!window.storage) throw new Error('Storage non disponible');
-
-    // Lire depuis le stockage persistant Claude
-    let cloudServices = [];
-    try {
-      const stored = await window.storage.get(`svc_${pin}`);
-      if(stored) cloudServices = JSON.parse(stored.value) || [];
-    } catch(e) { cloudServices = []; }
-
-    // Fusionner local + cloud
-    loadRoadmapServicesLocal();
-    const merged = [...cloudServices];
-    roadmapServices.forEach(local => {
-      const idx = merged.findIndex(c => c.num === local.num && c.jour === local.jour);
-      if(idx === -1) merged.push(local);
-      else merged[idx] = local;
-    });
-
-    // Sauvegarder dans le stockage Claude
-    await window.storage.set(`svc_${pin}`, JSON.stringify(merged));
-
-    roadmapServices = merged;
-    saveRoadmapServicesLocal();
-    const now = new Date();
-    updateCloudStatus('ok', `${now.getHours()}h${String(now.getMinutes()).padStart(2,'0')} — ${merged.length} feuille(s)`);
-    renderSvcList();
-    toast(`☁️ Sync OK — ${merged.length} feuille(s)`);
-  } catch(e) {
-    // Fallback : données locales uniquement
-    loadRoadmapServicesLocal();
-    updateCloudStatus('error', 'Données locales uniquement');
-    toast('📵 ' + e.message);
-  }
-  cloudSyncing = false;
-}
-
-// ── Stockage local (fallback) ─────────────────────────────────
-function loadRoadmapServicesLocal() {
+// ══ FEUILLES DE SERVICE ═══════════════════════════════════════
+function loadRoadmapServices() {
   try {
     const s = localStorage.getItem(ROADMAP_KEY);
-    if(s) { roadmapServices = JSON.parse(s) || []; return; }
-    const emb = document.getElementById('embedded-services');
-    if(emb) { roadmapServices = JSON.parse(emb.textContent) || []; return; }
-    roadmapServices = [];
+    roadmapServices = s ? JSON.parse(s) : [];
   } catch(e) { roadmapServices = []; }
 }
 
-function saveRoadmapServicesLocal() {
+function saveRoadmapServices() {
   localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapServices));
-  let tag = document.getElementById('embedded-services');
-  if(!tag) { tag = document.createElement('script'); tag.id='embedded-services'; tag.type='application/json'; document.head.appendChild(tag); }
-  tag.textContent = JSON.stringify(roadmapServices);
 }
 
-function loadRoadmapServices() { loadRoadmapServicesLocal(); }
-
-async function saveRoadmapServices() {
-  saveRoadmapServicesLocal();
-  if(getPin()) cloudSync();
-}
-
-// ── Vue principale ────────────────────────────────────────────
 function renderRoadmapView() {
-  loadRoadmapServicesLocal();
-  updateCloudStatus(getPin() ? 'ok' : 'off');
+  loadRoadmapServices();
   renderSvcList();
   renderRoadmapActive();
-  if(getPin()) cloudSync();
 }
 
 function setSvcFilter(f) {
   svcFilter = f;
   ['sem','sam','dim'].forEach(k => {
     const btn = document.getElementById('svc-filter-'+k);
-    if(btn) btn.className = 'btn btn-sm' + (
-      (k==='sem'&&f==='semaine')||(k==='sam'&&f==='samedi')||(k==='dim'&&f==='dimanche') ? '' : ' btn-ghost'
-    );
+    const active = (k==='sem'&&f==='semaine')||(k==='sam'&&f==='samedi')||(k==='dim'&&f==='dimanche');
+    if(btn) btn.className = 'btn btn-sm' + (active ? '' : ' btn-ghost');
   });
   renderSvcList();
 }
@@ -4390,42 +2855,31 @@ function renderSvcList() {
   const filtered = roadmapServices
     .map((s,i) => ({...s,_idx:i}))
     .filter(s => s.jour === svcFilter)
-    .filter(s => !search || s.num.toLowerCase().includes(search));
+    .filter(s => !search || s.num.toLowerCase().includes(search))
+    .sort((a,b) => a.num.localeCompare(b.num, undefined, {numeric:true}));
 
   const el = document.getElementById('svc-list-container');
   const cnt = document.getElementById('svc-count');
   if(cnt) cnt.textContent = `${filtered.length} service(s)`;
 
   if(!filtered.length) {
-    el.innerHTML = `<div class="empty-state" style="padding:20px 0"><span class="ico">📋</span>Aucune feuille pour ce jour<br><small>Appuyez sur + Nouvelle feuille</small></div>`;
+    el.innerHTML = `<div class="empty-state"><span class="ico">📋</span>Aucune feuille<br><small>+ Nouvelle feuille</small></div>`;
     return;
   }
 
-  // Trier par numéro
-  filtered.sort((a,b) => a.num.localeCompare(b.num, undefined, {numeric:true}));
-
   el.innerHTML = filtered.map(s => `
-    <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;margin-bottom:6px;
-      background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;margin-bottom:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:18px;font-weight:700;color:var(--text);font-family:'Rajdhani',sans-serif">
-          Service ${s.num}
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">
-          ${s.trips.length} trajet(s) · ${s.trips.map(t=>t.label.split('—')[0].trim()).join(' → ')}
-        </div>
+        <div style="font-size:18px;font-weight:700;font-family:'Rajdhani',sans-serif">Service ${s.num}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.trips.length} trajet(s) · ${s.trips.map(t=>t.label.split('—')[0].trim()).join(' → ')}</div>
       </div>
-      <button class="btn btn-sm" onclick="startServiceDirect(${s._idx})"
-        style="background:var(--green);color:#000;font-weight:700;font-size:12px;white-space:nowrap">
-        ▶ Démarrer
-      </button>
-      <button class="btn btn-sm btn-ghost" onclick="downloadSvc(${s._idx})" style="font-size:12px" title="Télécharger">📥</button>
+      <button class="btn btn-sm" onclick="startServiceDirect(${s._idx})" style="background:var(--green);color:#000;font-weight:700;font-size:12px">▶</button>
+      <button class="btn btn-sm btn-ghost" onclick="downloadSvc(${s._idx})" style="font-size:12px">📥</button>
       <button class="btn btn-sm btn-ghost" onclick="openSvcEditor(${s._idx})" style="font-size:12px">✏</button>
       <button class="btn btn-sm btn-danger" onclick="deleteSvc(${s._idx})" style="font-size:12px">✕</button>
     </div>`).join('');
 }
 
-// ── Démarrer un service ───────────────────────────────────────
 function startServiceDirect(idx) {
   loadRoadmapServices();
   const svc = roadmapServices[idx];
@@ -4448,18 +2902,27 @@ function downloadSvc(idx) {
   loadRoadmapServices();
   const svc = roadmapServices[idx];
   if(!svc) return;
-  const data = { chronoligne_service: true, version: 1, service: svc };
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob([JSON.stringify({chronoligne_service:true,version:1,service:svc},null,2)],{type:'application/json'});
   const a = document.createElement('a');
-  a.href = url;
+  a.href = URL.createObjectURL(blob);
   a.download = `service-${svc.num}-${svc.jour}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
   toast(`📥 Service ${svc.num} téléchargé !`);
+}
+
+function downloadAllSvc() {
+  loadRoadmapServices();
+  if(!roadmapServices.length) { toast('Aucune feuille'); return; }
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const blob = new Blob([JSON.stringify({chronoligne_services:true,version:1,services:roadmapServices},null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `toutes-feuilles-${stamp}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast(`📥 ${roadmapServices.length} feuille(s) téléchargées !`);
 }
 
 function importSvcFile(e) {
@@ -4468,36 +2931,31 @@ function importSvcFile(e) {
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      // Accepte fichier feuille unique ou liste de feuilles
-      const services = data.chronoligne_service ? [data.service]
-        : data.chronoligne_services ? data.services
-        : Array.isArray(data) ? data : null;
-      if(!services) throw new Error('Format invalide');
+      const services = data.chronoligne_service ? [data.service] : data.chronoligne_services ? data.services : Array.isArray(data) ? data : null;
+      if(!services) throw new Error();
       loadRoadmapServices();
-      let added = 0, updated = 0;
+      let added=0, updated=0;
       services.forEach(s => {
-        const idx = roadmapServices.findIndex(r => r.num === s.num && r.jour === s.jour);
-        if(idx === -1) { roadmapServices.push(s); added++; }
-        else { roadmapServices[idx] = s; updated++; }
+        const idx = roadmapServices.findIndex(r => r.num===s.num && r.jour===s.jour);
+        if(idx===-1) { roadmapServices.push(s); added++; }
+        else { roadmapServices[idx]=s; updated++; }
       });
-      saveRoadmapServices();
-      renderSvcList();
+      saveRoadmapServices(); renderSvcList();
       toast(`✅ ${added} ajouté(s), ${updated} mis à jour`);
     } catch(err) { toast('❌ Fichier invalide'); }
   };
   reader.readAsText(file);
-  e.target.value = ''; // reset pour permettre re-import du même fichier
+  e.target.value='';
 }
 
 // ── Éditeur de feuille ────────────────────────────────────────
 function openSvcEditor(idx) {
   editingServiceIdx = idx;
   loadRoadmapServices();
-
   if(idx >= 0) {
     const svc = roadmapServices[idx];
     document.getElementById('svc-num').value = svc.num;
-    document.getElementById('svc-jour').value = svc.jour || 'semaine';
+    document.getElementById('svc-jour').value = svc.jour||'semaine';
     svcTrips = JSON.parse(JSON.stringify(svc.trips));
     document.getElementById('svc-editor-title').textContent = `Service ${svc.num}`;
   } else {
@@ -4506,15 +2964,12 @@ function openSvcEditor(idx) {
     svcTrips = [];
     document.getElementById('svc-editor-title').textContent = 'Nouvelle feuille';
   }
-
-  // Peupler select lignes
   const sel = document.getElementById('svc-add-line');
   sel.innerHTML = '<option value="">— Ligne —</option>';
   db.lines.forEach((l,i) => {
     sel.innerHTML += `<option value="${i}">Ligne ${l.num} — ${l.name}</option>`;
   });
   document.getElementById('svc-add-trip').innerHTML = '<option value="">— Trajet —</option>';
-
   document.getElementById('svc-page-list').style.display = 'none';
   document.getElementById('svc-page-editor').style.display = 'block';
   renderSvcTrips();
@@ -4532,7 +2987,7 @@ function svcRenderTripOptions() {
   sel.innerHTML = '<option value="">— Trajet —</option>';
   if(isNaN(lineIdx)) return;
   db.lines[lineIdx].trips.forEach((t,i) => {
-    sel.innerHTML += `<option value="${i}">${t.label || t.direction}</option>`;
+    sel.innerHTML += `<option value="${i}">${t.label}</option>`;
   });
 }
 
@@ -4540,24 +2995,18 @@ function svcAddTrip() {
   const lineIdx = parseInt(document.getElementById('svc-add-line').value);
   const tripIdx = parseInt(document.getElementById('svc-add-trip').value);
   if(isNaN(lineIdx)||isNaN(tripIdx)) { toast('Sélectionnez une ligne et un trajet'); return; }
-
   const firstTimeVal = document.getElementById('svc-first-time').value;
-  const interval = parseInt(document.getElementById('svc-interval').value) || 1;
-
+  const interval = parseInt(document.getElementById('svc-interval').value)||1;
   const line = db.lines[lineIdx];
   const trip = line.trips[tripIdx];
-
-  // Heure de départ : saisie manuelle ou heure actuelle
   let curMin;
   if(firstTimeVal) {
     const [h,m] = firstTimeVal.split(':').map(Number);
-    curMin = h*60 + m;
+    curMin = h*60+m;
   } else {
     const now = new Date();
-    curMin = now.getHours()*60 + now.getMinutes();
+    curMin = now.getHours()*60+now.getMinutes();
   }
-
-  // Calcul automatique avec l'intervalle choisi
   const stops = trip.stops.map((s,i) => {
     const h = String(Math.floor(curMin/60)%24).padStart(2,'0');
     const m = String(curMin%60).padStart(2,'0');
@@ -4565,15 +3014,8 @@ function svcAddTrip() {
     if(i < trip.stops.length-1) curMin += interval;
     return {name:s.name, time, intervalAfter:interval};
   });
-
-  svcTrips.push({
-    lineIdx, tripIdx,
-    label: `Ligne ${line.num} — ${trip.label||trip.direction}`,
-    stops
-  });
+  svcTrips.push({ lineIdx, tripIdx, label:`Ligne ${line.num} — ${trip.label}`, stops });
   renderSvcTrips();
-
-  // Prépare l'heure suivante automatiquement pour le prochain trajet
   const lastStop = stops[stops.length-1];
   document.getElementById('svc-first-time').value = lastStop.time;
   toast('Trajet ajouté ✓');
@@ -4586,7 +3028,7 @@ function renderSvcTrips() {
     <div class="card" style="margin-bottom:8px;padding:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div>
-          <span style="font-size:13px;color:var(--muted);font-family:'Share Tech Mono',monospace">${String(ti+1).padStart(2,'0')}.</span>
+          <span style="font-size:13px;color:var(--muted)">${String(ti+1).padStart(2,'0')}.</span>
           <span style="font-size:14px;font-weight:700;color:var(--accent);margin-left:6px">${t.label}</span>
         </div>
         <div style="display:flex;gap:4px">
@@ -4596,33 +3038,54 @@ function renderSvcTrips() {
         </div>
       </div>
       <table class="stop-table" style="font-size:12px">
-        <thead><tr><th>#</th><th>Arrêt</th><th>Heure</th></tr></thead>
+        <thead><tr><th>#</th><th>Arrêt</th><th>Heure INEO</th></tr></thead>
         <tbody>
           ${t.stops.map((s,si) => `
           <tr>
             <td style="color:var(--muted);font-size:11px">${String(si+1).padStart(2,'0')}</td>
-            <td style="font-size:13px">${s.name}</td>
-            <td><input type="time" value="${s.time}" step="60"
-              style="padding:4px 6px;font-size:14px;width:110px;font-family:'Share Tech Mono',monospace"
+            <td style="font-size:12px">${s.name}</td>
+            <td><input type="time" id="stop-${ti}-${si}" value="${s.time}" step="60"
+              style="padding:5px 6px;font-size:15px;width:115px;font-family:'Share Tech Mono',monospace;
+                     border:2px solid var(--accent);border-radius:6px;background:rgba(0,212,255,.08);color:var(--text)"
               onchange="svcUpdateStop(${ti},${si},this.value)"></td>
           </tr>`).join('')}
         </tbody>
       </table>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <div style="font-size:11px;color:var(--muted)">Recalculer depuis 1er arrêt :</div>
-        <input type="number" id="svc-reint-${ti}" value="${t.stops[0]?.intervalAfter||1}" min="1" max="30" style="width:55px;padding:4px 6px;font-size:13px;text-align:center">
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <div style="font-size:11px;color:var(--muted)">Intervalle :</div>
+        <input type="number" id="svc-reint-${ti}" value="${t.stops[0]?.intervalAfter||1}" min="1" max="30"
+          style="width:55px;padding:4px 6px;font-size:13px;text-align:center">
         <span style="font-size:11px;color:var(--muted)">min</span>
         <button class="btn btn-sm btn-ghost" onclick="svcRecalcTrip(${ti})" style="font-size:11px">🔄 Recalculer</button>
       </div>
     </div>`).join('');
 }
 
-function svcUpdateStop(ti,si,val) { svcTrips[ti].stops[si].time = val; }
-function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); }
+function svcUpdateStop(ti, si, val) {
+  if(!/^\d{2}:\d{2}$/.test(val)) return;
+  svcTrips[ti].stops[si].time = val;
+  const interval = parseInt(document.getElementById(`svc-reint-${ti}`)?.value)||1;
+  const [h,m] = val.split(':').map(Number);
+  let curMin = h*60+m;
+  for(let i = si+1; i < svcTrips[ti].stops.length; i++) {
+    curMin += interval;
+    svcTrips[ti].stops[i].time = `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
+    const input = document.getElementById(`stop-${ti}-${i}`);
+    if(input) { input.value = svcTrips[ti].stops[i].time; flashGreen(input); }
+  }
+  const cur = document.getElementById(`stop-${ti}-${si}`);
+  if(cur) flashGreen(cur);
+}
+
+function flashGreen(el) {
+  el.style.borderColor = '#27ae60';
+  el.style.background = 'rgba(39,174,96,.25)';
+  setTimeout(() => { el.style.borderColor='var(--accent)'; el.style.background='rgba(0,212,255,.08)'; }, 800);
+}
 
 function svcRecalcTrip(ti) {
-  const interval = parseInt(document.getElementById(`svc-reint-${ti}`)?.value) || 1;
-  const firstTime = svcTrips[ti].stops[0]?.time || '00:00';
+  const interval = parseInt(document.getElementById(`svc-reint-${ti}`)?.value)||1;
+  const firstTime = svcTrips[ti].stops[0]?.time||'00:00';
   const [h,m] = firstTime.split(':').map(Number);
   let curMin = h*60+m;
   svcTrips[ti].stops.forEach((s,si) => {
@@ -4633,10 +3096,13 @@ function svcRecalcTrip(ti) {
   renderSvcTrips();
   toast('Horaires recalculés ✓');
 }
+
+function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); }
+
 function svcMoveTrip(ti,dir) {
-  const j=ti+dir;
+  const j = ti+dir;
   if(j<0||j>=svcTrips.length) return;
-  [svcTrips[ti],svcTrips[j]]=[svcTrips[j],svcTrips[ti]];
+  [svcTrips[ti],svcTrips[j]] = [svcTrips[j],svcTrips[ti]];
   renderSvcTrips();
 }
 
@@ -4645,124 +3111,77 @@ function saveServiceEditor() {
   const jour = document.getElementById('svc-jour').value;
   if(!num) { toast('Entrez un numéro de service'); return; }
   if(!svcTrips.length) { toast('Ajoutez au moins un trajet'); return; }
-  loadRoadmapServicesLocal();
+  loadRoadmapServices();
   const svc = { num, jour, trips: JSON.parse(JSON.stringify(svcTrips)) };
   if(editingServiceIdx>=0) roadmapServices[editingServiceIdx]=svc;
   else roadmapServices.push(svc);
   saveRoadmapServices();
-  closeSvcEditor();
   toast(`✅ Service ${num} enregistré !`);
+  closeSvcEditor();
 }
 
-function autoDownloadSvc(svc) {
-  const data = { chronoligne_service: true, version: 1, service: svc };
-  const json = JSON.stringify(data, null, 2);
-  // Afficher dans une nouvelle fenêtre pour copier/sauvegarder
-  const w = window.open('', '_blank');
-  if(w) {
-    w.document.write(`<pre style="font-family:monospace;font-size:13px;padding:20px">${json}</pre>`);
-    w.document.title = `service-${svc.num}-${svc.jour}.json`;
-  }
-}
-
-// ── Exécution ─────────────────────────────────────────────────
+// ── Exécution service ─────────────────────────────────────────
 function activateRoadmapTrip() {
   if(roadmapCursor<0||roadmapCursor>=currentRoadmap.length) {
     toast('🏁 Service terminé !');
-    roadmapCursor=-1;
+    roadmapCursor = -1;
     renderRoadmapActive();
     return;
   }
   const t = currentRoadmap[roadmapCursor];
-  if(t.stops&&t.stops.length) {
+  activateTrip(t.lineIdx, t.tripIdx);
+  // Appliquer les heures de la feuille
+  if(t.stops && t.stops.length) {
     db.lines[t.lineIdx].trips[t.tripIdx].stops = t.stops;
     saveDB();
   }
-  activateTrip(t.lineIdx, t.tripIdx);
   renderRoadmapActive();
-  showView('view-live');
   toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} activé`);
 }
 
 function roadmapNext() { roadmapCursor++; activateRoadmapTrip(); }
 
 function stopRoadmap() {
-  roadmapCursor=-1;
-  activeTrip=null;
-  document.getElementById('live-trip-label').textContent='Aucun trajet sélectionné';
-  document.getElementById('live-prog').style.width='0%';
+  roadmapCursor = -1;
+  activeTrip = null;
+  document.getElementById('live-trip-label').textContent = 'Aucun trajet sélectionné';
+  document.getElementById('terminus-btn').style.display = 'none';
   renderRoadmapActive();
   toast('Service arrêté');
 }
 
 function renderRoadmapActive() {
-  const card=document.getElementById('roadmap-active-card');
-  const info=document.getElementById('roadmap-active-info');
+  const card = document.getElementById('roadmap-active-card');
+  const info = document.getElementById('roadmap-active-info');
   if(!card) return;
-  if(roadmapCursor>=0&&roadmapCursor<currentRoadmap.length) {
-    card.style.display='block';
-    const t=currentRoadmap[roadmapCursor];
-    const next=currentRoadmap[roadmapCursor+1];
-    info.innerHTML=`Trajet ${roadmapCursor+1}/${currentRoadmap.length} : ${t.label}${next?`<br><span style="font-size:12px;color:var(--muted)">Suivant : ${next.label}</span>`:'<br><span style="font-size:12px;color:var(--green)">Dernier trajet</span>'}`;
+  if(roadmapCursor>=0 && roadmapCursor<currentRoadmap.length) {
+    card.style.display = 'block';
+    const t = currentRoadmap[roadmapCursor];
+    const next = currentRoadmap[roadmapCursor+1];
+    info.innerHTML = `Trajet ${roadmapCursor+1}/${currentRoadmap.length} : ${t.label}${next ? `<br><span style="font-size:11px;color:var(--muted)">Suivant : ${next.label}</span>` : '<br><span style="font-size:11px;color:var(--green)">Dernier trajet</span>'}`;
   } else {
-    card.style.display='none';
+    card.style.display = 'none';
   }
 }
 
-// ── Depuis éditeur trajet ─────────────────────────────────────
-function addEditorTripToRoadmap() {
-  if(!editingTrip) { toast("Aucun trajet en cours d'édition"); return; }
-  saveTrip();
-  const {lineIdx,tripIdx}=editingTrip;
-  const line=db.lines[lineIdx];
-  const trip=line.trips[tripIdx];
-  const now=new Date();
-  let curMin=now.getHours()*60+now.getMinutes();
-  const stops=trip.stops.map((s,i)=>{
-    const h=String(Math.floor(curMin/60)%24).padStart(2,'0');
-    const m=String(curMin%60).padStart(2,'0');
-    const time=`${h}:${m}`;
-    if(i<trip.stops.length-1) curMin+=(s.intervalAfter||2);
-    return {name:s.name,time,intervalAfter:s.intervalAfter};
-  });
-  svcTrips.push({lineIdx,tripIdx,label:`Ligne ${line.num} — ${trip.label||trip.direction}`,stops});
-  toast(`✓ Ajouté au service en cours !`);
-}
-
-// ── BOOT ─────────────────────────────────────────────────────────
-initDB();
-loadCustomTemplates();
-updateClock();
-setInterval(updateClock, 1000);
-
-// ── Wake Lock : empêche l'écran de se mettre en veille ───────
+// ══ WAKE LOCK ════════════════════════════════════════════════
 let wakeLock = null;
 async function requestWakeLock() {
   try {
     if('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => {
-        // Réactiver automatiquement si l'app reprend le focus
-      });
-    }
-  } catch(e) { console.log('Wake Lock non disponible', e); }
-}
-// Réactiver quand la page redevient visible (après changement d'onglet)
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible') requestWakeLock();
-});
-requestWakeLock();
-
-// ── Stockage persistant ───────────────────────────────────────
-async function requestPersistentStorage() {
-  try {
-    if(navigator.storage && navigator.storage.persist) {
-      const granted = await navigator.storage.persist();
-      if(granted) console.log('✅ Stockage persistant activé');
     }
   } catch(e) {}
 }
-requestPersistentStorage();
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState==='visible') requestWakeLock();
+});
+
+// ══ BOOT ═════════════════════════════════════════════════════
+initDB();
+updateClock();
+setInterval(updateClock, 1000);
+requestWakeLock();
 </script>
 </body>
 </html>
