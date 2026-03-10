@@ -17,17 +17,31 @@
   --text: #e8eaf0;
   --muted: #6b7280;
 }
+:root.light {
+  --bg: #f0f2f7;
+  --card: #ffffff;
+  --border: rgba(0,0,0,.1);
+  --accent: #0078a8;
+  --green: #1e8449;
+  --red: #c0392b;
+  --text: #1a1f2e;
+  --muted: #7f8c9a;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden;
+  transition: background .3s, color .3s;
+}
 #app { padding-bottom: 70px; }
 
 /* HEADER */
-#header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:rgba(0,0,0,.4); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+#header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
 #header-logo { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; color:var(--accent); }
 #clock-header { font-family:'Share Tech Mono',monospace; font-size:clamp(28px,8vw,48px); color:var(--text); font-weight:700; }
 
 /* NAV */
-nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:rgba(10,14,26,.95); border-top:1px solid var(--border); z-index:200; backdrop-filter:blur(10px); }
+nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--border); z-index:200; backdrop-filter:blur(10px); }
 .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 4px 10px; font-size:10px; font-weight:700; color:var(--muted); border:none; background:none; cursor:pointer; letter-spacing:.5px; }
 .nav-btn .ico { font-size:20px; }
 .nav-btn.active { color:var(--accent); }
@@ -90,6 +104,8 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 .empty-state { text-align:center; color:var(--muted); padding:30px 0; }
 .empty-state .ico { font-size:40px; display:block; margin-bottom:10px; }
 
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 </style>
 </head>
@@ -100,13 +116,44 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 <div id="header">
   <div id="header-logo">🚌 ChronoLigne PRO</div>
   <div id="clock-header">--:--:--</div>
-  <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
+      style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
+    <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
+  </div>
 </div>
 
 <div id="app">
 
 <!-- ══ VIEW: EN DIRECT ══ -->
 <div class="view active" id="view-live">
+
+  <!-- Bannière GPS mode enregistrement -->
+  <div id="gps-record-banner" style="display:none;background:rgba(255,165,0,.15);border:2px solid orange;border-radius:12px;padding:12px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:orange">📍 MODE ENREGISTREMENT GPS</div>
+      <div id="gps-rec-dot" style="width:10px;height:10px;border-radius:50%;background:orange;animation:pulse 1s infinite"></div>
+    </div>
+    <div id="gps-rec-stop-name" style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">—</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="gpsRecordStop()" style="flex:1;padding:14px;font-size:16px;font-weight:700;background:orange;color:#000;border:none;border-radius:10px;cursor:pointer">
+        📍 VALIDER CET ARRÊT
+      </button>
+      <button onclick="gpsRecordSkip()" style="padding:14px;font-size:13px;background:rgba(255,255,255,.1);color:var(--text);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+        Passer
+      </button>
+    </div>
+    <div id="gps-rec-progress" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
+  </div>
+
+  <!-- Bannière GPS mode conduite auto -->
+  <div id="gps-auto-banner" style="display:none;background:rgba(39,174,96,.1);border:2px solid var(--green);border-radius:12px;padding:10px 14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="gps-auto-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+      <div style="flex:1;font-size:12px;color:var(--green);font-weight:700">GPS ACTIF — Détection automatique</div>
+      <div id="gps-auto-acc" style="font-size:10px;color:var(--muted)"></div>
+    </div>
+  </div>
 
   <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4)">
     <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
@@ -134,6 +181,15 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <button class="btn btn-sm btn-ghost" onclick="showView('view-lines')">Changer</button>
     </div>
     <div class="prog-bar"><div class="prog-fill" id="live-prog" style="width:0%"></div></div>
+    <!-- Boutons GPS -->
+    <div id="gps-btns" style="display:none;margin-top:10px;display:flex;gap:8px">
+      <button onclick="startGpsRecord()" id="btn-gps-record" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(255,165,0,.15);border:1px solid orange;color:orange;border-radius:8px;cursor:pointer">
+        📍 Enregistrer GPS
+      </button>
+      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer" id="btn-gps-auto">
+        🚗 Conduite auto
+      </button>
+    </div>
   </div>
 
 </div>
@@ -254,6 +310,16 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
           <option value="dimanche">📅 Dimanche</option>
         </select>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Départ dépôt</div>
+          <input type="time" id="svc-depot-depart" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Retour dépôt</div>
+          <input type="time" id="svc-depot-retour" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+        </div>
+      </div>
     </div>
 
     <div id="svc-trips-container"></div>
@@ -286,6 +352,205 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div style="display:flex;gap:8px;padding:0 0 8px 0">
       <button class="btn" onclick="saveServiceEditor()" style="flex:1;background:var(--green);color:#000;font-weight:700;font-size:15px">💾 Enregistrer</button>
       <button class="btn btn-ghost" onclick="closeSvcEditor()">Annuler</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ VIEW: HEURES ══ -->
+<div class="view" id="view-heures">
+
+  <!-- Mois navigation -->
+  <div class="card" style="padding:10px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <button class="btn btn-ghost btn-sm" onclick="heuresMoisPrev()">◀</button>
+      <div id="heures-mois-label" style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--accent)"></div>
+      <button class="btn btn-ghost btn-sm" onclick="heuresMoisNext()">▶</button>
+    </div>
+  </div>
+
+  <!-- Cumul du mois -->
+  <div class="card" style="background:rgba(0,212,255,.05);border:2px solid rgba(0,212,255,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div style="font-size:12px;color:var(--muted)">TOTAL DU MOIS</div>
+        <div id="heures-total" style="font-family:'Share Tech Mono',monospace;font-size:48px;font-weight:700;color:var(--accent);line-height:1">0h00</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:var(--muted)">JOURS TRAVAILLÉS</div>
+        <div id="heures-jours" style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--text)">0</div>
+      </div>
+    </div>
+    <!-- Quatorzaine -->
+    <div style="border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📅 QUATORZAINE EN COURS (14 jours glissants)</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="heures-q14-total" style="font-family:'Share Tech Mono',monospace;font-size:28px;font-weight:700;line-height:1">0h00</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
+            <span>0h</span><span id="heures-q14-label">/ 74h</span>
+          </div>
+          <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
+            <div id="heures-q14-bar" style="height:100%;border-radius:4px;transition:width .4s;background:var(--green);width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div id="heures-q14-info" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+    </div>
+    <button onclick="exportHeuresPDF()" style="margin-top:10px;width:100%" class="btn btn-sm">
+      📄 Exporter PDF employeur
+    </button>
+  </div>
+
+  <!-- Saisie rapide -->
+  <div class="card">
+    <div class="card-title">➕ Ajouter une journée</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:110px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Date</div>
+        <input type="date" id="heures-date" style="width:100%;padding:7px 8px;font-size:14px">
+      </div>
+      <div style="width:100px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Heures</div>
+        <input type="number" id="heures-val" placeholder="0" min="0" max="24" step="0.25"
+          style="width:100%;padding:7px 8px;font-size:18px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace">
+      </div>
+      <div style="width:80px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">H. nuit</div>
+        <input type="number" id="heures-nuit" placeholder="0" min="0" max="9" step="0.25"
+          style="width:100%;padding:7px 8px;font-size:16px;text-align:center;font-family:'Share Tech Mono',monospace" title="Heures entre 21h et 6h">
+      </div>
+      <div style="flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Note (optionnel)</div>
+        <input type="text" id="heures-note" placeholder="ex: Service 2030" style="width:100%;padding:7px 8px;font-size:13px">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.3);padding:6px 10px;border-radius:8px">
+        <input type="checkbox" id="heures-dimanche" style="width:16px;height:16px;accent-color:#ffc107">
+        <span>🌅 Dimanche <span style="color:#ffc107;font-weight:700">+55€</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);padding:6px 10px;border-radius:8px">
+        <input type="checkbox" id="heures-ferie" style="width:16px;height:16px;accent-color:#e74c3c">
+        <span>🎉 Jour férié <span style="color:#e74c3c;font-weight:700">+55€ +7h24</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(100,149,237,.1);border:1px solid rgba(100,149,237,.3);padding:6px 10px;border-radius:8px">
+        <input type="checkbox" id="heures-mai" style="width:16px;height:16px;accent-color:#6495ed">
+        <span>🌹 1er Mai <span style="color:#6495ed;font-weight:700">+110€</span></span>
+      </label>
+    </div>
+    <button class="btn" onclick="heuresAjouter()" style="width:100%;background:var(--green);color:#000;font-weight:700">+ Ajouter cette journée</button>
+  </div>
+
+  <!-- Liste des jours -->
+  <div id="heures-list-container"></div>
+
+  <!-- Récap primes du mois -->
+  <div id="heures-primes-card" class="card" style="display:none;border:1px solid rgba(255,193,7,.3);background:rgba(255,193,7,.05)">
+    <div class="card-title" style="color:#ffc107">💰 Primes du mois</div>
+    <div id="heures-primes-content"></div>
+  </div>
+
+</div>
+
+<!-- ══ VIEW: PRIME ══ -->
+<div class="view" id="view-prime">
+
+  <!-- Objectif annuel -->
+  <div class="card" style="background:rgba(0,212,255,.05);border:2px solid rgba(0,212,255,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px;color:var(--muted)">OBJECTIF RÉGULARITÉ 2025</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:40px;font-weight:700;color:var(--accent);line-height:1">90,0%</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:var(--muted)">PRIME ANNUELLE</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:var(--green)">800€</div>
+        <div style="font-size:10px;color:var(--muted)">200€ / trimestre</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calculateur mensuel -->
+  <div class="card">
+    <div class="card-title">🧮 Calculateur de régularité</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Entrez vos mesures SAE du mois pour calculer votre % de régularité</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">⛔ Avance SI <span style="opacity:.7">(>1min) ×0</span></div>
+        <input type="number" id="p-avsi" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+      <div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:var(--green);margin-bottom:4px">✅ Avance conforme <span style="opacity:.7">(0-1min) ×1</span></div>
+        <input type="number" id="p-avc" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+      <div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:var(--green);margin-bottom:4px">✅ Retard conforme <span style="opacity:.7">(0-3min) ×1</span></div>
+        <input type="number" id="p-rc" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+      <div style="background:rgba(255,165,0,.1);border:1px solid rgba(255,165,0,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:orange;margin-bottom:4px">⚠️ Retard semi-conforme <span style="opacity:.7">(3-6min) ×0.5</span></div>
+        <input type="number" id="p-rsc" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">❌ Retard non-conforme <span style="opacity:.7">(6-12min) ×0</span></div>
+        <input type="number" id="p-rnc" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">⛔ Retard SI <span style="opacity:.7">(>12min) ×0</span></div>
+        <input type="number" id="p-rsi" value="0" min="0" oninput="calcRegularite()"
+          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
+      </div>
+    </div>
+
+    <!-- Résultat -->
+    <div id="prime-resultat" style="border-radius:10px;padding:14px;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Entrez vos mesures pour calculer</div>
+    </div>
+  </div>
+
+  <!-- Non-ouverture SAE -->
+  <div class="card">
+    <div class="card-title">📱 Non-ouvertures SAE</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Chaque non-ouverture = -50€ sur la prime trimestrielle</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn btn-sm btn-danger" onclick="saeChange(-1)">−</button>
+      <div style="flex:1;text-align:center">
+        <div id="sae-count" style="font-family:'Share Tech Mono',monospace;font-size:40px;font-weight:700;color:var(--red)">0</div>
+        <div style="font-size:11px;color:var(--muted)">non-ouverture(s)</div>
+      </div>
+      <button class="btn btn-sm" onclick="saeChange(1)" style="background:rgba(231,76,60,.2);border-color:var(--red);color:var(--red)">+</button>
+      <div style="text-align:right;min-width:70px">
+        <div id="sae-deduct" style="font-size:22px;font-weight:700;color:var(--red)">−0€</div>
+        <div style="font-size:10px;color:var(--muted)">déduction</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats GPS du mois -->
+  <div class="card" id="prime-gps-card">
+    <div class="card-title">📍 Statistiques GPS du mois</div>
+    <div id="prime-gps-content">
+      <div style="font-size:12px;color:var(--muted)">Faites des trajets en mode 🚗 Conduite auto pour accumuler des statistiques</div>
+    </div>
+  </div>
+
+  <!-- Rappel formule -->
+  <div class="card" style="background:rgba(255,255,255,.02)">
+    <div class="card-title">📐 Formule de calcul</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8">
+      <code style="color:var(--accent);font-size:11px">% = (Av.conforme×1 + Ret.conforme×1 + Ret.semi×0.5) / Total mesures × 100</code>
+      <br><br>
+      Avance &gt;1min → <span style="color:#e74c3c">×0 (inacceptable)</span><br>
+      Retard 0-3min → <span style="color:var(--green)">×1 (conforme)</span><br>
+      Retard 3-6min → <span style="color:orange">×0.5 (semi-conforme)</span><br>
+      Retard &gt;6min → <span style="color:#e74c3c">×0 (non-conforme)</span>
     </div>
   </div>
 
@@ -340,6 +605,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <button class="nav-btn" data-view="view-roadmap" onclick="showView('view-roadmap')">
     <span class="ico">🗺</span>SERVICE
   </button>
+  <button class="nav-btn" data-view="view-heures" onclick="showView('view-heures')">
+    <span class="ico">⏰</span>HEURES
+  </button>
+  <button class="nav-btn" data-view="view-prime" onclick="showView('view-prime')">
+    <span class="ico">📊</span>PRIME
+  </button>
   <button class="nav-btn" data-view="view-settings" onclick="showView('view-settings')">
     <span class="ico">⚙</span>OPTIONS
   </button>
@@ -359,6 +630,15 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <script>
 // ══ DATA ══════════════════════════════════════════════════════
+// Convertit des heures décimales en "6h36"
+function hDisplay(h) {
+  if(!h) return '';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return mm > 0 ? `${hh}h${String(mm).padStart(2,'0')}` : `${hh}h`;
+}
+
 const STORAGE_KEY = 'chronoligne_v2';
 const ROADMAP_KEY = 'chronoligne_roadmaps';
 
@@ -403,6 +683,155 @@ const REAL_LINES = [
 ];
 
 // ══ TRAJETS PRÉCHARGÉS ════════════════════════════════════════
+const PRELOADED_SERVICES = [
+  {
+    num: '7',
+    jour: 'semaine',
+    depotDepart: '04:01',
+    depotRetour: '10:10',
+    heures: 6.15,
+    trips: [
+      {
+        lineNum: '1202', label: '1202 — Hôpital René Dubos → Gare de Cergy Préfecture',
+        stops: [
+          { name: 'Hôpital René Dubos', time: '04:26' },
+          { name: 'Hôpital Administration', time: '04:28' },
+          { name: 'Alsace Bretagne', time: '04:30' },
+          { name: 'Boblingen', time: '04:32' },
+          { name: 'Place de la Paix', time: '04:34' },
+          { name: 'Normandie', time: '04:36' },
+          { name: 'Croix Saint Siméon', time: '04:38' },
+          { name: 'Marcouville', time: '04:40' },
+          { name: 'Cergy - Marjobert', time: '04:41' },
+          { name: 'Université Des Chênes', time: '04:42' },
+          { name: 'Gare de Cergy Préfecture - Quai B', time: '04:43' },
+        ]
+      },
+      {
+        lineNum: '1202', label: '1202 — Hôpital René Dubos → Gare de Cergy Préfecture',
+        stops: [
+          { name: 'Hôpital René Dubos', time: '04:56' },
+          { name: 'Hôpital Administration', time: '04:58' },
+          { name: 'Alsace Bretagne', time: '05:00' },
+          { name: 'Boblingen', time: '05:02' },
+          { name: 'Place de la Paix', time: '05:04' },
+          { name: 'Normandie', time: '05:06' },
+          { name: 'Croix Saint Siméon', time: '05:08' },
+          { name: 'Marcouville', time: '05:10' },
+          { name: 'Cergy - Marjobert', time: '05:11' },
+          { name: 'Université Des Chênes', time: '05:12' },
+          { name: 'Gare de Cergy Préfecture - Quai B', time: '05:13' },
+        ]
+      },
+      {
+        lineNum: '1238', label: '1238 — La Taillette → Gare de Cergy Préfecture',
+        stops: [
+          { name: 'La Taillette', time: '05:53' },
+          { name: 'Menucourt Mairie', time: '05:56' },
+          { name: 'Les Petits Prés', time: '05:58' },
+          { name: 'Les Esses', time: '06:00' },
+          { name: 'Cergy Les Hauts', time: '06:03' },
+          { name: 'Les Plants', time: '06:06' },
+          { name: 'Cergy Le Haut RER', time: '06:09' },
+          { name: 'Les Touleuses', time: '06:12' },
+          { name: 'Université de Cergy', time: '06:15' },
+          { name: 'Les Linandes', time: '06:18' },
+          { name: 'Cergy Saint-Christophe RER', time: '06:21' },
+          { name: 'Gare de Cergy Préfecture - Quai L', time: '06:24' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Cergy Saint-Christophe → Gare Pontoise Canrobert',
+        stops: [
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '06:40' },
+          { name: 'Avenue de la Paix', time: '06:43' },
+          { name: 'Pontoise Gare SNCF', time: '06:48' },
+          { name: 'Pontoise Hôtel de Ville', time: '06:51' },
+          { name: 'Gare de Pontoise Canrobert', time: '06:55' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Pontoise Canrobert → Gare Cergy Saint-Christophe',
+        stops: [
+          { name: 'Gare de Pontoise Canrobert', time: '07:05' },
+          { name: 'Pontoise Hôtel de Ville', time: '07:08' },
+          { name: 'Pontoise Gare SNCF', time: '07:11' },
+          { name: 'Avenue de la Paix', time: '07:16' },
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '07:20' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Cergy Saint-Christophe → Gare Pontoise Canrobert',
+        stops: [
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '07:33' },
+          { name: 'Avenue de la Paix', time: '07:36' },
+          { name: 'Pontoise Gare SNCF', time: '07:41' },
+          { name: 'Pontoise Hôtel de Ville', time: '07:45' },
+          { name: 'Gare de Pontoise Canrobert', time: '07:49' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Pontoise Canrobert → ZAC de Puiseux',
+        stops: [
+          { name: 'Gare de Pontoise Canrobert', time: '07:57' },
+          { name: 'Pontoise Hôtel de Ville', time: '08:00' },
+          { name: 'Pontoise Gare SNCF', time: '08:03' },
+          { name: 'Saint-Ouen-l\'Aumône', time: '08:09' },
+          { name: 'Les Prés Hauts', time: '08:14' },
+          { name: 'ZAC de Puiseux', time: '08:21' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — ZAC de Puiseux → Gare Pontoise Canrobert',
+        stops: [
+          { name: 'ZAC de Puiseux', time: '08:23' },
+          { name: 'Les Prés Hauts', time: '08:29' },
+          { name: 'Saint-Ouen-l\'Aumône', time: '08:34' },
+          { name: 'Pontoise Gare SNCF', time: '08:40' },
+          { name: 'Pontoise Hôtel de Ville', time: '08:45' },
+          { name: 'Gare de Pontoise Canrobert', time: '08:48' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Pontoise Canrobert → Gare Cergy Saint-Christophe',
+        stops: [
+          { name: 'Gare de Pontoise Canrobert', time: '08:53' },
+          { name: 'Pontoise Hôtel de Ville', time: '08:56' },
+          { name: 'Pontoise Gare SNCF', time: '08:59' },
+          { name: 'Avenue de la Paix', time: '09:04' },
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '09:11' },
+        ]
+      },
+      {
+        lineNum: '1235', label: '1235 — Gare Cergy Saint-Christophe → Gare Pontoise Canrobert',
+        stops: [
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '09:28' },
+          { name: 'Avenue de la Paix', time: '09:31' },
+          { name: 'Pontoise Gare SNCF', time: '09:36' },
+          { name: 'Pontoise Hôtel de Ville', time: '09:40' },
+          { name: 'Gare de Pontoise Canrobert', time: '09:44' },
+        ]
+      },
+    ]
+  }
+];
+
+function installPreloadedServices() {
+  loadRoadmapServices();
+  PRELOADED_SERVICES.forEach(ps => {
+    const idx = roadmapServices.findIndex(s => s.num === ps.num && s.jour === ps.jour);
+    if(idx >= 0) {
+      // Mettre à jour les heures dépôt sans écraser les modifications utilisateur
+      roadmapServices[idx].depotDepart = ps.depotDepart;
+      roadmapServices[idx].depotRetour = ps.depotRetour;
+      roadmapServices[idx].heures = ps.heures;
+    } else {
+      roadmapServices.push(ps);
+    }
+  });
+  saveRoadmapServices();
+}
+
 const PRELOADED_TRIPS = {
   '1239': [
     {
@@ -2701,6 +3130,7 @@ function initDB() {
     }
   });
   saveDB();
+  installPreloadedServices();
 }
 
 function saveDB() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
@@ -2716,6 +3146,8 @@ function showView(id) {
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') renderRoadmapView();
   if(id === 'view-settings') loadSettings();
+  if(id === 'view-heures') heuresRender();
+  if(id === 'view-prime') { calcRegularite(); renderGpsStats(); }
 }
 
 // ══ CLOCK ════════════════════════════════════════════════════
@@ -2772,7 +3204,10 @@ function updateLive() {
 }
 
 function confirmTerminus() {
+  if(gpsMode === 'auto') stopGpsAuto();
+  if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
   activeTrip = null;
+  showGpsBtns(false);
   document.getElementById('live-trip-label').textContent = 'Aucun trajet sélectionné';
   document.getElementById('live-prog').style.width = '0%';
   document.getElementById('ln-name').textContent = '—';
@@ -2836,6 +3271,7 @@ function activateTrip(lineIdx, tripIdx) {
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
+  showGpsBtns(true);
   updateLive();
   showView('view-live');
   toast('▶ Trajet activé !');
@@ -3053,6 +3489,8 @@ function setSvcFilter(f) {
   renderSvcList();
 }
 
+let svcOpenIdx = null;
+
 function renderSvcList() {
   loadRoadmapServices();
   const search = (document.getElementById('svc-search')?.value||'').toLowerCase();
@@ -3071,40 +3509,97 @@ function renderSvcList() {
     return;
   }
 
-  el.innerHTML = filtered.map(s => `
-    <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;margin-bottom:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:18px;font-weight:700;font-family:'Rajdhani',sans-serif">Service ${s.num}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.trips.length} trajet(s) · ${s.trips.map(t=>t.label.split('—')[0].trim()).join(' → ')}</div>
-      </div>
-      <button class="btn btn-sm" onclick="startServiceDirect(${s._idx})" style="background:var(--green);color:#000;font-weight:700;font-size:12px">▶</button>
-      <button class="btn btn-sm btn-ghost" onclick="downloadSvc(${s._idx})" style="font-size:12px">📥</button>
-      <button class="btn btn-sm btn-ghost" onclick="openSvcEditor(${s._idx})" style="font-size:12px">✏</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteSvc(${s._idx})" style="font-size:12px">✕</button>
-    </div>`).join('');
+  el.innerHTML = `<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">` +
+    filtered.map((s, fi) => {
+      const isOpen = svcOpenIdx === s._idx;
+      const depotInfo = (s.depotDepart && s.depotRetour)
+        ? `<span style="color:var(--accent)">${s.depotDepart}</span> → <span style="color:var(--green)">${s.depotRetour}</span>`
+        : '';
+      const heuresInfo = s.heures ? `<span style="font-family:'Share Tech Mono',monospace;color:var(--green);font-weight:700">${hDisplay(s.heures)}</span>` : '';
+
+      const detail = isOpen ? `
+        <div style="padding:12px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
+          ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''}</div>` : ''}
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+            ${s.trips.length} trajet(s) : ${s.trips.map(t=>t.label).join(' → ')}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="startServiceDirect('${s.num}','${s.jour}');event.stopPropagation()" style="background:var(--green);color:#000;font-weight:700;flex:1">▶ Démarrer</button>
+            <button class="btn btn-sm btn-ghost" onclick="openSvcEditor('${s.num}','${s.jour}');event.stopPropagation()">✏ Éditer</button>
+            <button class="btn btn-sm btn-ghost" onclick="downloadSvc('${s.num}','${s.jour}');event.stopPropagation()">📥</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSvc('${s.num}','${s.jour}');event.stopPropagation()">✕</button>
+          </div>
+        </div>` : '';
+
+      const borderTop = fi > 0 ? 'border-top:1px solid var(--border);' : '';
+      return `
+        <div>
+          <div onclick="toggleSvc(${s._idx})" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;${borderTop}background:${isOpen?'rgba(0,212,255,.07)':'transparent'};transition:background .2s">
+            <div style="flex:1">
+              <div style="font-size:18px;font-weight:700;font-family:'Rajdhani',sans-serif;color:${isOpen?'var(--accent)':'var(--text)'}">
+                Service ${s.num}
+              </div>
+              <div style="font-size:11px;color:var(--muted)">
+                ${s.trips.map(t=>t.label.split('—')[0].trim()).join(' · ')}
+                ${s.heures ? ' · <span style="color:var(--green)">'+hDisplay(s.heures)+'</span>' : ''}
+              </div>
+            </div>
+            <div style="font-size:18px;color:var(--muted);transition:transform .2s;transform:rotate(${isOpen?90:0}deg)">›</div>
+          </div>
+          ${detail}
+        </div>`;
+    }).join('') + `</div>`;
 }
 
-function startServiceDirect(idx) {
+function toggleSvc(idx) {
+  svcOpenIdx = (svcOpenIdx === idx) ? null : idx;
+  renderSvcList();
+}
+
+function startServiceDirect(num, jour) {
   loadRoadmapServices();
+  jour = jour || svcFilter;
+  const idx = roadmapServices.findIndex(s => s.num === num && s.jour === jour);
   const svc = roadmapServices[idx];
   if(!svc) return;
   currentRoadmap = JSON.parse(JSON.stringify(svc.trips));
   roadmapCursor = 0;
+
+  // Pré-remplir les heures automatiquement si dépôt renseigné
+  if(svc.heures && svc.depotDepart && svc.depotRetour) {
+    const today = new Date().toISOString().split('T')[0];
+    heuresInit();
+    const mois = today.substring(0,7);
+    if(!heuresData[mois]) heuresData[mois] = [];
+    const existing = heuresData[mois].findIndex(j => j.date === today);
+    const entry = { date: today, heures: svc.heures, note: `Service ${svc.num} (${svc.depotDepart}→${svc.depotRetour})` };
+    if(existing >= 0) heuresData[mois][existing] = entry;
+    else heuresData[mois].push(entry);
+    heuresSave();
+    toast(`▶ Service ${svc.num} démarré — ${hDisplay(svc.heures)} enregistrées !`);
+  } else {
+    toast(`▶ Service démarré`);
+  }
+
   activateRoadmapTrip();
 }
 
-function deleteSvc(idx) {
+function deleteSvc(num, jour) {
   loadRoadmapServices();
-  if(!confirm(`Supprimer le service "${roadmapServices[idx].num}" ?`)) return;
-  roadmapServices.splice(idx,1);
+  const idx = roadmapServices.findIndex(s => s.num === num && s.jour === jour);
+  if(idx < 0) { toast('Service introuvable'); return; }
+  if(!confirm(`Supprimer le service "${num}" ?`)) return;
+  roadmapServices.splice(idx, 1);
+  svcOpenIdx = null;
   saveRoadmapServices();
   renderSvcList();
   toast('Service supprimé');
 }
 
-function downloadSvc(idx) {
+function downloadSvc(num, jour) {
   loadRoadmapServices();
-  const svc = roadmapServices[idx];
+  jour = jour || svcFilter;
+  const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
   if(!svc) return;
   const blob = new Blob([JSON.stringify({chronoligne_service:true,version:1,service:svc},null,2)],{type:'application/json'});
   const a = document.createElement('a');
@@ -3153,18 +3648,25 @@ function importSvcFile(e) {
 }
 
 // ── Éditeur de feuille ────────────────────────────────────────
-function openSvcEditor(idx) {
-  editingServiceIdx = idx;
+function openSvcEditor(num, jour) {
   loadRoadmapServices();
-  if(idx >= 0) {
+  if(num !== undefined && num !== null && num !== -1) {
+    jour = jour || svcFilter;
+    const idx = roadmapServices.findIndex(s => s.num === num && s.jour === jour);
+    editingServiceIdx = idx;
     const svc = roadmapServices[idx];
     document.getElementById('svc-num').value = svc.num;
     document.getElementById('svc-jour').value = svc.jour||'semaine';
+    document.getElementById('svc-depot-depart').value = svc.depotDepart||'';
+    document.getElementById('svc-depot-retour').value = svc.depotRetour||'';
     svcTrips = JSON.parse(JSON.stringify(svc.trips));
     document.getElementById('svc-editor-title').textContent = `Service ${svc.num}`;
   } else {
+    editingServiceIdx = -1;
     document.getElementById('svc-num').value = '';
     document.getElementById('svc-jour').value = svcFilter;
+    document.getElementById('svc-depot-depart').value = '';
+    document.getElementById('svc-depot-retour').value = '';
     svcTrips = [];
     document.getElementById('svc-editor-title').textContent = 'Nouvelle feuille';
   }
@@ -3313,14 +3815,35 @@ function svcMoveTrip(ti,dir) {
 function saveServiceEditor() {
   const num = document.getElementById('svc-num').value.trim();
   const jour = document.getElementById('svc-jour').value;
+  const depotDepart = document.getElementById('svc-depot-depart').value;
+  const depotRetour = document.getElementById('svc-depot-retour').value;
   if(!num) { toast('Entrez un numéro de service'); return; }
   if(!svcTrips.length) { toast('Ajoutez au moins un trajet'); return; }
+
+  // Calcul heures si dépôt renseigné
+  let heuresCalc = null;
+  let heuresMin = null;
+  if(depotDepart && depotRetour) {
+    const [hD,mD] = depotDepart.split(':').map(Number);
+    const [hR,mR] = depotRetour.split(':').map(Number);
+    let diffMin = (hR*60+mR) - (hD*60+mD);
+    if(diffMin < 0) diffMin += 24*60;
+    heuresMin = diffMin;
+    heuresCalc = diffMin / 60; // stocké en décimal pour compatibilité HEURES
+  }
+
   loadRoadmapServices();
-  const svc = { num, jour, trips: JSON.parse(JSON.stringify(svcTrips)) };
+  const svc = { num, jour, depotDepart, depotRetour, heures: heuresCalc, trips: JSON.parse(JSON.stringify(svcTrips)) };
   if(editingServiceIdx>=0) roadmapServices[editingServiceIdx]=svc;
   else roadmapServices.push(svc);
   saveRoadmapServices();
-  toast(`✅ Service ${num} enregistré !`);
+
+  if(heuresCalc) {
+    const hh = Math.floor(heuresMin/60);
+    const mm = String(heuresMin%60).padStart(2,'0');
+    toast(`✅ Service ${num} enregistré — ${hh}h${mm} calculées !`);
+  }
+  else toast(`✅ Service ${num} enregistré !`);
   closeSvcEditor();
 }
 
@@ -3368,6 +3891,673 @@ function renderRoadmapActive() {
   }
 }
 
+// ══ CARNET D'HEURES ══════════════════════════════════════════
+const HEURES_KEY = 'chronoligne_heures';
+let heuresData = {}; // { 'YYYY-MM': [ {date, heures, note}, ... ] }
+let heuresMoisCourant = '';
+
+function heuresInit() {
+  try {
+    const s = localStorage.getItem(HEURES_KEY);
+    heuresData = s ? JSON.parse(s) : {};
+  } catch(e) { heuresData = {}; }
+  const now = new Date();
+  heuresMoisCourant = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // Mettre la date du jour par défaut
+  const today = now.toISOString().split('T')[0];
+  const dateInput = document.getElementById('heures-date');
+  if(dateInput) dateInput.value = today;
+}
+
+function heuresSave() {
+  localStorage.setItem(HEURES_KEY, JSON.stringify(heuresData));
+}
+
+function heuresRender() {
+  const mois = heuresMoisCourant;
+  const [year, month] = mois.split('-').map(Number);
+  const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('heures-mois-label').textContent = `${moisNoms[month-1]} ${year}`;
+
+  const jours = (heuresData[mois] || []).sort((a,b) => a.date.localeCompare(b.date));
+
+  // Cumul mois
+  const totalMin = jours.reduce((acc, j) => acc + Math.round(j.heures * 60), 0);
+  const totalH = Math.floor(totalMin / 60);
+  const totalM = totalMin % 60;
+  document.getElementById('heures-total').textContent = `${totalH}h${String(totalM).padStart(2,'0')}`;
+  document.getElementById('heures-jours').textContent = jours.length;
+
+  // Quatorzaine — 14 jours glissants depuis aujourd'hui
+  const QUOTA_Q14 = 74;
+  const today = new Date();
+  const q14Start = new Date(today);
+  q14Start.setDate(today.getDate() - 13);
+
+  // Collecter toutes les entrées de tous les mois
+  let allJours = [];
+  Object.values(heuresData).forEach(arr => allJours = allJours.concat(arr));
+
+  const q14Jours = allJours.filter(j => {
+    const d = new Date(j.date + 'T12:00:00');
+    return d >= q14Start && d <= today;
+  });
+
+  const q14Min = q14Jours.reduce((acc,j) => acc + Math.round(j.heures*60), 0);
+  const q14H = Math.floor(q14Min/60);
+  const q14M = q14Min%60;
+  const q14Str = `${q14H}h${String(q14M).padStart(2,'0')}`;
+  const pct = Math.min(100, Math.round(q14Min / (QUOTA_Q14*60) * 100));
+  const suppl = q14Min - QUOTA_Q14*60;
+
+  document.getElementById('heures-q14-total').textContent = q14Str;
+  document.getElementById('heures-q14-total').style.color = suppl > 0 ? 'var(--green)' : 'var(--accent)';
+  document.getElementById('heures-q14-label').textContent = `/ ${QUOTA_Q14}h`;
+  document.getElementById('heures-q14-bar').style.width = pct + '%';
+  document.getElementById('heures-q14-bar').style.background = suppl > 0 ? 'var(--green)' : 'var(--accent)';
+
+  const dateDebStr = `${q14Start.getDate()}/${String(q14Start.getMonth()+1).padStart(2,'0')}`;
+  const dateFinStr = `${today.getDate()}/${String(today.getMonth()+1).padStart(2,'0')}`;
+
+  if(suppl > 0) {
+    const sH = Math.floor(suppl/60);
+    const sM = suppl%60;
+    const sStr = `${sH}h${String(sM).padStart(2,'0')}`;
+    document.getElementById('heures-q14-info').innerHTML =
+      `<span style="color:var(--green);font-weight:700;font-size:13px">✅ ${sStr} supplémentaires</span>
+       <span style="color:var(--muted)"> · ${dateDebStr} → ${dateFinStr}</span>`;
+  } else {
+    const restMin = -suppl;
+    const rH = Math.floor(restMin/60);
+    const rM = restMin%60;
+    const rStr = `${rH}h${String(rM).padStart(2,'0')}`;
+    document.getElementById('heures-q14-info').innerHTML =
+      `<span style="color:var(--muted)">${dateDebStr} → ${dateFinStr} · </span>
+       <span style="color:var(--accent);font-weight:700">${rStr} restantes</span>
+       <span style="color:var(--muted)"> pour 74h</span>`;
+  }
+
+  // Liste des jours
+  const el = document.getElementById('heures-list-container');
+  if(!jours.length) {
+    el.innerHTML = `<div class="empty-state"><span class="ico">📅</span>Aucune heure ce mois-ci<br><small>Ajoutez vos journées ci-dessus</small></div>`;
+    return;
+  }
+
+  const joursNoms = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  el.innerHTML = jours.map((j,i) => {
+    const d = new Date(j.date + 'T12:00:00');
+    const nomJour = joursNoms[d.getDay()];
+    const numJour = d.getDate();
+    const h = Math.floor(j.heures);
+    const m = Math.round((j.heures - h) * 60);
+    const hStr = `${h}h${m > 0 ? String(m).padStart(2,'0') : ''}`;
+    const inQ14 = new Date(j.date+'T12:00:00') >= q14Start;
+
+    // Badges primes
+    let badges = '';
+    if(j.heuresNuit > 0) badges += `<span style="background:rgba(100,149,237,.2);color:#6495ed;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌙 ${j.heuresNuit}h nuit</span>`;
+    if(j.dimanche) badges += `<span style="background:rgba(255,193,7,.2);color:#ffc107;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌅 55€</span>`;
+    if(j.ferie) badges += `<span style="background:rgba(231,76,60,.2);color:#e74c3c;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🎉 55€+7h24</span>`;
+    if(j.premierMai) badges += `<span style="background:rgba(100,149,237,.2);color:#6495ed;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌹 110€</span>`;
+
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:4px;
+      background:rgba(255,255,255,.03);border:1px solid ${inQ14?'rgba(0,212,255,.25)':'var(--border)'};border-radius:10px">
+      <div style="width:44px;text-align:center;background:${inQ14?'rgba(0,212,255,.15)':'rgba(255,255,255,.05)'};border-radius:8px;padding:4px">
+        <div style="font-size:10px;color:var(--muted)">${nomJour}</div>
+        <div style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;line-height:1">${numJour}</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+          <span style="font-size:20px;font-weight:700;font-family:'Share Tech Mono',monospace;color:${inQ14?'var(--accent)':'var(--text)'}">${hStr}</span>
+          ${badges}
+        </div>
+        ${j.note ? `<div style="font-size:11px;color:var(--muted)">${j.note}</div>` : ''}
+      </div>
+      <button class="del-btn" onclick="heuresSupprimer('${mois}',${i})">✕</button>
+    </div>`;
+  }).join('');
+
+  // Récap primes du mois
+  let nbDim = jours.filter(j=>j.dimanche).length;
+  let nbFerie = jours.filter(j=>j.ferie).length;
+  let nbMai = jours.filter(j=>j.premierMai).length;
+  let totalNuitMin = jours.reduce((acc,j)=>acc+Math.round((j.heuresNuit||0)*60),0);
+  const primesCard = document.getElementById('heures-primes-card');
+  const primesContent = document.getElementById('heures-primes-content');
+
+  if(nbDim||nbFerie||nbMai||totalNuitMin>0) {
+    primesCard.style.display = 'block';
+    let lines = [];
+    if(nbDim) lines.push(`🌅 ${nbDim} dimanche(s) × 55€ = <strong>${nbDim*55}€</strong>`);
+    if(nbFerie) lines.push(`🎉 ${nbFerie} jour(s) férié(s) × 55€ = <strong>${nbFerie*55}€</strong> + ${nbFerie}×7h24 indemnisées`);
+    if(nbMai) lines.push(`🌹 ${nbMai} × 1er Mai = <strong>${nbMai*110}€</strong>`);
+    if(totalNuitMin>0) {
+      const nH=Math.floor(totalNuitMin/60), nM=totalNuitMin%60;
+      lines.push(`🌙 ${nH}h${String(nM).padStart(2,'0')} de nuit = <strong>+20% sur ces heures</strong>`);
+    }
+    const totalPrimes = nbDim*55 + nbFerie*55 + nbMai*110;
+    if(totalPrimes>0) lines.push(`<hr style="border-color:rgba(255,193,7,.2);margin:6px 0"><span style="font-size:15px;font-weight:700;color:#ffc107">💰 Total primes fixes : ${totalPrimes}€ bruts</span>`);
+    primesContent.innerHTML = lines.map(l=>`<div style="font-size:13px;padding:4px 0;color:var(--text)">${l}</div>`).join('');
+  } else {
+    primesCard.style.display = 'none';
+  }
+}
+
+function heuresAjouter() {
+  const date = document.getElementById('heures-date').value;
+  const val = parseFloat(document.getElementById('heures-val').value);
+  const heuresNuit = parseFloat(document.getElementById('heures-nuit').value)||0;
+  const note = document.getElementById('heures-note').value.trim();
+  const dimanche = document.getElementById('heures-dimanche').checked;
+  const ferie = document.getElementById('heures-ferie').checked;
+  const premierMai = document.getElementById('heures-mai').checked;
+
+  if(!date) { toast('Choisissez une date'); return; }
+  if(isNaN(val) || val <= 0) { toast('Entrez un nombre d\'heures valide'); return; }
+
+  const mois = date.substring(0, 7);
+  if(!heuresData[mois]) heuresData[mois] = [];
+
+  const entry = { date, heures: val, heuresNuit, note, dimanche, ferie, premierMai };
+  const idx = heuresData[mois].findIndex(j => j.date === date);
+  if(idx >= 0) heuresData[mois][idx] = entry;
+  else heuresData[mois].push(entry);
+
+  heuresSave();
+  heuresMoisCourant = mois;
+
+  // Reset
+  document.getElementById('heures-val').value = '';
+  document.getElementById('heures-nuit').value = '';
+  document.getElementById('heures-note').value = '';
+  document.getElementById('heures-dimanche').checked = false;
+  document.getElementById('heures-ferie').checked = false;
+  document.getElementById('heures-mai').checked = false;
+
+  // Avancer la date au lendemain
+  const next = new Date(date+'T12:00:00');
+  next.setDate(next.getDate()+1);
+  document.getElementById('heures-date').value = next.toISOString().split('T')[0];
+
+  heuresRender();
+  let msg = `✅ ${val}h ajoutées`;
+  if(dimanche) msg += ' · Prime dim. 55€';
+  if(ferie) msg += ' · Prime férié 55€';
+  if(premierMai) msg += ' · Prime 1er Mai 110€';
+  toast(msg);
+}
+
+function heuresSupprimer(mois, idx) {
+  if(!confirm('Supprimer cette journée ?')) return;
+  heuresData[mois].splice(idx, 1);
+  heuresSave();
+  heuresRender();
+}
+
+function heuresMoisPrev() {
+  const [y, m] = heuresMoisCourant.split('-').map(Number);
+  const d = new Date(y, m-2, 1);
+  heuresMoisCourant = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  heuresRender();
+}
+
+function heuresMoisNext() {
+  const [y, m] = heuresMoisCourant.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  heuresMoisCourant = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  heuresRender();
+}
+
+function exportHeuresPDF() {
+  const mois = heuresMoisCourant;
+  const [year, month] = mois.split('-').map(Number);
+  const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const moisNom = `${moisNoms[month-1]} ${year}`;
+  const jours = (heuresData[mois] || []).sort((a,b) => a.date.localeCompare(b.date));
+  const joursNoms = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+  const totalMin = jours.reduce((acc,j) => acc + Math.round(j.heures*60), 0);
+  const totalH = Math.floor(totalMin/60);
+  const totalM = totalMin%60;
+  const totalStr = `${totalH}h${String(totalM).padStart(2,'0')}`;
+
+  // Calcul supplémentaires sur la période du mois (approx 2 quatorzaines = 148h)
+  const QUOTA_MOIS = 148;
+  const supplMin = totalMin - QUOTA_MOIS*60;
+  const supplStr = supplMin > 0
+    ? `${Math.floor(supplMin/60)}h${String(supplMin%60).padStart(2,'0')}`
+    : null;
+
+  const rows = jours.map(j => {
+    const d = new Date(j.date+'T12:00:00');
+    const h = Math.floor(j.heures);
+    const m = Math.round((j.heures-h)*60);
+    return `<tr>
+      <td>${joursNoms[d.getDay()]} ${d.getDate()} ${moisNoms[month-1]}</td>
+      <td style="text-align:center;font-weight:700">${h}h${m>0?String(m).padStart(2,'0'):''}</td>
+      <td style="color:#666">${j.note||''}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Heures ${moisNom}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; color: #333; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    h2 { font-size: 16px; color: #666; font-weight: normal; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #1a237e; color: white; padding: 10px; text-align: left; font-size: 13px; }
+    td { padding: 9px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tr:nth-child(even) td { background: #f8f9fa; }
+    .total { background: #1a237e; color: white; padding: 14px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .total-num { font-size: 32px; font-weight: 700; font-family: monospace; }
+    .suppl { background: #1b5e20; color: white; padding: 12px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .signature { margin-top: 40px; display: flex; justify-content: space-between; }
+    .sig-box { border-top: 1px solid #333; width: 200px; padding-top: 6px; font-size: 12px; color: #666; }
+    @media print { body { margin: 20px; } }
+  </style></head><body>
+  <h1>🚌 Relevé d'heures — ${moisNom}</h1>
+  <h2>Réseau Cergy-Pontoise · Base quatorzaine 74h</h2>
+  <table>
+    <thead><tr><th>Date</th><th style="text-align:center">Heures</th><th>Service / Note</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total">
+    <div><div style="font-size:13px;opacity:.8">TOTAL DU MOIS</div><div class="total-num">${totalStr}</div></div>
+    <div style="text-align:right"><div style="font-size:13px;opacity:.8">JOURS TRAVAILLÉS</div><div style="font-size:32px;font-weight:700">${jours.length}</div></div>
+  </div>
+  ${supplStr ? `<div class="suppl">
+    <div><div style="font-size:13px;opacity:.8">HEURES SUPPLÉMENTAIRES</div><div class="total-num">✅ ${supplStr}</div></div>
+    <div style="text-align:right;font-size:12px;opacity:.8">Base 2×74h = 148h<br>majorées selon accord</div>
+  </div>` : ''}
+  <div class="signature">
+    <div class="sig-box">Signature employé</div>
+    <div class="sig-box">Signature employeur</div>
+  </div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `heures-${mois}.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('📄 PDF prêt — ouvrez le fichier et imprimez !');
+}
+
+// ══ SYSTÈME GPS ═══════════════════════════════════════════════
+const GPS_COORDS_KEY = 'chronoligne_gps_coords';
+const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
+const GPS_DETECT_DIST = 80; // mètres pour détecter un arrêt
+
+let gpsCoords = null;
+let gpsWatchId = null;
+let gpsMode = null; // 'record' | 'auto' | null
+let gpsRecStopIdx = 0;
+let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
+let gpsAutoNextIdx = 0;
+let gpsSession = []; // [{stopName, planned, actual, diff}]
+
+function loadGpsCoordsDB() {
+  try { gpsCoordsDB = JSON.parse(localStorage.getItem(GPS_COORDS_KEY)||'{}'); } catch(e) { gpsCoordsDB = {}; }
+}
+function saveGpsCoordsDB() { localStorage.setItem(GPS_COORDS_KEY, JSON.stringify(gpsCoordsDB)); }
+
+function gpsCoordKey(lineNum, tripIdx, stopIdx) { return `${lineNum}_${tripIdx}_${stopIdx}`; }
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function startGpsWatch(onSuccess, onError) {
+  if(!navigator.geolocation) { toast('GPS non supporté'); return false; }
+  if(gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+  gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
+      if(onSuccess) onSuccess(gpsCoords);
+    },
+    err => { if(onError) onError(err); else toast('Erreur GPS'); },
+    { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+  );
+  return true;
+}
+
+function stopGpsWatch() {
+  if(gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+  gpsCoords = null;
+  gpsMode = null;
+}
+
+// ── MODE ENREGISTREMENT ───────────────────────────────────────
+function startGpsRecord() {
+  if(!activeTrip) { toast('Activez un trajet d\'abord'); return; }
+  loadGpsCoordsDB();
+  gpsRecStopIdx = 0;
+  gpsMode = 'record';
+  document.getElementById('gps-record-banner').style.display = 'block';
+  document.getElementById('gps-auto-banner').style.display = 'none';
+  updateGpsRecBanner();
+  startGpsWatch(
+    coords => { document.getElementById('gps-auto-acc') && (document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`); },
+    () => toast('Impossible d\'obtenir le GPS')
+  );
+  toast('📍 Mode enregistrement — appuyez à chaque arrêt');
+}
+
+function updateGpsRecBanner() {
+  if(!activeTrip) return;
+  const trip = db.lines[activeTrip.lineIdx].trips[activeTrip.tripIdx];
+  const stop = trip.stops[gpsRecStopIdx];
+  if(!stop) { finishGpsRecord(); return; }
+  document.getElementById('gps-rec-stop-name').textContent = stop.name;
+  document.getElementById('gps-rec-progress').textContent =
+    `Arrêt ${gpsRecStopIdx+1} / ${trip.stops.length} · ${trip.stops.slice(gpsRecStopIdx+1).length} restants`;
+  // Vérifier si cet arrêt a déjà des coords
+  const line = db.lines[activeTrip.lineIdx];
+  const key = gpsCoordKey(line.num, activeTrip.tripIdx, gpsRecStopIdx);
+  if(gpsCoordsDB[key]) {
+    document.getElementById('gps-rec-stop-name').innerHTML =
+      `${stop.name} <span style="color:var(--green);font-size:12px">✅ déjà enregistré</span>`;
+  }
+}
+
+function gpsRecordStop() {
+  if(!gpsCoords) { toast('GPS pas encore prêt, attendez...'); return; }
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  const stop = trip.stops[gpsRecStopIdx];
+  if(!stop) return;
+  const key = gpsCoordKey(line.num, activeTrip.tripIdx, gpsRecStopIdx);
+  gpsCoordsDB[key] = { lat: gpsCoords.lat, lon: gpsCoords.lon, name: stop.name };
+  saveGpsCoordsDB();
+  toast(`✅ "${stop.name}" enregistré !`);
+  gpsRecStopIdx++;
+  updateGpsRecBanner();
+}
+
+function gpsRecordSkip() {
+  gpsRecStopIdx++;
+  updateGpsRecBanner();
+}
+
+function finishGpsRecord() {
+  stopGpsWatch();
+  document.getElementById('gps-record-banner').style.display = 'none';
+  gpsMode = null;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  // Compter combien d'arrêts ont des coords
+  let count = 0;
+  trip.stops.forEach((s,i) => {
+    if(gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, i)]) count++;
+  });
+  toast(`🏁 Enregistrement terminé — ${count}/${trip.stops.length} arrêts GPS`);
+}
+
+// ── MODE CONDUITE AUTO ────────────────────────────────────────
+function startGpsAuto() {
+  if(!activeTrip) { toast('Activez un trajet d\'abord'); return; }
+  loadGpsCoordsDB();
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  // Vérifier qu'on a des coords
+  let hasCoords = trip.stops.some((s,i) => gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, i)]);
+  if(!hasCoords) {
+    toast('Aucun GPS enregistré pour ce trajet — faites d\'abord "Enregistrer GPS"');
+    return;
+  }
+  gpsMode = 'auto';
+  gpsAutoNextIdx = 0;
+  gpsSession = [];
+  document.getElementById('gps-auto-banner').style.display = 'block';
+  document.getElementById('gps-record-banner').style.display = 'none';
+  startGpsWatch(
+    coords => {
+      document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
+      checkGpsAutoDetect(coords);
+    },
+    () => toast('Erreur GPS')
+  );
+  toast('🚗 Détection automatique activée !');
+}
+
+function checkGpsAutoDetect(coords) {
+  if(!activeTrip || gpsMode !== 'auto') return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  if(gpsAutoNextIdx >= trip.stops.length) return;
+
+  const stop = trip.stops[gpsAutoNextIdx];
+  const key = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx);
+  const savedCoords = gpsCoordsDB[key];
+  if(!savedCoords) { gpsAutoNextIdx++; return; } // pas de coords → passer
+
+  const dist = haversine(coords.lat, coords.lon, savedCoords.lat, savedCoords.lon);
+  if(dist <= GPS_DETECT_DIST) {
+    // Arrêt détecté !
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    const [ph, pm] = (stop.time||'00:00').split(':').map(Number);
+    const plannedMin = ph*60+pm;
+    const diffMin = nowMin - plannedMin;
+    const status = diffMin < -1 ? 'avsi' : diffMin <= 0 ? 'avc' : diffMin <= 3 ? 'rc' : diffMin <= 6 ? 'rsc' : diffMin <= 12 ? 'rnc' : 'rsi';
+    gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status });
+    saveGpsSession();
+    gpsAutoNextIdx++;
+    // Feedback visuel
+    flashAutoDetect(stop.name, diffMin, status);
+  }
+}
+
+function flashAutoDetect(name, diff, status) {
+  const colors = { avsi:'#e74c3c', avc:'#27ae60', rc:'#27ae60', rsc:'orange', rnc:'#e74c3c', rsi:'#e74c3c' };
+  const labels = { avsi:'⛔ Avance >1min', avc:'✅ Avance OK', rc:'✅ Conforme', rsc:'⚠️ Semi-conf.', rnc:'❌ Non-conf.', rsi:'⛔ Retard >12min' };
+  const col = colors[status];
+  // Flash sur le banner
+  const banner = document.getElementById('gps-auto-banner');
+  const orig = banner.style.background;
+  banner.style.background = `rgba(${col.includes('27ae60')?'39,174,96':'231,76,60'},.3)`;
+  banner.innerHTML = `<div style="text-align:center;padding:4px">
+    <div style="font-size:13px;font-weight:700;color:${col}">${labels[status]}</div>
+    <div style="font-size:12px;color:var(--muted)">${name} · ${diff>=0?'+':''}${diff}min</div>
+  </div>`;
+  setTimeout(() => {
+    banner.style.background = 'rgba(39,174,96,.1)';
+    banner.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+      <div id="gps-auto-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+      <div style="flex:1;font-size:12px;color:var(--green);font-weight:700">GPS ACTIF — Détection automatique</div>
+      <div id="gps-auto-acc" style="font-size:10px;color:var(--muted)"></div>
+    </div>`;
+  }, 3000);
+}
+
+function saveGpsSession() {
+  try {
+    const sessions = JSON.parse(localStorage.getItem(GPS_SESSIONS_KEY)||'[]');
+    const today = new Date().toISOString().split('T')[0];
+    if(!activeTrip) return;
+    const line = db.lines[activeTrip.lineIdx];
+    const trip = line.trips[activeTrip.tripIdx];
+    // Mettre à jour ou créer session du jour
+    const idx = sessions.findIndex(s => s.date===today && s.lineNum===line.num && s.tripIdx===activeTrip.tripIdx);
+    const session = { date:today, lineNum:line.num, tripLabel:trip.label, stops:gpsSession };
+    if(idx>=0) sessions[idx]=session; else sessions.push(session);
+    // Garder max 90 jours
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-90);
+    const filtered = sessions.filter(s => new Date(s.date)>=cutoff);
+    localStorage.setItem(GPS_SESSIONS_KEY, JSON.stringify(filtered));
+  } catch(e) {}
+}
+
+function stopGpsAuto() {
+  stopGpsWatch();
+  document.getElementById('gps-auto-banner').style.display = 'none';
+  saveGpsSession();
+  // Calculer stats de la session
+  if(gpsSession.length) {
+    const counts = {avsi:0,avc:0,rc:0,rsc:0,rnc:0,rsi:0};
+    gpsSession.forEach(s => counts[s.status]++);
+    const total = gpsSession.length;
+    const score = (counts.avc+counts.rc+counts.rsc*0.5)/total*100;
+    toast(`🏁 Trajet terminé — Régularité: ${score.toFixed(1)}% sur ${total} arrêts`);
+    // Sauvegarder dans PRIME pour calcul mensuel
+    savePrimeSession(counts, total);
+  }
+}
+
+function savePrimeSession(counts, total) {
+  try {
+    const key = 'chronoligne_prime_sessions';
+    const sessions = JSON.parse(localStorage.getItem(key)||'[]');
+    const today = new Date().toISOString().split('T')[0];
+    sessions.push({ date:today, counts, total });
+    localStorage.setItem(key, JSON.stringify(sessions));
+  } catch(e) {}
+}
+
+// ── Afficher boutons GPS quand trajet actif ───────────────────
+function showGpsBtns(show) {
+  const el = document.getElementById('gps-btns');
+  if(el) el.style.display = show ? 'flex' : 'none';
+}
+
+// ══ CALCULATEUR PRIME MÉTIER ══════════════════════════════════
+let saeCount = 0;
+
+function calcRegularite() {
+  const avsi = parseInt(document.getElementById('p-avsi').value)||0;
+  const avc  = parseInt(document.getElementById('p-avc').value)||0;
+  const rc   = parseInt(document.getElementById('p-rc').value)||0;
+  const rsc  = parseInt(document.getElementById('p-rsc').value)||0;
+  const rnc  = parseInt(document.getElementById('p-rnc').value)||0;
+  const rsi  = parseInt(document.getElementById('p-rsi').value)||0;
+
+  const total = avsi + avc + rc + rsc + rnc + rsi;
+  if(total === 0) return;
+
+  const score = (avc*1 + rc*1 + rsc*0.5) / total * 100;
+  const pct = Math.round(score * 10) / 10;
+  const objectif = 90.0;
+  const ok = pct >= objectif;
+
+  const color = ok ? 'var(--green)' : '#e74c3c';
+  const bgColor = ok ? 'rgba(39,174,96,.1)' : 'rgba(231,76,60,.1)';
+  const borderColor = ok ? 'rgba(39,174,96,.4)' : 'rgba(231,76,60,.4)';
+  const icon = ok ? '✅' : '❌';
+  const msg = ok
+    ? `Objectif 90% atteint — prime éligible`
+    : `Objectif 90% non atteint — ${(objectif - pct).toFixed(1)}% manquant`;
+
+  // Déduction SAE
+  const deductSae = saeCount * 50;
+  const primeBase = 200; // 1ère année = 200€/trimestre
+  const primeFinal = Math.max(0, primeBase - deductSae);
+
+  document.getElementById('prime-resultat').style.background = bgColor;
+  document.getElementById('prime-resultat').style.borderColor = borderColor;
+  document.getElementById('prime-resultat').innerHTML = `
+    <div style="font-size:48px;font-weight:700;font-family:'Share Tech Mono',monospace;color:${color};line-height:1">${pct}%</div>
+    <div style="font-size:13px;color:${color};margin:6px 0">${icon} ${msg}</div>
+    <div style="border-top:1px solid ${borderColor};margin-top:10px;padding-top:10px;font-size:12px;color:var(--muted)">
+      Total mesures : <strong style="color:var(--text)">${total}</strong> · 
+      Score : <strong style="color:var(--text)">${Math.round(avc+rc+rsc*0.5)} pts</strong>
+    </div>
+    ${ok ? `<div style="margin-top:8px;background:rgba(39,174,96,.15);border-radius:8px;padding:8px">
+      <div style="font-size:11px;color:var(--muted)">PRIME TRIMESTRIELLE ESTIMÉE</div>
+      <div style="font-size:28px;font-weight:700;color:var(--green);font-family:'Rajdhani',sans-serif">${primeFinal}€ bruts</div>
+      ${deductSae > 0 ? `<div style="font-size:11px;color:#e74c3c">${primeBase}€ − ${deductSae}€ (${saeCount} SAE) = ${primeFinal}€</div>` : ''}
+    </div>` : ''}
+  `;
+}
+
+function renderGpsStats() {
+  try {
+    const key = 'chronoligne_prime_sessions';
+    const sessions = JSON.parse(localStorage.getItem(key)||'[]');
+    const now = new Date();
+    const moisStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const moisSessions = sessions.filter(s => s.date.startsWith(moisStr));
+    const el = document.getElementById('prime-gps-content');
+    if(!moisSessions.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Aucun trajet GPS ce mois-ci — activez 🚗 Conduite auto</div>';
+      return;
+    }
+    // Cumuler
+    const total = {avsi:0,avc:0,rc:0,rsc:0,rnc:0,rsi:0,total:0};
+    moisSessions.forEach(s => {
+      Object.keys(s.counts).forEach(k => total[k] += s.counts[k]);
+      total.total += s.total;
+    });
+    const score = total.total > 0 ? (total.avc+total.rc+total.rsc*0.5)/total.total*100 : 0;
+    const pct = Math.round(score*10)/10;
+    const ok = pct >= 90;
+    const col = ok ? 'var(--green)' : '#e74c3c';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:36px;font-weight:700;color:${col}">${pct}%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${col}">${ok?'✅ Objectif atteint':'❌ Objectif non atteint'}</div>
+          <div style="font-size:11px;color:var(--muted)">${total.total} mesures · ${moisSessions.length} trajet(s)</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:11px">
+        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">⛔ Av.SI</div><div style="font-weight:700">${total.avsi}</div></div>
+        <div style="background:rgba(39,174,96,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:var(--green)">✅ Av.OK</div><div style="font-weight:700">${total.avc}</div></div>
+        <div style="background:rgba(39,174,96,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:var(--green)">✅ Ret.OK</div><div style="font-weight:700">${total.rc}</div></div>
+        <div style="background:rgba(255,165,0,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:orange">⚠️ Semi</div><div style="font-weight:700">${total.rsc}</div></div>
+        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">❌ N-C</div><div style="font-weight:700">${total.rnc}</div></div>
+        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">⛔ Ret.SI</div><div style="font-weight:700">${total.rsi}</div></div>
+      </div>`;
+    // Pré-remplir le calculateur manuel avec ces stats
+    document.getElementById('p-avsi').value = total.avsi;
+    document.getElementById('p-avc').value = total.avc;
+    document.getElementById('p-rc').value = total.rc;
+    document.getElementById('p-rsc').value = total.rsc;
+    document.getElementById('p-rnc').value = total.rnc;
+    document.getElementById('p-rsi').value = total.rsi;
+    calcRegularite();
+  } catch(e) {}
+}
+
+function saeChange(delta) {
+  saeCount = Math.max(0, saeCount + delta);
+  document.getElementById('sae-count').textContent = saeCount;
+  document.getElementById('sae-deduct').textContent = `−${saeCount*50}€`;
+  calcRegularite();
+}
+
+// ══ THÈME CLAIR / SOMBRE ═════════════════════════════════════
+function initTheme() {
+  const saved = localStorage.getItem('chronoligne_theme') || 'dark';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  const btn = document.getElementById('theme-btn');
+  if(theme === 'light') {
+    document.documentElement.classList.add('light');
+    if(btn) btn.textContent = '☀️';
+  } else {
+    document.documentElement.classList.remove('light');
+    if(btn) btn.textContent = '🌙';
+  }
+  localStorage.setItem('chronoligne_theme', theme);
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.classList.contains('light');
+  applyTheme(isLight ? 'dark' : 'light');
+}
+
 // ══ WAKE LOCK ════════════════════════════════════════════════
 let wakeLock = null;
 async function requestWakeLock() {
@@ -3382,7 +4572,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ══ BOOT ═════════════════════════════════════════════════════
+initTheme();
 initDB();
+heuresInit();
 updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
