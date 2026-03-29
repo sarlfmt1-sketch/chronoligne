@@ -459,6 +459,15 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <input type="checkbox" id="heures-mai" style="width:16px;height:16px;accent-color:#6495ed">
         <span>🌹 1er Mai <span style="color:#6495ed;font-weight:700">+110€</span></span>
       </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);padding:6px 10px;border-radius:8px"
+        onclick="heuresToggleRepos(this)">
+        <input type="checkbox" id="heures-repos" style="width:16px;height:16px;accent-color:#27ae60">
+        <span>😴 Repos <span style="color:#27ae60;font-weight:700">0h</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(255,120,0,.1);border:1px solid rgba(255,120,0,.3);padding:6px 10px;border-radius:8px">
+        <input type="checkbox" id="heures-suppl" style="width:16px;height:16px;accent-color:#ff7800">
+        <span>➕ Jour supplémentaire</span>
+      </label>
     </div>
     <button class="btn" onclick="heuresAjouter()" style="width:100%;background:var(--green);color:#000;font-weight:700">+ Ajouter cette journée</button>
   </div>
@@ -1013,6 +1022,30 @@ const REAL_LINES = [
 
 // ══ TRAJETS PRÉCHARGÉS ════════════════════════════════════════
 const PRELOADED_SERVICES = [
+  {
+    num: 'Repos',
+    jour: 'semaine',
+    depotDepart: '00:00',
+    depotRetour: '00:00',
+    heures: 0,
+    trips: []
+  },
+  {
+    num: 'Repos',
+    jour: 'samedi',
+    depotDepart: '00:00',
+    depotRetour: '00:00',
+    heures: 0,
+    trips: []
+  },
+  {
+    num: 'Repos',
+    jour: 'dimanche',
+    depotDepart: '00:00',
+    depotRetour: '00:00',
+    heures: 0,
+    trips: []
+  },
   {
     num: '7',
     jour: 'semaine',
@@ -4471,12 +4504,13 @@ function heuresRender() {
 
   const jours = (heuresData[mois] || []).sort((a,b) => a.date.localeCompare(b.date));
 
-  // Cumul mois
-  const totalMin = jours.reduce((acc, j) => acc + Math.round(j.heures * 60), 0);
+  // Cumul mois (hors repos)
+  const joursTravailles = jours.filter(j => !j.repos);
+  const totalMin = joursTravailles.reduce((acc, j) => acc + Math.round(j.heures * 60), 0);
   const totalH = Math.floor(totalMin / 60);
   const totalM = totalMin % 60;
   document.getElementById('heures-total').textContent = `${totalH}h${String(totalM).padStart(2,'0')}`;
-  document.getElementById('heures-jours').textContent = jours.length;
+  document.getElementById('heures-jours').textContent = `${joursTravailles.length}${jours.length > joursTravailles.length ? '+'+( jours.length - joursTravailles.length)+'R' : ''}`;
 
   // Quatorzaine — 14 jours glissants depuis aujourd'hui
   const QUOTA_Q14 = 74;
@@ -4546,6 +4580,8 @@ function heuresRender() {
 
     // Badges primes
     let badges = '';
+    if(j.repos) badges += `<span style="background:rgba(39,174,96,.2);color:#27ae60;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">😴 Repos</span>`;
+    if(j.suppl) badges += `<span style="background:rgba(255,120,0,.2);color:#ff7800;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">➕ Suppl.</span>`;
     if(j.heuresNuit > 0) badges += `<span style="background:rgba(100,149,237,.2);color:#6495ed;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌙 ${j.heuresNuit}h nuit</span>`;
     if(j.dimanche) badges += `<span style="background:rgba(255,193,7,.2);color:#ffc107;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌅 55€</span>`;
     if(j.ferie) badges += `<span style="background:rgba(231,76,60,.2);color:#e74c3c;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🎉 55€+7h24</span>`;
@@ -4553,8 +4589,8 @@ function heuresRender() {
 
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:4px;
-      background:rgba(255,255,255,.03);border:1px solid ${inQ14?'rgba(0,212,255,.25)':'var(--border)'};border-radius:10px">
-      <div style="width:44px;text-align:center;background:${inQ14?'rgba(0,212,255,.15)':'rgba(255,255,255,.05)'};border-radius:8px;padding:4px">
+      background:${j.repos?'rgba(39,174,96,.05)':'rgba(255,255,255,.03)'};border:1px solid ${j.repos?'rgba(39,174,96,.3)':inQ14?'rgba(0,212,255,.25)':'var(--border)'};border-radius:10px">
+      <div style="width:44px;text-align:center;background:${j.repos?'rgba(39,174,96,.15)':inQ14?'rgba(0,212,255,.15)':'rgba(255,255,255,.05)'};border-radius:8px;padding:4px">
         <div style="font-size:10px;color:var(--muted)">${nomJour}</div>
         <div style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;line-height:1">${numJour}</div>
       </div>
@@ -4573,13 +4609,17 @@ function heuresRender() {
   let nbDim = jours.filter(j=>j.dimanche).length;
   let nbFerie = jours.filter(j=>j.ferie).length;
   let nbMai = jours.filter(j=>j.premierMai).length;
+  let nbRepos = jours.filter(j=>j.repos).length;
+  let nbSuppl = jours.filter(j=>j.suppl).length;
   let totalNuitMin = jours.reduce((acc,j)=>acc+Math.round((j.heuresNuit||0)*60),0);
   const primesCard = document.getElementById('heures-primes-card');
   const primesContent = document.getElementById('heures-primes-content');
 
-  if(nbDim||nbFerie||nbMai||totalNuitMin>0) {
+  if(nbDim||nbFerie||nbMai||totalNuitMin>0||nbRepos>0||nbSuppl>0) {
     primesCard.style.display = 'block';
     let lines = [];
+    if(nbRepos) lines.push(`😴 ${nbRepos} jour(s) de repos`);
+    if(nbSuppl) lines.push(`➕ ${nbSuppl} jour(s) supplémentaire(s) de travail`);
     if(nbDim) lines.push(`🌅 ${nbDim} dimanche(s) × 55€ = <strong>${nbDim*55}€</strong>`);
     if(nbFerie) lines.push(`🎉 ${nbFerie} jour(s) férié(s) × 55€ = <strong>${nbFerie*55}€</strong> + ${nbFerie}×7h24 indemnisées`);
     if(nbMai) lines.push(`🌹 ${nbMai} × 1er Mai = <strong>${nbMai*110}€</strong>`);
@@ -4600,6 +4640,18 @@ function heuresAutoFillSvc(num) {
   if(!num) {
     info.innerHTML = 'Entrez un numéro de service';
     info.style.color = 'var(--muted)';
+    return;
+  }
+
+  // Cas spécial : Repos
+  if(num.toLowerCase() === 'repos') {
+    document.getElementById('heures-repos').checked = true;
+    document.getElementById('heures-val').value = '0';
+    document.getElementById('heures-val').disabled = true;
+    document.getElementById('heures-val').style.opacity = '0.4';
+    document.getElementById('heures-note').value = 'Repos';
+    info.innerHTML = `😴 <strong>Journée de repos</strong> — 0h`;
+    info.style.color = '#27ae60';
     return;
   }
   // Chercher dans les feuilles enregistrées (tous les jours)
@@ -4650,22 +4702,44 @@ function heuresAutoFillSvc(num) {
   toast(`✅ Service ${num} : ${hStr} chargées`);
 }
 
+function heuresToggleRepos(label) {
+  // Laisser le checkbox changer naturellement, puis réagir
+  setTimeout(() => {
+    const checked = document.getElementById('heures-repos').checked;
+    const valInput = document.getElementById('heures-val');
+    const noteInput = document.getElementById('heures-note');
+    if(checked) {
+      valInput.value = '0';
+      valInput.disabled = true;
+      valInput.style.opacity = '0.4';
+      if(!noteInput.value) noteInput.value = 'Repos';
+    } else {
+      valInput.value = '';
+      valInput.disabled = false;
+      valInput.style.opacity = '1';
+      if(noteInput.value === 'Repos') noteInput.value = '';
+    }
+  }, 10);
+}
+
 function heuresAjouter() {
   const date = document.getElementById('heures-date').value;
-  const val = parseFloat(document.getElementById('heures-val').value);
+  const repos = document.getElementById('heures-repos').checked;
+  const suppl = document.getElementById('heures-suppl').checked;
+  const val = repos ? 0 : parseFloat(document.getElementById('heures-val').value);
   const heuresNuit = parseFloat(document.getElementById('heures-nuit').value)||0;
-  const note = document.getElementById('heures-note').value.trim();
+  const note = document.getElementById('heures-note').value.trim() || (repos ? 'Repos' : '');
   const dimanche = document.getElementById('heures-dimanche').checked;
   const ferie = document.getElementById('heures-ferie').checked;
   const premierMai = document.getElementById('heures-mai').checked;
 
   if(!date) { toast('Choisissez une date'); return; }
-  if(isNaN(val) || val <= 0) { toast('Entrez un nombre d\'heures valide'); return; }
+  if(!repos && (isNaN(val) || val < 0)) { toast('Entrez un nombre d\'heures valide'); return; }
 
   const mois = date.substring(0, 7);
   if(!heuresData[mois]) heuresData[mois] = [];
 
-  const entry = { date, heures: val, heuresNuit, note, dimanche, ferie, premierMai };
+  const entry = { date, heures: val, heuresNuit, note, dimanche, ferie, premierMai, repos, suppl };
   const idx = heuresData[mois].findIndex(j => j.date === date);
   if(idx >= 0) heuresData[mois][idx] = entry;
   else heuresData[mois].push(entry);
@@ -4677,11 +4751,15 @@ function heuresAjouter() {
   document.getElementById('heures-svc-num').value = '';
   document.getElementById('heures-svc-info').innerHTML = 'Entrez un numéro de service';
   document.getElementById('heures-val').value = '';
+  document.getElementById('heures-val').disabled = false;
+  document.getElementById('heures-val').style.opacity = '1';
   document.getElementById('heures-nuit').value = '';
   document.getElementById('heures-note').value = '';
   document.getElementById('heures-dimanche').checked = false;
   document.getElementById('heures-ferie').checked = false;
   document.getElementById('heures-mai').checked = false;
+  document.getElementById('heures-repos').checked = false;
+  document.getElementById('heures-suppl').checked = false;
 
   // Avancer la date au lendemain
   const next = new Date(date+'T12:00:00');
@@ -4786,13 +4864,23 @@ function exportHeuresPDF() {
   <script>window.onload=()=>window.print()<\/script>
   </body></html>`;
 
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `heures-${mois}.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  toast('📄 PDF prêt — ouvrez le fichier et imprimez !');
+  // Ouvrir dans un nouvel onglet → Ctrl+P pour imprimer/sauvegarder en PDF
+  const newTab = window.open('', '_blank');
+  if(newTab) {
+    newTab.document.write(html);
+    newTab.document.close();
+    toast('📄 Ouvert dans un nouvel onglet — faites Ctrl+P pour sauvegarder en PDF');
+  } else {
+    // Fallback si popup bloqué : télécharger en HTML
+    const b64 = btoa(unescape(encodeURIComponent(html)));
+    const a = document.createElement('a');
+    a.href = 'data:text/html;charset=utf-8;base64,' + b64;
+    a.download = `heures-${mois}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast('📄 Fichier téléchargé — ouvrez-le et faites Ctrl+P pour imprimer');
+  }
 }
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
