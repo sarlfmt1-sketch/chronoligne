@@ -93,7 +93,7 @@ nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--
 
 /* INPUTS */
 input[type=text], input[type=number], input[type=time], select, textarea {
-  background: rgba(255,255,255,.05);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -334,21 +334,21 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div class="card">
       <div class="card-title">➕ Ajouter un trajet</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <select id="svc-add-line" onchange="svcRenderTripOptions()" style="flex:1;min-width:120px;padding:7px 8px;font-size:13px">
+        <select id="svc-add-line" onchange="svcRenderTripOptions()" style="flex:1;min-width:120px;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
           <option value="">— Ligne —</option>
         </select>
-        <select id="svc-add-trip" style="flex:1;min-width:140px;padding:7px 8px;font-size:13px">
+        <select id="svc-add-trip" style="flex:1;min-width:140px;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
           <option value="">— Trajet —</option>
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end">
         <div style="flex:1">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Heure 1er arrêt</div>
-          <input type="time" id="svc-first-time" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace">
+          <input type="time" id="svc-first-time" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
         </div>
         <div style="width:80px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Intervalle (min)</div>
-          <input type="number" id="svc-interval" value="1" min="1" max="30" style="width:100%;padding:7px 8px;font-size:15px;text-align:center">
+          <input type="number" id="svc-interval" value="1" min="1" max="30" style="width:100%;padding:7px 8px;font-size:15px;text-align:center;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
         </div>
       </div>
       <button class="btn" onclick="svcAddTrip()" style="width:100%;background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">
@@ -412,6 +412,20 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <!-- Saisie rapide -->
   <div class="card">
     <div class="card-title">➕ Ajouter une journée</div>
+
+    <!-- Champ feuille de service auto -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🗂 N° feuille de service (remplissage auto)</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="heures-svc-num" placeholder="ex: 7" inputmode="numeric"
+          style="width:80px;padding:7px 8px;font-size:16px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace"
+          oninput="heuresAutoFillSvc(this.value)">
+        <div id="heures-svc-info" style="flex:1;display:flex;align-items:center;font-size:12px;color:var(--muted);padding:0 6px;border:1px solid var(--border);border-radius:8px;min-height:36px">
+          Entrez un numéro de service
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px">
       <div style="flex:1;min-width:110px">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Date</div>
@@ -652,16 +666,18 @@ const PRELOADED_GPS = {
     aller: {
       'Gare de Cergy Le Haut RER':         { lat: 49.04737965622506,  lon: 2.0104025106434573 },
       'Gare de Cergy-le-Haut':             { lat: 49.04737965622506,  lon: 2.0104025106434573 },
-      "L'Orangerie":                        { lat: 49.04492244340146,  lon: 2.010650813504841  },
+      "L'Orangerie":                       { lat: 49.04492244340146,  lon: 2.010650813504841  },
       'Rond-Point du Golf':                { lat: 49.039556815027524, lon: 2.015841081082946  },
       'Boris Vian':                        { lat: 49.03541643676511,  lon: 2.017824841376038  },
       'La Bussie':                         { lat: 49.03283389331437,  lon: 2.020226288039761  },
       'La Croix Lieu':                     { lat: 49.030521253736744, lon: 2.0218382331651257 },
+      'La Marniere':                       { lat: 49.023447067659504, lon: 2.0221804568847395 },
       'La Marnière':                       { lat: 49.023447067659504, lon: 2.0221804568847395 },
       'Les Valanchards':                   { lat: 49.020505604851984, lon: 2.0216121325529257 },
       'Les Tremblays':                     { lat: 49.01302430636136,  lon: 2.028015204567672  },
       'Le Noyer':                          { lat: 49.01046997100391,  lon: 2.031726660032525  },
       'Les Forboeufs':                     { lat: 49.00864848514245,  lon: 2.0354862812164245 },
+      'Theatre de Jouy-le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
       'Théâtre de Jouy-le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
       'Théâtre de Jouy-Le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
       'Les Jouannes':                      { lat: 49.010731184802694, lon: 2.046964561909822  },
@@ -672,12 +688,38 @@ const PRELOADED_GPS = {
       'Mairie / Neuville':                 { lat: 49.013389184203064, lon: 2.062729515930422  },
       'Les Trembles':                      { lat: 49.01497947184223,  lon: 2.0704719637535334 },
       'Gay Lussac':                        { lat: 49.01592006507906,  lon: 2.0767505420730474 },
+      'Gare de Neuville Universite':       { lat: 49.01507894285911,  lon: 2.0803782493302885 },
       'Gare de Neuville Université':       { lat: 49.01507894285911,  lon: 2.0803782493302885 },
+    },
+    retour: {
+      'Gare de Neuville Université':       { lat: 49.014693358937166, lon: 2.0794597480620065 },
+      'Gay Lussac':                        { lat: 49.01579222144282,  lon: 2.075244137572436  },
+      'Les Trembles':                      { lat: 49.0149416294449,   lon: 2.0699885420333852 },
+      'Mairie (Neuville-sur-Oise)':        { lat: 49.01345771174113,  lon: 2.06252211241823   },
+      'Mairie / Neuville':                 { lat: 49.01345771174113,  lon: 2.06252211241823   },
+      'Le Pont':                           { lat: 49.014429666162656, lon: 2.059314036261135  },
+      'Croix Saint-Jacques':               { lat: 49.01189996779862,  lon: 2.0527158460082995 },
+      'Vignes Blanches':                   { lat: 49.011169615581984, lon: 2.0495410399189318 },
+      'Les Jouannes':                      { lat: 49.01087949846797,  lon: 2.0458386571293468 },
+      'Théâtre de Jouy-le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
+      'Théâtre de Jouy-Le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
+      'Les Forboeufs':                     { lat: 49.00885313934888,  lon: 2.0343426116935275 },
+      'Le Noyer':                          { lat: 49.011259161114126, lon: 2.030460020297543  },
+      'Les Tremblays':                     { lat: 49.013860955691904, lon: 2.0271965064697874 },
+      'Les Valanchards':                   { lat: 49.021477354291214, lon: 2.022144763457037  },
+      'La Marnière':                       { lat: 49.02450748544444,  lon: 2.022348874784385  },
+      'La Croix Lieu':                     { lat: 49.03097828578289,  lon: 2.021760261919941  },
+      'La Bussie':                         { lat: 49.03328055718771,  lon: 2.0204515935823517 },
+      'Boris Vian':                        { lat: 49.036339735958116, lon: 2.0170367349198473 },
+      'Rond-Point du Golf':                { lat: 49.0408201670701,   lon: 2.014977269303095  },
+      "L'Orangerie":                       { lat: 49.04445309689046,  lon: 2.0102860658347064 },
+      'Gare de Cergy Le Haut RER':         { lat: 49.04735038823243,  lon: 2.0108171432807374 },
+      'Gare de Cergy-le-Haut':             { lat: 49.04735038823243,  lon: 2.0108171432807374 },
     },
     dimanche_aller: {
       'Gare de Cergy Le Haut RER':         { lat: 49.04737965622506,  lon: 2.0104025106434573 },
       'Gare de Cergy-le-Haut':             { lat: 49.04737965622506,  lon: 2.0104025106434573 },
-      "L'Orangerie":                        { lat: 49.04492244340146,  lon: 2.010650813504841  },
+      "L'Orangerie":                       { lat: 49.04492244340146,  lon: 2.010650813504841  },
       'Rond-Point du Golf':                { lat: 49.039556815027524, lon: 2.015841081082946  },
       'Boris Vian':                        { lat: 49.03541643676511,  lon: 2.017824841376038  },
       'La Bussie':                         { lat: 49.03283389331437,  lon: 2.020226288039761  },
@@ -699,7 +741,6 @@ const PRELOADED_GPS = {
       'Croix Saint-Jacques':               { lat: 49.01178950199553,  lon: 2.053150925556433  },
       'Le Pont':                           { lat: 49.014187267091124, lon: 2.059600970443417  },
       'Mairie (Neuville-sur-Oise)':        { lat: 49.013389184203064, lon: 2.062729515930422  },
-      'Mairie / Neuville':                 { lat: 49.013389184203064, lon: 2.062729515930422  },
       'Les Trembles':                      { lat: 49.01497947184223,  lon: 2.0704719637535334 },
       'Gay Lussac':                        { lat: 49.01592006507906,  lon: 2.0767505420730474 },
       'Gare de Neuville Université':       { lat: 49.01507894285911,  lon: 2.0803782493302885 },
@@ -707,7 +748,7 @@ const PRELOADED_GPS = {
     dimanche_retour: {
       'Gare de Cergy Le Haut RER':         { lat: 49.04735038823243,  lon: 2.0108171432807374 },
       'Gare de Cergy-le-Haut':             { lat: 49.04735038823243,  lon: 2.0108171432807374 },
-      "L'Orangerie":                        { lat: 49.04445309689046,  lon: 2.0102860658347064 },
+      "L'Orangerie":                       { lat: 49.04445309689046,  lon: 2.0102860658347064 },
       'Rond-Point du Golf':                { lat: 49.0408201670701,   lon: 2.014977269303095  },
       'Boris Vian':                        { lat: 49.036339735958116, lon: 2.0170367349198473 },
       'La Bussie':                         { lat: 49.03328055718771,  lon: 2.0204515935823517 },
@@ -723,16 +764,61 @@ const PRELOADED_GPS = {
       'Le Noyer':                          { lat: 49.011259161114126, lon: 2.030460020297543  },
       'Les Forboeufs':                     { lat: 49.00885313934888,  lon: 2.0343426116935275 },
       'Théâtre de Jouy-le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
-      'Théâtre de Jouy-Le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
       'Les Jouannes':                      { lat: 49.01087949846797,  lon: 2.0458386571293468 },
       'Vignes Blanches':                   { lat: 49.011169615581984, lon: 2.0495410399189318 },
       'Croix Saint-Jacques':               { lat: 49.01189996779862,  lon: 2.0527158460082995 },
       'Le Pont':                           { lat: 49.014429666162656, lon: 2.059314036261135  },
       'Mairie (Neuville-sur-Oise)':        { lat: 49.01345771174113,  lon: 2.06252211241823   },
-      'Mairie / Neuville':                 { lat: 49.01345771174113,  lon: 2.06252211241823   },
       'Les Trembles':                      { lat: 49.0149416294449,   lon: 2.0699885420333852 },
       'Gay Lussac':                        { lat: 49.01579222144282,  lon: 2.075244137572436  },
       'Gare de Neuville Université':       { lat: 49.014693358937166, lon: 2.0794597480620065 },
+    },
+  },
+  '1233': {
+    aller: {
+      'Gare de Pontoise':                  { lat: 49.04702710110386,  lon: 2.0960888305510443 },
+      'Hotel Dieu':                        { lat: 49.047862421271056, lon: 2.1004255279573636 },
+      'Hôtel Dieu':                        { lat: 49.047862421271056, lon: 2.1004255279573636 },
+      'La Poste':                          { lat: 49.0463407166317,   lon: 2.105894522836202  },
+      'Mairie / Saint-Ouen-l Aumone':      { lat: 49.04494844702823,  lon: 2.107410482072154  },
+      'Clos du Roi':                       { lat: 49.04163855871768,  lon: 2.1123290261806593 },
+      'M. de l Hospital':                  { lat: 49.03974292185531,  lon: 2.115554418496785  },
+      'Lycee Edmond Rostand':              { lat: 49.038403092256516, lon: 2.117536570898232  },
+      'Lycée Edmond Rostand':              { lat: 49.038403092256516, lon: 2.117536570898232  },
+      'Louis Delage':                      { lat: 49.03557737528448,  lon: 2.1226247214440788 },
+      'Gare de Liesse':                    { lat: 49.03358855104339,  lon: 2.128206398299348  },
+      'Gare de Liesse (Quai D)':           { lat: 49.03358855104339,  lon: 2.128206398299348  },
+      'La Chaufferie':                     { lat: 49.030332216640396, lon: 2.118863904692647  },
+      'Les Bellevues':                     { lat: 49.027422767423225, lon: 2.1164900313603323 },
+      'Fernand Chatelain':                 { lat: 49.02416904730314,  lon: 2.111976042926811  },
+      'Fernand Châtelain':                 { lat: 49.02416904730314,  lon: 2.111976042926811  },
+      'Route de Pierrelaye':               { lat: 49.0218508509087,   lon: 2.109285787264761  },
+      'Les Beaux Vents':                   { lat: 49.02076910624347,  lon: 2.106410459140238  },
+      'L Ourcq-La Marne':                  { lat: 49.020216791759694, lon: 2.103465393679927  },
+      'La Challe':                         { lat: 49.018173504402725, lon: 2.1007302147863927 },
+      'Pincevents':                        { lat: 49.01791023797377,  lon: 2.096892874895388  },
+      'Gare de Neuville Université':       { lat: 49.01507892808754,  lon: 2.0803825629895467 },
+    },
+    retour: {
+      'Gare de Neuville Université':       { lat: 49.01460651988268,  lon: 2.0794521957759    },
+      'Pincevents':                        { lat: 49.01760671276208,  lon: 2.097226164338647  },
+      'La Challe':                         { lat: 49.01804685298433,  lon: 2.1005692822586166 },
+      'L Ourcq-La Marne':                  { lat: 49.02005320699918,  lon: 2.1033232366137247 },
+      'Les Beaux Vents':                   { lat: 49.02055275449159,  lon: 2.1068449769652338 },
+      'Route de Pierrelaye':               { lat: 49.022362692622586, lon: 2.1101360474531785 },
+      'Fernand Châtelain':                 { lat: 49.02488488732654,  lon: 2.1129818712254127 },
+      'Les Bellevues':                     { lat: 49.028045349822726, lon: 2.1174797664061558 },
+      'La Chaufferie':                     { lat: 49.03020559616266,  lon: 2.11893364212135   },
+      'Gare de Liesse (Quai C)':           { lat: 49.03364834002122,  lon: 2.128217127134533  },
+      'Gare de Liesse':                    { lat: 49.03364834002122,  lon: 2.128217127134533  },
+      'Louis Delage':                      { lat: 49.035693431535826, lon: 2.1226998232903744 },
+      'Lycée Edmond Rostand':              { lat: 49.038911247091946, lon: 2.1172951721065676 },
+      'M. de l Hospital':                  { lat: 49.04026864564804,  lon: 2.114916052803273  },
+      'Clos du Roi':                       { lat: 49.042172520427464, lon: 2.111514447869272  },
+      'Mairie / Saint-Ouen-l Aumone':      { lat: 49.0450502862501,   lon: 2.107554753435206  },
+      'La Poste':                          { lat: 49.04665786350898,  lon: 2.1062318959096022 },
+      'Hôtel Dieu':                        { lat: 49.047389621287856, lon: 2.099819588232544  },
+      'Gare de Pontoise':                  { lat: 49.047211386467666, lon: 2.0955233441970793 },
     },
   },
   '1239': {
@@ -744,15 +830,18 @@ const PRELOADED_GPS = {
       'Le Bontemps':                       { lat: 49.052621045599345, lon: 2.022193235574009  },
       'Le Hazay':                          { lat: 49.05310093020736,  lon: 2.0173598949992435 },
       'Les Explorateurs':                  { lat: 49.05257006857465,  lon: 2.008255136485625  },
+      'Les Gres':                          { lat: 49.04899569109122,  lon: 2.0041079133918878 },
       'Les Grès':                          { lat: 49.04899569109122,  lon: 2.0041079133918878 },
       'Gare de Cergy-le-Haut':             { lat: 49.047289565754745, lon: 2.0102126210891242 },
       'Gare de Cergy Le Haut RER':         { lat: 49.047289565754745, lon: 2.0102126210891242 },
+      'Fief a Cavan':                      { lat: 49.04717968963269,  lon: 2.0077892453017747 },
       'Fief à Cavan':                      { lat: 49.04717968963269,  lon: 2.0077892453017747 },
       'Rond-Point du Miroir':              { lat: 49.044126794248406, lon: 2.0058205038545673 },
       'Les Coudraies':                     { lat: 49.04172950452116,  lon: 2.0044580111461032 },
-      "Bois d'Aton":                       { lat: 49.03965477031302,  lon: 2.002436966622668  },
+      'Bois d Aton':                       { lat: 49.03965477031302,  lon: 2.002436966622668  },
       'Place Claire Girard':               { lat: 49.0347707439459,   lon: 2.000530017809718  },
       'Saint-Martin':                      { lat: 49.031562183141496, lon: 1.9976938454915216 },
+      'La Jachere':                        { lat: 49.029382534733024, lon: 1.9918022080112188 },
       'La Jachère':                        { lat: 49.029382534733024, lon: 1.9918022080112188 },
       'Les Gros Saules':                   { lat: 49.0282478879918,   lon: 1.9884995929413176 },
       'Pasteur':                           { lat: 49.02617130179248,  lon: 1.9831227412190147 },
@@ -773,7 +862,7 @@ const PRELOADED_GPS = {
       'La Jachère':                        { lat: 49.029501199937215, lon: 1.9923946175489913 },
       'Saint-Martin':                      { lat: 49.03161893361431,  lon: 1.9983334679336329 },
       'Place Claire Girard':               { lat: 49.0357170070255,   lon: 2.0002220098022865 },
-      "Bois d'Aton":                       { lat: 49.03989829232278,  lon: 2.0027400562166466 },
+      'Bois d Aton':                       { lat: 49.03989829232278,  lon: 2.0027400562166466 },
       'Les Coudraies':                     { lat: 49.0425189357205,   lon: 2.005150021015541  },
       'Rond-Point du Miroir':              { lat: 49.04572930199905,  lon: 2.006816944480753  },
       'Fief à Cavan':                      { lat: 49.04754887244725,  lon: 2.008812507957552  },
@@ -787,117 +876,71 @@ const PRELOADED_GPS = {
       'La Constellation':                  { lat: 49.05119015335867,  lon: 2.030756187848474  },
       'Gare de Cergy Saint-Christophe':    { lat: 49.04989721715703,  lon: 2.0351120952843904 },
       'Cergy Saint-Christophe RER':        { lat: 49.04989721715703,  lon: 2.0351120952843904 },
-    }
-  },
-  '1240': {
-    aller: {
-      'Lycée St Christophe':              { lat: 49.0445575704631,   lon: 2.031334085331838  },
-      'Lycée St-Christophe':              { lat: 49.0445575704631,   lon: 2.031334085331838  },
-      'Parc Saint-Christophe':            { lat: 49.042034614795824, lon: 2.0301083158223068 },
-      'Rond-Point du Cèdre':              { lat: 49.04374883206284,  lon: 2.028498990394353  },
-      'Avenue de L\'Embellie':            { lat: 49.04537156996186,  lon: 2.0258355568862876 },
-      'Avenue de l\'Embellie':            { lat: 49.04537156996186,  lon: 2.0258355568862876 },
-      'Rond-Point du Chêne':              { lat: 49.046473876343754, lon: 2.0241323541548364 },
-      'Avenue du Terroir':                { lat: 49.047681638534996, lon: 2.0168179702350675 },
-      'Cergy Le Haut RER':                { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'Gare de Cergy-le-Haut':            { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'L\'Orangerie':                     { lat: 49.04492325655677,  lon: 2.01065157160205   },
-      'Rond-Point du Golf':               { lat: 49.03955900494868,  lon: 2.015852374905099  },
-      'Boris Vian':                       { lat: 49.03558335378159,  lon: 2.0167455505085874 },
-      'Auguste Blanqui':                  { lat: 49.03024271542343,  lon: 2.01459710108766   },
-      'Le Boulingrin':                    { lat: 49.02625400832726,  lon: 2.0174187849564587 },
-      'Simone Signoret':                  { lat: 49.0239921919631,   lon: 2.0202243755827562 },
-      'La Marnière':                      { lat: 49.02379520152943,  lon: 2.023730022695042  },
-      'Mendès France':                    { lat: 49.02282958538658,  lon: 2.0273510048598995 },
-      'Georges Brassens':                 { lat: 49.02028084242109,  lon: 2.026289231802025  },
-      'Les Valanchards':                  { lat: 49.02067816646437,  lon: 2.0232676714761175 },
-      'La Siaule':                        { lat: 49.02099073013078,  lon: 2.016891680690493  },
-      'La Siaule (Terminus Vauréal)':     { lat: 49.02099073013078,  lon: 2.016891680690493  },
     },
-    retour: {
-      'Gare de Cergy Saint-Christophe':   { lat: 49.049842176313504, lon: 2.0338714550551185 },
-      'Cergy Saint-Christophe RER':       { lat: 49.049842176313504, lon: 2.0338714550551185 },
-      'Mondétour':                         { lat: 49.04699970406002,  lon: 2.0307492930346696 },
-      'Lycée St Christophe':              { lat: 49.04531153580798,  lon: 2.030636543316956  },
-      'Lycée St-Christophe':              { lat: 49.04531153580798,  lon: 2.030636543316956  },
-      'Parc Saint-Christophe':            { lat: 49.0423785051161,   lon: 2.0303781117298083 },
-      'Rond-Point du Cèdre':              { lat: 49.043107681323,    lon: 2.0300725923291623 },
-      'Avenue de L\'Embellie':            { lat: 49.044501815967855, lon: 2.0269586443504477 },
-      'Avenue de l\'Embellie':            { lat: 49.044501815967855, lon: 2.0269586443504477 },
-      'Rond-Point du Chêne':              { lat: 49.04639140936518,  lon: 2.02395045310139   },
-      'Avenue du Terroir':                { lat: 49.04749021597102,  lon: 2.0179654058903362 },
-      'Cergy Le Haut RER':                { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'Gare de Cergy-le-Haut':            { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'L\'Orangerie':                     { lat: 49.04445560218143,  lon: 2.0102804173087336 },
-      'Rond-Point du Golf':               { lat: 49.040817415844295, lon: 2.0149846330809527 },
-      'Boris Vian':                       { lat: 49.03633414696784,  lon: 2.0170449306622213 },
-      'Auguste Blanqui':                  { lat: 49.03164306378642,  lon: 2.0154863173178876 },
-      'Le Boulingrin':                    { lat: 49.02686095554842,  lon: 2.0165024269030942 },
-      'Simone Signoret':                  { lat: 49.02426957835989,  lon: 2.018713595364022  },
-      'La Marnière':                      { lat: 49.0240912194989,   lon: 2.021404756906729  },
-      'Mendès France':                    { lat: 49.02327705564318,  lon: 2.026636682140986  },
-      'Georges Brassens':                 { lat: 49.020540696012205, lon: 2.02647028450575   },
-      'Les Valanchards':                  { lat: 49.02081349935408,  lon: 2.0225951398528204 },
-      'La Siaule':                        { lat: 49.02099073013078,  lon: 2.016891680690493  },
-      'La Siaule (Terminus Vauréal)':     { lat: 49.02099073013078,  lon: 2.016891680690493  },
-    }
   },
   '1240': {
     aller: {
-      'Gare de Cergy Saint-Christophe':   { lat: 49.049842176313504, lon: 2.0338714550551185 },
-      'Cergy Saint-Christophe RER':       { lat: 49.049842176313504, lon: 2.0338714550551185 },
+      'Gare de Cergy Saint-Christophe':    { lat: 49.049842176313504, lon: 2.0338714550551185 },
+      'Cergy Saint-Christophe RER':        { lat: 49.049842176313504, lon: 2.0338714550551185 },
+      'Mondetour':                         { lat: 49.04746364577048,  lon: 2.030955893892222  },
       'Mondétour':                         { lat: 49.04746364577048,  lon: 2.030955893892222  },
-      'Lycée St Christophe':              { lat: 49.0445575704631,   lon: 2.031334085331838  },
-      'Lycée St-Christophe':              { lat: 49.0445575704631,   lon: 2.031334085331838  },
-      'Parc Saint-Christophe':            { lat: 49.042034614795824, lon: 2.0301083158223068 },
-      'Rond-Point du Cèdre':              { lat: 49.04374883206284,  lon: 2.028498990394353  },
-      'Avenue de L\'Embellie':            { lat: 49.04537156996186,  lon: 2.0258355568862876 },
-      'Avenue de l\'Embellie':            { lat: 49.04537156996186,  lon: 2.0258355568862876 },
-      'Rond-Point du Chêne':              { lat: 49.046473876343754, lon: 2.0241323541548364 },
-      'Avenue du Terroir':                { lat: 49.047681638534996, lon: 2.0168179702350675 },
-      'Cergy Le Haut RER':                { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'Gare de Cergy-le-Haut':            { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'L\'Orangerie':                     { lat: 49.04492325655677,  lon: 2.01065157160205   },
-      'Rond-Point du Golf':               { lat: 49.03955900494868,  lon: 2.015852374905099  },
-      'Boris Vian':                       { lat: 49.03558335378159,  lon: 2.0167455505085874 },
-      'Auguste Blanqui':                  { lat: 49.03024271542343,  lon: 2.01459710108766   },
-      'Le Boulingrin':                    { lat: 49.02625400832726,  lon: 2.0174187849564587 },
-      'Simone Signoret':                  { lat: 49.0239921919631,   lon: 2.0202243755827562 },
-      'La Marnière':                      { lat: 49.02379520152943,  lon: 2.023730022695042  },
-      'Mendès France':                    { lat: 49.02282958538658,  lon: 2.0273510048598995 },
-      'Georges Brassens':                 { lat: 49.02028084242109,  lon: 2.026289231802025  },
-      'Les Valanchards':                  { lat: 49.02067816646437,  lon: 2.0232676714761175 },
-      'La Siaule':                        { lat: 49.02099073013078,  lon: 2.016891680690493  },
-      'La Siaule (Terminus Vauréal)':     { lat: 49.02099073013078,  lon: 2.016891680690493  },
+      'Lycee St Christophe':               { lat: 49.0445575704631,   lon: 2.031334085331838  },
+      'Lycée St Christophe':               { lat: 49.0445575704631,   lon: 2.031334085331838  },
+      'Lycée St-Christophe':               { lat: 49.0445575704631,   lon: 2.031334085331838  },
+      'Parc Saint-Christophe':             { lat: 49.042034614795824, lon: 2.0301083158223068 },
+      'Rond-Point du Cedre':               { lat: 49.04374883206284,  lon: 2.028498990394353  },
+      'Rond-Point du Cèdre':               { lat: 49.04374883206284,  lon: 2.028498990394353  },
+      'Avenue de l Embellie':              { lat: 49.04537156996186,  lon: 2.0258355568862876 },
+      'Avenue de L Embellie':              { lat: 49.04537156996186,  lon: 2.0258355568862876 },
+      'Rond-Point du Chene':               { lat: 49.046473876343754, lon: 2.0241323541548364 },
+      'Rond-Point du Chêne':               { lat: 49.046473876343754, lon: 2.0241323541548364 },
+      'Avenue du Terroir':                 { lat: 49.047681638534996, lon: 2.0168179702350675 },
+      'Cergy Le Haut RER':                 { lat: 49.047490015921476, lon: 2.010600609729363  },
+      'Gare de Cergy-le-Haut':             { lat: 49.047490015921476, lon: 2.010600609729363  },
+      'L Orangerie':                       { lat: 49.04492325655677,  lon: 2.01065157160205   },
+      "L'Orangerie":                       { lat: 49.04492325655677,  lon: 2.01065157160205   },
+      'Rond-Point du Golf':                { lat: 49.03955900494868,  lon: 2.015852374905099  },
+      'Boris Vian':                        { lat: 49.03558335378159,  lon: 2.0167455505085874 },
+      'Auguste Blanqui':                   { lat: 49.03024271542343,  lon: 2.01459710108766   },
+      'Le Boulingrin':                     { lat: 49.02625400832726,  lon: 2.0174187849564587 },
+      'Simone Signoret':                   { lat: 49.0239921919631,   lon: 2.0202243755827562 },
+      'La Marnière':                       { lat: 49.02379520152943,  lon: 2.023730022695042  },
+      'Mendes France':                     { lat: 49.02282958538658,  lon: 2.0273510048598995 },
+      'Mendès France':                     { lat: 49.02282958538658,  lon: 2.0273510048598995 },
+      'Georges Brassens':                  { lat: 49.02028084242109,  lon: 2.026289231802025  },
+      'Les Valanchards':                   { lat: 49.02067816646437,  lon: 2.0232676714761175 },
+      'La Siaule':                         { lat: 49.02099073013078,  lon: 2.016891680690493  },
+      'La Siaule (Terminus Vaureal)':      { lat: 49.02099073013078,  lon: 2.016891680690493  },
+      'La Siaule (Terminus Vauréal)':      { lat: 49.02099073013078,  lon: 2.016891680690493  },
     },
     retour: {
-      'Gare de Cergy Saint-Christophe':   { lat: 49.049842176313504, lon: 2.0338714550551185 },
-      'Cergy Saint-Christophe RER':       { lat: 49.049842176313504, lon: 2.0338714550551185 },
+      'Gare de Cergy Saint-Christophe':    { lat: 49.049842176313504, lon: 2.0338714550551185 },
+      'Cergy Saint-Christophe RER':        { lat: 49.049842176313504, lon: 2.0338714550551185 },
       'Mondétour':                         { lat: 49.04699970406002,  lon: 2.0307492930346696 },
-      'Lycée St Christophe':              { lat: 49.04531153580798,  lon: 2.030636543316956  },
-      'Lycée St-Christophe':              { lat: 49.04531153580798,  lon: 2.030636543316956  },
-      'Parc Saint-Christophe':            { lat: 49.0423785051161,   lon: 2.0303781117298083 },
-      'Rond-Point du Cèdre':              { lat: 49.043107681323,    lon: 2.0300725923291623 },
-      'Avenue de L\'Embellie':            { lat: 49.044501815967855, lon: 2.0269586443504477 },
-      'Avenue de l\'Embellie':            { lat: 49.044501815967855, lon: 2.0269586443504477 },
-      'Rond-Point du Chêne':              { lat: 49.04639140936518,  lon: 2.02395045310139   },
-      'Avenue du Terroir':                { lat: 49.04749021597102,  lon: 2.0179654058903362 },
-      'Cergy Le Haut RER':                { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'Gare de Cergy-le-Haut':            { lat: 49.047490015921476, lon: 2.010600609729363  },
-      'L\'Orangerie':                     { lat: 49.04445560218143,  lon: 2.0102804173087336 },
-      'Rond-Point du Golf':               { lat: 49.040817415844295, lon: 2.0149846330809527 },
-      'Boris Vian':                       { lat: 49.03633414696784,  lon: 2.0170449306622213 },
-      'Auguste Blanqui':                  { lat: 49.03164306378642,  lon: 2.0154863173178876 },
-      'Le Boulingrin':                    { lat: 49.02686095554842,  lon: 2.0165024269030942 },
-      'Simone Signoret':                  { lat: 49.02426957835989,  lon: 2.018713595364022  },
-      'La Marnière':                      { lat: 49.0240912194989,   lon: 2.021404756906729  },
-      'Mendès France':                    { lat: 49.02327705564318,  lon: 2.026636682140986  },
-      'Georges Brassens':                 { lat: 49.020540696012205, lon: 2.02647028450575   },
-      'Les Valanchards':                  { lat: 49.02081349935408,  lon: 2.0225951398528204 },
-      'La Siaule':                        { lat: 49.02099073013078,  lon: 2.016891680690493  },
-      'La Siaule (Terminus Vauréal)':     { lat: 49.02099073013078,  lon: 2.016891680690493  },
-    }
-  }
+      'Lycée St Christophe':               { lat: 49.04531153580798,  lon: 2.030636543316956  },
+      'Lycée St-Christophe':               { lat: 49.04531153580798,  lon: 2.030636543316956  },
+      'Parc Saint-Christophe':             { lat: 49.0423785051161,   lon: 2.0303781117298083 },
+      'Rond-Point du Cèdre':               { lat: 49.043107681323,    lon: 2.0300725923291623 },
+      'Avenue de l Embellie':              { lat: 49.044501815967855, lon: 2.0269586443504477 },
+      'Avenue de L Embellie':              { lat: 49.044501815967855, lon: 2.0269586443504477 },
+      'Rond-Point du Chêne':               { lat: 49.04639140936518,  lon: 2.02395045310139   },
+      'Avenue du Terroir':                 { lat: 49.04749021597102,  lon: 2.0179654058903362 },
+      'Cergy Le Haut RER':                 { lat: 49.047490015921476, lon: 2.010600609729363  },
+      'Gare de Cergy-le-Haut':             { lat: 49.047490015921476, lon: 2.010600609729363  },
+      "L'Orangerie":                       { lat: 49.04445560218143,  lon: 2.0102804173087336 },
+      'Rond-Point du Golf':                { lat: 49.040817415844295, lon: 2.0149846330809527 },
+      'Boris Vian':                        { lat: 49.03633414696784,  lon: 2.0170449306622213 },
+      'Auguste Blanqui':                   { lat: 49.03164306378642,  lon: 2.0154863173178876 },
+      'Le Boulingrin':                     { lat: 49.02686095554842,  lon: 2.0165024269030942 },
+      'Simone Signoret':                   { lat: 49.02426957835989,  lon: 2.018713595364022  },
+      'La Marnière':                       { lat: 49.0240912194989,   lon: 2.021404756906729  },
+      'Mendès France':                     { lat: 49.02327705564318,  lon: 2.026636682140986  },
+      'Georges Brassens':                  { lat: 49.020540696012205, lon: 2.02647028450575   },
+      'Les Valanchards':                   { lat: 49.02081349935408,  lon: 2.0225951398528204 },
+      'La Siaule':                         { lat: 49.02099073013078,  lon: 2.016891680690493  },
+      'La Siaule (Terminus Vauréal)':      { lat: 49.02099073013078,  lon: 2.016891680690493  },
+    },
+  },
 };
 
 function installPreloadedGPS() {
@@ -942,8 +985,6 @@ let svcTrips = [];
 let editingServiceIdx = -1;
 let svcFilter = 'semaine';
 
-</script>
-<script>
 // ══ LIGNES RÉELLES ════════════════════════════════════════════
 const REAL_LINES = [
   { num:'1201', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#9b59b6' },
@@ -1593,16 +1634,26 @@ const PRELOADED_TRIPS = {
     {
       direction: 'aller', label: '📅 Circuit 34 min — Pontoise → Pontoise (semaine)',
       stops: [
-        {name:'Gare de Pontoise Canrobert', intervalAfter:5},
-        {name:'Plateau Saint-Martin', intervalAfter:5},
-        {name:'Gare de Cergy Préfecture - Quai D', intervalAfter:3},
-        {name:'Oise Hautil - Préfecture RER', intervalAfter:2},
-        {name:'Les Larris', intervalAfter:5},
-        {name:'Les Touleuses', intervalAfter:3},
-        {name:'Les Plants - Préfecture RER', intervalAfter:2},
-        {name:'Gare de Cergy Préfecture - Quai G', intervalAfter:4},
-        {name:'Plateau Saint-Martin', intervalAfter:5},
-        {name:'Gare de Pontoise Canrobert', intervalAfter:0},
+        {name:'Gare de Pontoise Canrobert',        intervalAfter:2},
+        {name:'Avenue du Premier Dragon',           intervalAfter:1},
+        {name:'Escadrons',                          intervalAfter:1},
+        {name:'Plateau Saint-Martin',               intervalAfter:3},
+        {name:'Gare de Cergy Préfecture - Quai D',  intervalAfter:2},
+        {name:'Oise Hautil - Préfecture RER',       intervalAfter:1},
+        {name:'Palette',                            intervalAfter:1},
+        {name:'Les Larris',                         intervalAfter:2},
+        {name:'Les Bocages',                        intervalAfter:1},
+        {name:'Ecole des Maradas',                  intervalAfter:0},
+        {name:'Marché des Touleuses',               intervalAfter:1},
+        {name:'Les Touleuses',                      intervalAfter:1},
+        {name:'Château Saint-Sylvère',              intervalAfter:1},
+        {name:'Conseil Départemental',              intervalAfter:1},
+        {name:'Les Plants - Préfecture RER',        intervalAfter:2},
+        {name:'Gare de Cergy Préfecture - Quai G',  intervalAfter:4},
+        {name:'Plateau Saint-Martin',               intervalAfter:1},
+        {name:'Escadrons',                          intervalAfter:1},
+        {name:'Avenue du Premier Dragon',           intervalAfter:2},
+        {name:'Gare de Pontoise Canrobert',         intervalAfter:0},
       ]
     },
     {
@@ -2408,17 +2459,18 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Hôpital René Dubos → Gare Cergy-Préfecture (9 arrêts, 16 min)',
+      direction: 'retour', label: 'Hôpital René Dubos → Gare Cergy-Préfecture (10 arrêts, 23 min)',
       stops: [
-        {name:'Hôpital René Dubos', intervalAfter:2},
-        {name:'Alsace Bretagne', intervalAfter:2},
-        {name:'Boblingen', intervalAfter:2},
-        {name:'Place de la Paix', intervalAfter:2},
-        {name:'Normandie', intervalAfter:2},
-        {name:'Croix Saint Siméon', intervalAfter:2},
-        {name:'Marcouville', intervalAfter:2},
-        {name:'Les Marjoberts', intervalAfter:2},
-        {name:'Gare de Cergy Préfecture - Quai B', intervalAfter:0},
+        {name:'Hôpital René Dubos',                          intervalAfter:1},
+        {name:'Alsace Bretagne',                             intervalAfter:2},
+        {name:'Boblingen',                                   intervalAfter:1},
+        {name:'Place de la Paix',                            intervalAfter:2},
+        {name:'Normandie',                                   intervalAfter:1},
+        {name:'Croix Saint Siméon',                         intervalAfter:6},
+        {name:'Marcouville',                                 intervalAfter:7},
+        {name:'Les Marjoberts',                              intervalAfter:1},
+        {name:'Université des Chênes - Préfecture RER',      intervalAfter:2},
+        {name:'Gare de Cergy Préfecture - Quai B',           intervalAfter:0},
       ]
     },
   ],
@@ -2426,69 +2478,101 @@ const PRELOADED_TRIPS = {
     {
       direction: 'aller', label: '🌙 Aller 22 min — Cergy Le Haut → Neuville (nuit/très tôt)',
       stops: [
-        {name:'Gare de Cergy Le Haut RER', intervalAfter:3},
-        {name:'Rond-Point du Golf', intervalAfter:2},
-        {name:'La Bussie', intervalAfter:1},
-        {name:'La Croix Lieu', intervalAfter:1},
-        {name:'La Marnière', intervalAfter:1},
-        {name:'Les Valanchards', intervalAfter:4},
-        {name:'Le Noyer', intervalAfter:1},
-        {name:'Les Forboeufs', intervalAfter:2},
-        {name:'Les Jouannes', intervalAfter:1},
-        {name:'Croix Saint-Jacques', intervalAfter:2},
-        {name:'Le Pont', intervalAfter:4},
-        {name:'Gare de Neuville Université', intervalAfter:0},
+        {name:'Gare de Cergy Le Haut RER',           intervalAfter:1},
+        {name:"L'Orangerie",                          intervalAfter:3},
+        {name:'Rond-Point du Golf',                   intervalAfter:1},
+        {name:'Boris Vian',                           intervalAfter:1},
+        {name:'La Bussie',                            intervalAfter:1},
+        {name:'La Croix Lieu',                        intervalAfter:2},
+        {name:'La Marnière',                          intervalAfter:1},
+        {name:'Les Valanchards',                      intervalAfter:3},
+        {name:'Les Tremblays',                        intervalAfter:1},
+        {name:'Le Noyer',                             intervalAfter:1},
+        {name:'Les Forboeufs',                        intervalAfter:1},
+        {name:'Théâtre de Jouy-le-Moutier',           intervalAfter:1},
+        {name:'Les Jouannes',                         intervalAfter:1},
+        {name:'Vignes Blanches',                      intervalAfter:0},
+        {name:'Croix Saint-Jacques',                  intervalAfter:2},
+        {name:'Le Pont',                              intervalAfter:0},
+        {name:'Mairie (Neuville-sur-Oise)',            intervalAfter:2},
+        {name:'Les Trembles',                         intervalAfter:1},
+        {name:'Gay Lussac',                           intervalAfter:1},
+        {name:'Gare de Neuville Université',          intervalAfter:0},
       ]
     },
     {
-      direction: 'aller', label: '🌅 Aller 23 min — Cergy Le Haut → Neuville (matin léger)',
+      direction: 'aller', label: '🌅 Aller 24 min — Cergy Le Haut → Neuville (matin léger)',
       stops: [
-        {name:'Gare de Cergy Le Haut RER', intervalAfter:3},
-        {name:'Rond-Point du Golf', intervalAfter:2},
-        {name:'La Bussie', intervalAfter:1},
-        {name:'La Croix Lieu', intervalAfter:1},
-        {name:'La Marnière', intervalAfter:1},
-        {name:'Les Valanchards', intervalAfter:4},
-        {name:'Le Noyer', intervalAfter:1},
-        {name:'Les Forboeufs', intervalAfter:2},
-        {name:'Les Jouannes', intervalAfter:1},
-        {name:'Croix Saint-Jacques', intervalAfter:2},
-        {name:'Le Pont', intervalAfter:5},
-        {name:'Gare de Neuville Université', intervalAfter:0},
+        {name:'Gare de Cergy Le Haut RER',           intervalAfter:1},
+        {name:"L'Orangerie",                          intervalAfter:3},
+        {name:'Rond-Point du Golf',                   intervalAfter:1},
+        {name:'Boris Vian',                           intervalAfter:1},
+        {name:'La Bussie',                            intervalAfter:1},
+        {name:'La Croix Lieu',                        intervalAfter:2},
+        {name:'La Marnière',                          intervalAfter:1},
+        {name:'Les Valanchards',                      intervalAfter:3},
+        {name:'Les Tremblays',                        intervalAfter:1},
+        {name:'Le Noyer',                             intervalAfter:1},
+        {name:'Les Forboeufs',                        intervalAfter:1},
+        {name:'Théâtre de Jouy-le-Moutier',           intervalAfter:1},
+        {name:'Les Jouannes',                         intervalAfter:1},
+        {name:'Vignes Blanches',                      intervalAfter:0},
+        {name:'Croix Saint-Jacques',                  intervalAfter:2},
+        {name:'Le Pont',                              intervalAfter:0},
+        {name:'Mairie (Neuville-sur-Oise)',            intervalAfter:2},
+        {name:'Les Trembles',                         intervalAfter:1},
+        {name:'Gay Lussac',                           intervalAfter:1},
+        {name:'Gare de Neuville Université',          intervalAfter:0},
       ]
     },
     {
-      direction: 'aller', label: '🌄 Aller 25 min — Cergy Le Haut → Neuville (matin)',
+      direction: 'aller', label: '🌄 Aller 24 min — Cergy Le Haut → Neuville (journée)',
       stops: [
-        {name:'Gare de Cergy Le Haut RER', intervalAfter:3},
-        {name:'Rond-Point du Golf', intervalAfter:2},
-        {name:'La Bussie', intervalAfter:1},
-        {name:'La Croix Lieu', intervalAfter:2},
-        {name:'La Marnière', intervalAfter:1},
-        {name:'Les Valanchards', intervalAfter:4},
-        {name:'Le Noyer', intervalAfter:1},
-        {name:'Les Forboeufs', intervalAfter:3},
-        {name:'Les Jouannes', intervalAfter:1},
-        {name:'Croix Saint-Jacques', intervalAfter:2},
-        {name:'Le Pont', intervalAfter:5},
-        {name:'Gare de Neuville Université', intervalAfter:0},
+        {name:'Gare de Cergy Le Haut RER',           intervalAfter:1},
+        {name:"L'Orangerie",                          intervalAfter:3},
+        {name:'Rond-Point du Golf',                   intervalAfter:1},
+        {name:'Boris Vian',                           intervalAfter:1},
+        {name:'La Bussie',                            intervalAfter:1},
+        {name:'La Croix Lieu',                        intervalAfter:2},
+        {name:'La Marnière',                          intervalAfter:1},
+        {name:'Les Valanchards',                      intervalAfter:3},
+        {name:'Les Tremblays',                        intervalAfter:1},
+        {name:'Le Noyer',                             intervalAfter:1},
+        {name:'Les Forboeufs',                        intervalAfter:1},
+        {name:'Théâtre de Jouy-le-Moutier',           intervalAfter:1},
+        {name:'Les Jouannes',                         intervalAfter:1},
+        {name:'Vignes Blanches',                      intervalAfter:0},
+        {name:'Croix Saint-Jacques',                  intervalAfter:2},
+        {name:'Le Pont',                              intervalAfter:0},
+        {name:'Mairie (Neuville-sur-Oise)',            intervalAfter:2},
+        {name:'Les Trembles',                         intervalAfter:1},
+        {name:'Gay Lussac',                           intervalAfter:1},
+        {name:'Gare de Neuville Université',          intervalAfter:0},
       ]
     },
     {
       direction: 'aller', label: '🚦 Aller 29 min — Cergy Le Haut → Neuville (heure de pointe)',
       stops: [
-        {name:'Gare de Cergy Le Haut RER', intervalAfter:4},
-        {name:'Rond-Point du Golf', intervalAfter:2},
-        {name:'La Bussie', intervalAfter:1},
-        {name:'La Croix Lieu', intervalAfter:3},
-        {name:'La Marnière', intervalAfter:1},
-        {name:'Les Valanchards', intervalAfter:5},
-        {name:'Le Noyer', intervalAfter:1},
-        {name:'Les Forboeufs', intervalAfter:3},
-        {name:'Les Jouannes', intervalAfter:1},
-        {name:'Croix Saint-Jacques', intervalAfter:2},
-        {name:'Le Pont', intervalAfter:6},
-        {name:'Gare de Neuville Université', intervalAfter:0},
+        {name:'Gare de Cergy Le Haut RER',           intervalAfter:1},
+        {name:"L'Orangerie",                          intervalAfter:3},
+        {name:'Rond-Point du Golf',                   intervalAfter:1},
+        {name:'Boris Vian',                           intervalAfter:1},
+        {name:'La Bussie',                            intervalAfter:1},
+        {name:'La Croix Lieu',                        intervalAfter:2},
+        {name:'La Marnière',                          intervalAfter:1},
+        {name:'Les Valanchards',                      intervalAfter:3},
+        {name:'Les Tremblays',                        intervalAfter:1},
+        {name:'Le Noyer',                             intervalAfter:1},
+        {name:'Les Forboeufs',                        intervalAfter:1},
+        {name:'Théâtre de Jouy-le-Moutier',           intervalAfter:1},
+        {name:'Les Jouannes',                         intervalAfter:1},
+        {name:'Vignes Blanches',                      intervalAfter:0},
+        {name:'Croix Saint-Jacques',                  intervalAfter:2},
+        {name:'Le Pont',                              intervalAfter:0},
+        {name:'Mairie (Neuville-sur-Oise)',            intervalAfter:2},
+        {name:'Les Trembles',                         intervalAfter:1},
+        {name:'Gay Lussac',                           intervalAfter:1},
+        {name:'Gare de Neuville Université',          intervalAfter:0},
       ]
     },
     {
@@ -3448,8 +3532,6 @@ const PRELOADED_TRIPS = {
   ],
 };
 
-</script>
-<script>
 // ══ DB ════════════════════════════════════════════════════════
 function initDB() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -3706,6 +3788,40 @@ let editorLineIdx = -1;
 let editorTripIdx = -1;
 let editorStops = [];
 
+// ══ MÉMOIRE DES INTERVALLES PAR ARRÊT ════════════════════════
+const INTERVALS_KEY = 'chronoligne_intervals';
+
+function intervalsKey(lineNum, tripLabel, stopName) {
+  return `${lineNum}||${tripLabel}||${stopName}`;
+}
+
+function loadSavedIntervals() {
+  try { return JSON.parse(localStorage.getItem(INTERVALS_KEY)||'{}'); } catch(e) { return {}; }
+}
+
+function saveStopIntervals(lineNum, tripLabel, stops) {
+  const db_int = loadSavedIntervals();
+  stops.forEach(s => {
+    if(s.intervalAfter !== undefined) {
+      db_int[intervalsKey(lineNum, tripLabel, s.name)] = s.intervalAfter;
+    }
+  });
+  localStorage.setItem(INTERVALS_KEY, JSON.stringify(db_int));
+}
+
+function applyStoredIntervals(lineNum, tripLabel, stops) {
+  const db_int = loadSavedIntervals();
+  let applied = 0;
+  stops.forEach(s => {
+    const key = intervalsKey(lineNum, tripLabel, s.name);
+    if(db_int[key] !== undefined) {
+      s.intervalAfter = db_int[key];
+      applied++;
+    }
+  });
+  return applied;
+}
+
 function openTripEditor(lineIdx, tripIdx) {
   editorLineIdx = lineIdx;
   editorTripIdx = tripIdx;
@@ -3715,6 +3831,8 @@ function openTripEditor(lineIdx, tripIdx) {
   document.getElementById('editor-label').value = trip.label;
   document.getElementById('editor-dir').value = trip.direction||'aller';
   editorStops = JSON.parse(JSON.stringify(trip.stops));
+  const applied = applyStoredIntervals(line.num, trip.label, editorStops);
+  if(applied > 0) toast(`⏱ ${applied} intervalle(s) mémorisé(s) restaurés`);
   renderEditorStops();
   showView('view-editor');
 }
@@ -3789,13 +3907,17 @@ function editorRemoveStop(i) {
 function saveEditorTrip() {
   const label = document.getElementById('editor-label').value.trim();
   if(!label) { toast('Entrez un nom de trajet'); return; }
+  const line = db.lines[editorLineIdx];
+  const stops = JSON.parse(JSON.stringify(editorStops));
   db.lines[editorLineIdx].trips[editorTripIdx] = {
     direction: document.getElementById('editor-dir').value,
     label,
-    stops: JSON.parse(JSON.stringify(editorStops))
+    stops
   };
   saveDB();
-  toast('✅ Trajet enregistré !');
+  // Mémoriser les intervalles pour la prochaine fois
+  saveStopIntervals(line.num, label, stops);
+  toast('✅ Trajet enregistré + intervalles mémorisés !');
   showView('view-lines');
   renderLineDetail(editorLineIdx);
 }
@@ -3869,7 +3991,12 @@ function renderSvcList() {
         <div style="padding:12px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
           ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''}</div>` : ''}
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-            ${s.trips.length} trajet(s) : ${s.trips.map(t=>t.label).join(' → ')}
+            ${s.trips.map(t => {
+              const num = t.lineNum || (t.label||'').match(/Ligne (\S+)/)?.[1] || '';
+              const color = t.lineColor || '#888';
+              const tripName = (t.label||'').replace(/^Ligne \S+ — /,'');
+              return `<span style="background:${color};color:#fff;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-right:2px">${num}</span>${tripName}`;
+            }).join(' → ')}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="startServiceDirect('${s.num}','${s.jour}');event.stopPropagation()" style="background:var(--green);color:#000;font-weight:700;flex:1">▶ Démarrer</button>
@@ -3888,7 +4015,11 @@ function renderSvcList() {
                 Service ${s.num}
               </div>
               <div style="font-size:11px;color:var(--muted)">
-                ${s.trips.map(t=>t.label.split('—')[0].trim()).join(' · ')}
+                ${s.trips.map(t => {
+                  const num = t.lineNum || (t.label||'').match(/Ligne (\S+)/)?.[1] || '';
+                  const color = t.lineColor || '#888';
+                  return `<span style="background:${color};color:#fff;padding:0px 5px;border-radius:4px;font-size:11px;font-weight:700">${num}</span>`;
+                }).join(' · ')}
                 ${s.heures ? ' · <span style="color:var(--green)">'+hDisplay(s.heures)+'</span>' : ''}
               </div>
             </div>
@@ -3944,17 +4075,25 @@ function deleteSvc(num, jour) {
   toast('Service supprimé');
 }
 
+function triggerDownload(content, filename) {
+  const blob = new Blob([content], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function downloadSvc(num, jour) {
   loadRoadmapServices();
   jour = jour || svcFilter;
   const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
   if(!svc) return;
-  const blob = new Blob([JSON.stringify({chronoligne_service:true,version:1,service:svc},null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `service-${svc.num}-${svc.jour}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+  const content = JSON.stringify({chronoligne_service:true, version:1, service:svc}, null, 2);
+  triggerDownload(content, `service-${svc.num}-${svc.jour}.json`);
   toast(`📥 Service ${svc.num} téléchargé !`);
 }
 
@@ -3963,12 +4102,8 @@ function downloadAllSvc() {
   if(!roadmapServices.length) { toast('Aucune feuille'); return; }
   const d = new Date();
   const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  const blob = new Blob([JSON.stringify({chronoligne_services:true,version:1,services:roadmapServices},null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `toutes-feuilles-${stamp}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+  const content = JSON.stringify({chronoligne_services:true, version:1, services:roadmapServices}, null, 2);
+  triggerDownload(content, `toutes-feuilles-${stamp}.json`);
   toast(`📥 ${roadmapServices.length} feuille(s) téléchargées !`);
 }
 
@@ -4050,9 +4185,13 @@ function svcAddTrip() {
   const tripIdx = parseInt(document.getElementById('svc-add-trip').value);
   if(isNaN(lineIdx)||isNaN(tripIdx)) { toast('Sélectionnez une ligne et un trajet'); return; }
   const firstTimeVal = document.getElementById('svc-first-time').value;
-  const interval = parseInt(document.getElementById('svc-interval').value)||1;
+  const intervalGlobal = parseInt(document.getElementById('svc-interval').value)||1;
   const line = db.lines[lineIdx];
   const trip = line.trips[tripIdx];
+
+  // Charger les intervalles mémorisés par arrêt
+  const db_int = loadSavedIntervals();
+
   let curMin;
   if(firstTimeVal) {
     const [h,m] = firstTimeVal.split(':').map(Number);
@@ -4061,18 +4200,26 @@ function svcAddTrip() {
     const now = new Date();
     curMin = now.getHours()*60+now.getMinutes();
   }
+
   const stops = trip.stops.map((s,i) => {
     const h = String(Math.floor(curMin/60)%24).padStart(2,'0');
     const m = String(curMin%60).padStart(2,'0');
     const time = `${h}:${m}`;
-    if(i < trip.stops.length-1) curMin += interval;
-    return {name:s.name, time, intervalAfter:interval};
+    // Utiliser l'intervalle mémorisé pour cet arrêt, sinon celui du trajet de base, sinon global
+    const savedInterval = db_int[intervalsKey(line.num, trip.label, s.name)];
+    const iv = savedInterval !== undefined ? savedInterval : (s.intervalAfter !== undefined ? s.intervalAfter : intervalGlobal);
+    if(i < trip.stops.length-1) curMin += iv;
+    return {name:s.name, time, intervalAfter:iv};
   });
-  svcTrips.push({ lineIdx, tripIdx, label:`Ligne ${line.num} — ${trip.label}`, stops });
+
+  svcTrips.push({ lineIdx, tripIdx, lineNum: line.num, lineColor: line.color, label:`Ligne ${line.num} — ${trip.label}`, stops });
   renderSvcTrips();
   const lastStop = stops[stops.length-1];
   document.getElementById('svc-first-time').value = lastStop.time;
-  toast('Trajet ajouté ✓');
+
+  // Compter combien d'intervalles mémorisés ont été appliqués
+  const nbMemo = stops.filter(s => db_int[intervalsKey(line.num, trip.label, s.name)] !== undefined).length;
+  toast(nbMemo > 0 ? `Trajet ajouté ✓ (${nbMemo} intervalles mémorisés)` : 'Trajet ajouté ✓');
 }
 
 function renderSvcTrips() {
@@ -4083,7 +4230,8 @@ function renderSvcTrips() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div>
           <span style="font-size:13px;color:var(--muted)">${String(ti+1).padStart(2,'0')}.</span>
-          <span style="font-size:14px;font-weight:700;color:var(--accent);margin-left:6px">${t.label}</span>
+          ${t.lineColor ? `<span style="background:${t.lineColor};color:#fff;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:700;margin-left:4px">${t.lineNum||''}</span>` : ''}
+          <span style="font-size:13px;font-weight:600;color:var(--text);margin-left:5px">${(t.label||'').replace(/^Ligne \S+ — /,'')}</span>
         </div>
         <div style="display:flex;gap:4px">
           ${ti>0?`<button class="up-btn" onclick="svcMoveTrip(${ti},-1)">▲</button>`:''}
@@ -4098,10 +4246,13 @@ function renderSvcTrips() {
           <tr>
             <td style="color:var(--muted);font-size:11px">${String(si+1).padStart(2,'0')}</td>
             <td style="font-size:12px">${s.name}</td>
-            <td><input type="time" id="stop-${ti}-${si}" value="${s.time}" step="60"
-              style="padding:5px 6px;font-size:15px;width:115px;font-family:'Share Tech Mono',monospace;
-                     border:2px solid var(--accent);border-radius:6px;background:rgba(0,212,255,.08);color:var(--text)"
-              onchange="svcUpdateStop(${ti},${si},this.value)"></td>
+            <td><input type="text" id="stop-${ti}-${si}" value="${s.time||'00:00'}" inputmode="numeric"
+              maxlength="5" placeholder="HH:MM"
+              style="padding:5px 6px;font-size:15px;width:80px;font-family:'Share Tech Mono',monospace;
+                     border:2px solid var(--accent);border-radius:6px;background:rgba(0,212,255,.08);color:var(--text);text-align:center"
+              oninput="svcFormatTimeInput(this,${ti},${si})"
+              onchange="svcUpdateStop(${ti},${si},this.value)"
+              onkeydown="svcStopNavKey(event,${ti},${si},${t.stops.length})"></td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -4113,6 +4264,36 @@ function renderSvcTrips() {
         <button class="btn btn-sm btn-ghost" onclick="svcRecalcTrip(${ti})" style="font-size:11px">🔄 Recalculer</button>
       </div>
     </div>`).join('');
+}
+
+function svcFormatTimeInput(el, ti, si) {
+  let v = el.value.replace(/\D/g, ''); // garder seulement les chiffres
+  if(v.length >= 3) v = v.slice(0,2) + ':' + v.slice(2,4);
+  else if(v.length === 2 && el._lastLen < 2) v = v + ':';
+  el._lastLen = v.length;
+  el.value = v;
+  // Si format complet HH:MM → mettre à jour
+  if(/^\d{2}:\d{2}$/.test(v)) svcUpdateStop(ti, si, v);
+}
+
+function svcStopNavKey(e, ti, si, total) {
+  if(e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+    e.preventDefault();
+    const cur = document.getElementById(`stop-${ti}-${si}`);
+    if(cur && /^\d{2}:\d{2}$/.test(cur.value)) svcUpdateStop(ti, si, cur.value);
+    const next = e.key === 'ArrowUp' ? si - 1 : si + 1;
+    if(next >= 0 && next < total) {
+      const target = document.getElementById(`stop-${ti}-${next}`);
+      if(target) {
+        target.focus();
+        // Sélectionner uniquement les minutes (position 3-5 = "MM")
+        setTimeout(() => {
+          target.setSelectionRange(3, 5);
+        }, 10);
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }
 }
 
 function svcUpdateStop(ti, si, val) {
@@ -4186,12 +4367,23 @@ function saveServiceEditor() {
   else roadmapServices.push(svc);
   saveRoadmapServices();
 
+  // Mémoriser les intervalles par arrêt pour chaque trajet
+  let totalMemo = 0;
+  svcTrips.forEach(t => {
+    const line = db.lines[t.lineIdx];
+    const trip = line?.trips[t.tripIdx];
+    if(line && trip) {
+      saveStopIntervals(line.num, trip.label, t.stops);
+      totalMemo += t.stops.length;
+    }
+  });
+
   if(heuresCalc) {
     const hh = Math.floor(heuresMin/60);
     const mm = String(heuresMin%60).padStart(2,'0');
-    toast(`✅ Service ${num} enregistré — ${hh}h${mm} calculées !`);
+    toast(`✅ Service ${num} enregistré — ${hh}h${mm} · intervalles mémorisés`);
   }
-  else toast(`✅ Service ${num} enregistré !`);
+  else toast(`✅ Service ${num} enregistré · intervalles mémorisés`);
   closeSvcEditor();
 }
 
@@ -4403,6 +4595,61 @@ function heuresRender() {
   }
 }
 
+function heuresAutoFillSvc(num) {
+  const info = document.getElementById('heures-svc-info');
+  if(!num) {
+    info.innerHTML = 'Entrez un numéro de service';
+    info.style.color = 'var(--muted)';
+    return;
+  }
+  // Chercher dans les feuilles enregistrées (tous les jours)
+  loadRoadmapServices();
+  // On prend la feuille qui correspond au jour courant en priorité, sinon la première trouvée
+  const today = new Date();
+  const jourMap = { 0:'dimanche', 1:'semaine', 2:'semaine', 3:'semaine', 4:'semaine', 5:'semaine', 6:'samedi' };
+  const jourAujourdhui = jourMap[today.getDay()];
+  let svc = roadmapServices.find(s => s.num === num && s.jour === jourAujourdhui);
+  if(!svc) svc = roadmapServices.find(s => s.num === num);
+
+  if(!svc) {
+    info.innerHTML = `❌ Service ${num} introuvable`;
+    info.style.color = 'var(--red)';
+    return;
+  }
+
+  // Calculer les heures si dépôt renseigné
+  if(!svc.heures || !svc.depotDepart || !svc.depotRetour) {
+    info.innerHTML = `⚠️ Service ${num} trouvé mais heures non renseignées`;
+    info.style.color = '#ffc107';
+    return;
+  }
+
+  const h = Math.floor(svc.heures);
+  const m = Math.round((svc.heures - h) * 60);
+  const hStr = m > 0 ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`;
+
+  // Remplir les champs
+  document.getElementById('heures-val').value = Math.round(svc.heures * 100) / 100;
+  document.getElementById('heures-note').value = `Service ${svc.num} (${svc.depotDepart}→${svc.depotRetour})`;
+
+  // Détecter heures de nuit (avant 6h ou après 21h)
+  let heuresNuit = 0;
+  if(svc.depotDepart && svc.depotRetour) {
+    const [hD, mD] = svc.depotDepart.split(':').map(Number);
+    const [hR, mR] = svc.depotRetour.split(':').map(Number);
+    const debutMin = hD * 60 + mD;
+    const finMin = hR * 60 + mR;
+    // Nuit = avant 6h (360 min) ou après 21h (1260 min)
+    const nuitAvant6 = Math.max(0, Math.min(debutMin, 360) === debutMin ? 360 - debutMin : 0);
+    if(debutMin < 360) heuresNuit = Math.round(((360 - debutMin) / 60) * 100) / 100;
+    if(heuresNuit > 0) document.getElementById('heures-nuit').value = heuresNuit;
+  }
+
+  info.innerHTML = `✅ <strong>Service ${svc.num}</strong> · ${svc.depotDepart} → ${svc.depotRetour} · <span style="color:var(--green);font-weight:700">${hStr}</span>${heuresNuit > 0 ? ` · 🌙 ${heuresNuit}h nuit` : ''}`;
+  info.style.color = 'var(--text)';
+  toast(`✅ Service ${num} : ${hStr} chargées`);
+}
+
 function heuresAjouter() {
   const date = document.getElementById('heures-date').value;
   const val = parseFloat(document.getElementById('heures-val').value);
@@ -4427,6 +4674,8 @@ function heuresAjouter() {
   heuresMoisCourant = mois;
 
   // Reset
+  document.getElementById('heures-svc-num').value = '';
+  document.getElementById('heures-svc-info').innerHTML = 'Entrez un numéro de service';
   document.getElementById('heures-val').value = '';
   document.getElementById('heures-nuit').value = '';
   document.getElementById('heures-note').value = '';
@@ -4448,10 +4697,10 @@ function heuresAjouter() {
 }
 
 function heuresSupprimer(mois, idx) {
-  if(!confirm('Supprimer cette journée ?')) return;
   heuresData[mois].splice(idx, 1);
   heuresSave();
   heuresRender();
+  toast('🗑 Journée supprimée');
 }
 
 function heuresMoisPrev() {
