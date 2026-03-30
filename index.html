@@ -4779,62 +4779,53 @@ function buildTripFromRef(lineNum, refStops, direction) {
     }
   });
 
-  // Interpoler les heures entre les arrêts de référence
+  // ── CORRECTION : tronquer entre le 1er et le dernier arrêt de référence ──
   const refIndices = allStops.map((s,i) => s.isRef ? i : -1).filter(i => i >= 0);
+  if(refIndices.length === 0) return null;
 
-  // Avant le premier arrêt de référence : extrapoler en arrière
-  if(refIndices.length > 0) {
-    const firstRefIdx = refIndices[0];
-    const firstRefMin = toMin(allStops[firstRefIdx].refTime);
-    // Calculer le temps total des intervalles jusqu'au premier ref
-    let totalBefore = 0;
-    for(let k=0; k<firstRefIdx; k++) totalBefore += (allStops[k].intervalAfter||1);
-    for(let k=0; k<firstRefIdx; k++) {
-      let cumul = 0;
-      for(let j=0; j<k; j++) cumul += (allStops[j].intervalAfter||1);
-      allStops[k].time = fromMin(firstRefMin - totalBefore + cumul);
-    }
-  }
+  const firstRefIdx = refIndices[0];
+  const lastRefIdx  = refIndices[refIndices.length - 1];
 
+  // Garder uniquement les arrêts entre le premier et le dernier arrêt INEO (inclus)
+  const trimmedStops = allStops.slice(firstRefIdx, lastRefIdx + 1);
+
+  // Recalculer refIndices sur le tableau tronqué
+  const trimmedRefIndices = trimmedStops.map((s,i) => s.isRef ? i : -1).filter(i => i >= 0);
+
+  // Interpoler les heures entre les arrêts de référence
   // Entre chaque paire de références : interpoler linéairement
-  for(let r=0; r<refIndices.length-1; r++) {
-    const idxA = refIndices[r], idxB = refIndices[r+1];
-    const tA = toMin(allStops[idxA].refTime);
-    const tB = toMin(allStops[idxB].refTime);
-    const totalInterval = allStops.slice(idxA, idxB).reduce((acc,s) => acc+(s.intervalAfter||1), 0);
+  for(let r=0; r<trimmedRefIndices.length-1; r++) {
+    const idxA = trimmedRefIndices[r], idxB = trimmedRefIndices[r+1];
+    const tA = toMin(trimmedStops[idxA].refTime);
+    const tB = toMin(trimmedStops[idxB].refTime);
+    const totalInterval = trimmedStops.slice(idxA, idxB).reduce((acc,s) => acc+(s.intervalAfter||1), 0);
     const scale = totalInterval > 0 ? (tB - tA) / totalInterval : 1;
 
     let cumul = 0;
     for(let k=idxA+1; k<idxB; k++) {
-      cumul += (allStops[k-1].intervalAfter||1);
-      allStops[k].time = fromMin(Math.round(tA + cumul * scale));
-    }
-  }
-
-  // Après le dernier arrêt de référence : extrapoler
-  if(refIndices.length > 0) {
-    const lastRefIdx = refIndices[refIndices.length-1];
-    const lastRefMin = toMin(allStops[lastRefIdx].refTime);
-    let cumul = 0;
-    for(let k=lastRefIdx+1; k<allStops.length; k++) {
-      cumul += (allStops[k-1].intervalAfter||1);
-      allStops[k].time = fromMin(lastRefMin + cumul);
+      cumul += (trimmedStops[k-1].intervalAfter||1);
+      trimmedStops[k].time = fromMin(Math.round(tA + cumul * scale));
     }
   }
 
   // Recalculer intervalAfter réel entre arrêts
-  allStops.forEach((s,i) => {
-    if(i < allStops.length-1 && s.time && allStops[i+1].time) {
-      const diff = toMin(allStops[i+1].time) - toMin(s.time);
+  trimmedStops.forEach((s,i) => {
+    if(i < trimmedStops.length-1 && s.time && trimmedStops[i+1].time) {
+      const diff = toMin(trimmedStops[i+1].time) - toMin(s.time);
       s.intervalAfter = Math.max(1, diff);
     }
   });
+  if(trimmedStops.length > 0) trimmedStops[trimmedStops.length-1].intervalAfter = 0;
+
+  // Construire le label avec vrai départ → terminus
+  const departName = trimmedStops[0].name;
+  const terminusName = trimmedStops[trimmedStops.length-1].name;
 
   return {
     lineNum,
     lineColor: dbLine.color,
-    label: `Ligne ${lineNum} — ${sourceTrip.label||''}`,
-    stops: allStops
+    label: `Ligne ${lineNum} — ${departName} → ${terminusName}`,
+    stops: trimmedStops
   };
 }
 
