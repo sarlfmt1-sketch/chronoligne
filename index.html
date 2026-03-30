@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>🚌 ChronoLigne PRO</title>
+
+<!-- PWA -->
+<meta name="application-name" content="ChronoLigne PRO">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ChronoLigne">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="description" content="Assistant timing chauffeur de bus — Réseau Cergy-Pontoise">
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -608,6 +619,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
+
+  <!-- Bouton installation PWA -->
+  <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
+    📱 Installer ChronoLigne sur ce téléphone
+  </button>
+
   <div class="card">
     <div class="card-title">⚙ Paramètres</div>
     <div style="margin-bottom:10px">
@@ -5862,6 +5879,32 @@ async function requestWakeLock() {
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState==='visible') requestWakeLock();
 });
+
+// ══ PWA INSTALL ══════════════════════════════════════════════
+let pwaInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pwaInstallPrompt = e;
+  const btn = document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  pwaInstallPrompt = null;
+  const btn = document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display = 'none';
+  toast('✅ ChronoLigne installé sur votre téléphone !');
+});
+function pwaInstall() {
+  if(pwaInstallPrompt) {
+    pwaInstallPrompt.prompt();
+    pwaInstallPrompt.userChoice.then(r => {
+      if(r.outcome==='accepted') toast('✅ Installation en cours...');
+      pwaInstallPrompt = null;
+    });
+  } else {
+    toast('Sur iOS : appuyez Partager 📤 → "Sur l\'écran d\'accueil"');
+  }
+}
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
