@@ -309,6 +309,21 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <button class="btn btn-ghost btn-sm" onclick="closeSvcEditor()">← Retour</button>
         <div class="card-title" style="margin:0;flex:1" id="svc-editor-title">Nouvelle feuille</div>
       </div>
+
+      <!-- Bouton import INEO -->
+      <button onclick="document.getElementById('ineo-import-panel').style.display=document.getElementById('ineo-import-panel').style.display==='none'?'block':'none'"
+        class="btn" style="width:100%;margin-bottom:10px;background:rgba(255,193,7,.15);border:1px solid rgba(255,193,7,.4);color:#ffc107;font-weight:700">
+        📋 Importer depuis feuille INEO
+      </button>
+      <div id="ineo-import-panel" style="display:none;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Collez le texte complet de votre feuille INEO :</div>
+        <textarea id="ineo-text" rows="8" placeholder="Collez ici le contenu de votre feuille INEO (PRISE DE SERVICE, HLP, ITINERAIRE...)"
+          style="width:100%;padding:8px;font-size:11px;font-family:monospace;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box"></textarea>
+        <button onclick="parseIneoFeuille()" class="btn" style="width:100%;margin-top:6px;background:#ffc107;color:#000;font-weight:700">
+          ⚡ Analyser et créer la feuille
+        </button>
+      </div>
+
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <input type="text" id="svc-num" placeholder="N° service (ex: 2030)" style="flex:1;min-width:130px;padding:8px 10px;font-size:18px;font-weight:700">
         <select id="svc-jour" style="flex:1;min-width:110px;padding:7px 8px;font-size:13px">
@@ -583,6 +598,11 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       Retard &gt;6min → <span style="color:#e74c3c">×0 (non-conforme)</span>
     </div>
   </div>
+
+  <!-- Export PDF prime -->
+  <button onclick="exportPrimePDF()" class="btn" style="width:100%;background:rgba(0,212,255,.12);border:1px solid var(--accent);color:var(--accent);font-weight:700;font-size:14px">
+    📄 Exporter bilan régularité PDF
+  </button>
 
 </div>
 
@@ -1046,10 +1066,214 @@ const PRELOADED_SERVICES = [
     heures: 0,
     trips: []
   },
-  {
-    num: '7',
+{
+    num: '10',
     jour: 'semaine',
-    depotDepart: '04:01',
+    depotDepart: '04:15',
+    depotRetour: '10:50',
+    heures: 6.58,
+    trips: [
+      {
+        lineNum: '1206', label: '1206 — Cergy Le Haut → Pontoise (6010) 04:45',
+        stops: [
+          { name: 'Gare de Cergy Le Haut RER',        time: '04:45' },
+          { name: 'Hérons',                            time: '04:47' },
+          { name: 'La Belle Heaumière',                time: '04:48' },
+          { name: 'Musaraigne',                        time: '04:50' },
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '04:53' },
+          { name: 'Centaure Martelet',                 time: '04:54' },
+          { name: 'Le Verger',                         time: '04:54' },
+          { name: 'Plaine des Sports',                 time: '04:57' },
+          { name: 'La Bruyère',                        time: '04:58' },
+          { name: 'Le Vauvarois',                      time: '04:59' },
+          { name: 'Gare d\'Osny',                      time: '05:01' },
+          { name: 'Square des Artistes',               time: '05:03' },
+          { name: 'Château de Grouchy',                time: '05:04' },
+          { name: 'Montgeroult',                       time: '05:05' },
+          { name: 'Voltigeurs',                        time: '05:06' },
+          { name: 'Réservoir',                         time: '05:07' },
+          { name: 'Lycée - Clinique Sainte Marie',     time: '05:08' },
+          { name: 'Oseraie',                           time: '05:09' },
+          { name: 'Demi Lieue',                        time: '05:11' },
+          { name: 'Croix Saint Siméon',                time: '05:12' },
+          { name: 'Boblingen',                         time: '05:13' },
+          { name: 'Louvrais',                          time: '05:14' },
+          { name: 'Nobel',                             time: '05:15' },
+          { name: 'Place de la Paix',                  time: '05:16' },
+          { name: 'Charles Bouticourt',                time: '05:17' },
+          { name: 'Hôpital Administration',            time: '05:18' },
+          { name: 'Hôpital René Dubos',                time: '05:19' },
+          { name: 'Alsace Bretagne',                   time: '05:20' },
+          { name: 'Normandie',                         time: '05:21' },
+          { name: 'Lycée Pissarro',                    time: '05:22' },
+          { name: 'Cimetière de Pontoise',             time: '05:23' },
+          { name: 'Citadelle',                         time: '05:24' },
+          { name: 'Cité Judiciaire',                   time: '05:25' },
+          { name: 'Quai du Pothuis',                   time: '05:26' },
+          { name: 'Hôtel Dieu',                        time: '05:27' },
+          { name: 'Gare de Pontoise',                  time: '05:28' },
+        ]
+      },
+      {
+        lineNum: '1206', label: '1206 — Cergy Le Haut → Pontoise (6010) 06:06',
+        stops: [
+          { name: 'Gare de Cergy Le Haut RER',        time: '06:06' },
+          { name: 'Hérons',                            time: '06:08' },
+          { name: 'La Belle Heaumière',                time: '06:09' },
+          { name: 'Musaraigne',                        time: '06:11' },
+          { name: 'Gare de Cergy Saint-Christophe RER', time: '06:14' },
+          { name: 'Centaure Martelet',                 time: '06:15' },
+          { name: 'Le Verger',                         time: '06:15' },
+          { name: 'Plaine des Sports',                 time: '06:18' },
+          { name: 'La Bruyère',                        time: '06:19' },
+          { name: 'Le Vauvarois',                      time: '06:20' },
+          { name: 'Gare d\'Osny',                      time: '06:22' },
+          { name: 'Square des Artistes',               time: '06:24' },
+          { name: 'Château de Grouchy',                time: '06:25' },
+          { name: 'Montgeroult',                       time: '06:26' },
+          { name: 'Voltigeurs',                        time: '06:27' },
+          { name: 'Réservoir',                         time: '06:28' },
+          { name: 'Lycée - Clinique Sainte Marie',     time: '06:29' },
+          { name: 'Oseraie',                           time: '06:30' },
+          { name: 'Demi Lieue',                        time: '06:32' },
+          { name: 'Croix Saint Siméon',                time: '06:33' },
+          { name: 'Boblingen',                         time: '06:34' },
+          { name: 'Louvrais',                          time: '06:35' },
+          { name: 'Nobel',                             time: '06:36' },
+          { name: 'Place de la Paix',                  time: '06:37' },
+          { name: 'Charles Bouticourt',                time: '06:38' },
+          { name: 'Hôpital Administration',            time: '06:39' },
+          { name: 'Hôpital René Dubos',                time: '06:40' },
+          { name: 'Alsace Bretagne',                   time: '06:41' },
+          { name: 'Normandie',                         time: '06:42' },
+          { name: 'Lycée Pissarro',                    time: '06:43' },
+          { name: 'Cimetière de Pontoise',             time: '06:44' },
+          { name: 'Citadelle',                         time: '06:45' },
+          { name: 'Cité Judiciaire',                   time: '06:46' },
+          { name: 'Quai du Pothuis',                   time: '06:47' },
+          { name: 'Hôtel Dieu',                        time: '06:48' },
+          { name: 'Gare de Pontoise',                  time: '06:49' },
+        ]
+      },
+      {
+        lineNum: '1233', label: '1233 — Pontoise → Neuville Université (3301) 07:05',
+        stops: [
+          { name: 'Gare de Pontoise',                  time: '07:05' },
+          { name: 'Hôtel Dieu',                        time: '07:07' },
+          { name: 'La Poste',                          time: '07:09' },
+          { name: 'Mairie / Saint-Ouen-L\'Aumône',     time: '07:11' },
+          { name: 'Clos du Roi',                       time: '07:13' },
+          { name: 'M. de L\'Hospital',                 time: '07:13' },
+          { name: 'Lycée Edmond Rostand',              time: '07:13' },
+          { name: 'Louis Delage',                      time: '07:15' },
+          { name: 'Gare de Liesse - Quai D',           time: '07:20' },
+          { name: 'La Chaufferie',                     time: '07:22' },
+          { name: 'Les Bellevues',                     time: '07:24' },
+          { name: 'Fernand Châtelain',                 time: '07:26' },
+          { name: 'Route Pierrrelaye',                 time: '07:26' },
+          { name: 'Les Beaux Vents',                   time: '07:28' },
+          { name: 'L\'Ourcq-La Marne',                 time: '07:29' },
+          { name: 'La Challe',                         time: '07:30' },
+          { name: 'Pincevents',                        time: '07:31' },
+          { name: 'Gare de Neuville Université',       time: '07:38' },
+        ]
+      },
+      {
+        lineNum: '1233', label: '1233 — Neuville Université → Pontoise (3302) 07:48',
+        stops: [
+          { name: 'Gare de Neuville Université',       time: '07:48' },
+          { name: 'Pincevents',                        time: '07:54' },
+          { name: 'La Challe',                         time: '07:56' },
+          { name: 'L\'Ourcq-La Marne',                 time: '07:57' },
+          { name: 'Les Beaux Vents',                   time: '07:58' },
+          { name: 'Route Pierrelaye',                  time: '08:00' },
+          { name: 'Fernand Châtelain',                 time: '08:01' },
+          { name: 'Les Bellevues',                     time: '08:03' },
+          { name: 'La Chaufferie',                     time: '08:05' },
+          { name: 'Gare de Liesse - Quai C',           time: '08:09' },
+          { name: 'Louis Delage',                      time: '08:11' },
+          { name: 'Lycée Edmond Rostand',              time: '08:13' },
+          { name: 'M. de L\'Hospital',                 time: '08:15' },
+          { name: 'Clos du Roi',                       time: '08:16' },
+          { name: 'Mairie / Saint-Ouen-L\'Aumône',     time: '08:17' },
+          { name: 'La Poste',                          time: '08:18' },
+          { name: 'Hôtel Dieu',                        time: '08:23' },
+          { name: 'Gare de Pontoise',                  time: '08:24' },
+        ]
+      },
+      {
+        lineNum: '1233', label: '1233 — Pontoise → Neuville Université (3301) 08:32',
+        stops: [
+          { name: 'Gare de Pontoise',                  time: '08:32' },
+          { name: 'Hôtel Dieu',                        time: '08:34' },
+          { name: 'La Poste',                          time: '08:38' },
+          { name: 'Mairie / Saint-Ouen-L\'Aumône',     time: '08:40' },
+          { name: 'Clos du Roi',                       time: '08:41' },
+          { name: 'M. de L\'Hospital',                 time: '08:42' },
+          { name: 'Lycée Edmond Rostand',              time: '08:43' },
+          { name: 'Louis Delage',                      time: '08:45' },
+          { name: 'Gare de Liesse - Quai D',           time: '08:49' },
+          { name: 'La Chaufferie',                     time: '08:51' },
+          { name: 'Les Bellevues',                     time: '08:53' },
+          { name: 'Fernand Châtelain',                 time: '08:55' },
+          { name: 'Route Pierrrelaye',                 time: '08:56' },
+          { name: 'Les Beaux Vents',                   time: '08:57' },
+          { name: 'L\'Ourcq-La Marne',                 time: '08:58' },
+          { name: 'La Challe',                         time: '08:59' },
+          { name: 'Pincevents',                        time: '09:00' },
+          { name: 'Gare de Neuville Université',       time: '09:07' },
+        ]
+      },
+      {
+        lineNum: '1233', label: '1233 — Neuville Université → Pontoise (3302) 09:12',
+        stops: [
+          { name: 'Gare de Neuville Université',       time: '09:12' },
+          { name: 'Pincevents',                        time: '09:18' },
+          { name: 'La Challe',                         time: '09:20' },
+          { name: 'L\'Ourcq-La Marne',                 time: '09:21' },
+          { name: 'Les Beaux Vents',                   time: '09:22' },
+          { name: 'Route Pierrelaye',                  time: '09:22' },
+          { name: 'Fernand Châtelain',                 time: '09:24' },
+          { name: 'Les Bellevues',                     time: '09:26' },
+          { name: 'La Chaufferie',                     time: '09:27' },
+          { name: 'Gare de Liesse - Quai C',           time: '09:28' },
+          { name: 'Louis Delage',                      time: '09:30' },
+          { name: 'Lycée Edmond Rostand',              time: '09:32' },
+          { name: 'M. de L\'Hospital',                 time: '09:34' },
+          { name: 'Clos du Roi',                       time: '09:35' },
+          { name: 'Mairie / Saint-Ouen-L\'Aumône',     time: '09:36' },
+          { name: 'La Poste',                          time: '09:37' },
+          { name: 'Hôtel Dieu',                        time: '09:41' },
+          { name: 'Gare de Pontoise',                  time: '09:42' },
+        ]
+      },
+      {
+        lineNum: '1233', label: '1233 — Pontoise → Neuville Université (3301) 09:48',
+        stops: [
+          { name: 'Gare de Pontoise',                  time: '09:48' },
+          { name: 'Hôtel Dieu',                        time: '09:50' },
+          { name: 'La Poste',                          time: '09:53' },
+          { name: 'Mairie / Saint-Ouen-L\'Aumône',     time: '09:55' },
+          { name: 'Clos du Roi',                       time: '09:56' },
+          { name: 'M. de L\'Hospital',                 time: '09:57' },
+          { name: 'Lycée Edmond Rostand',              time: '09:57' },
+          { name: 'Louis Delage',                      time: '09:59' },
+          { name: 'Gare de Liesse - Quai D',           time: '10:02' },
+          { name: 'La Chaufferie',                     time: '10:04' },
+          { name: 'Les Bellevues',                     time: '10:06' },
+          { name: 'Fernand Châtelain',                 time: '10:08' },
+          { name: 'Route Pierrrelaye',                 time: '10:08' },
+          { name: 'Les Beaux Vents',                   time: '10:09' },
+          { name: 'L\'Ourcq-La Marne',                 time: '10:10' },
+          { name: 'La Challe',                         time: '10:11' },
+          { name: 'Pincevents',                        time: '10:12' },
+          { name: 'Gare de Neuville Université',       time: '10:19' },
+        ]
+      },
+    ]
+  },
+    {
+    num: '7',
     depotRetour: '10:10',
     heures: 6.15,
     trips: [
@@ -4272,17 +4496,19 @@ function renderSvcTrips() {
           <button class="del-btn" onclick="svcRemoveTrip(${ti})">✕</button>
         </div>
       </div>
+      ${t.stops.some(s=>s.isRef) ? `<div style="font-size:10px;margin-bottom:6px"><span style="background:rgba(231,76,60,.2);color:#e74c3c;padding:2px 6px;border-radius:4px">🔴 Arrêt de régulation INEO</span> <span style="color:var(--muted)">= point obligatoire (tolérance +1 min avance)</span></div>` : ''}
       <table class="stop-table" style="font-size:12px">
-        <thead><tr><th>#</th><th>Arrêt</th><th>Heure INEO</th></tr></thead>
+        <thead><tr><th>#</th><th>Arrêt</th><th>Heure</th></tr></thead>
         <tbody>
           ${t.stops.map((s,si) => `
-          <tr>
+          <tr style="${s.isRef ? 'background:rgba(231,76,60,.08);' : ''}">
             <td style="color:var(--muted);font-size:11px">${String(si+1).padStart(2,'0')}</td>
-            <td style="font-size:12px">${s.name}</td>
+            <td style="font-size:12px;${s.isRef ? 'color:#e74c3c;font-weight:700;' : ''}">${s.isRef ? '🔴 ' : ''}${s.name}</td>
             <td><input type="text" id="stop-${ti}-${si}" value="${s.time||'00:00'}" inputmode="numeric"
               maxlength="5" placeholder="HH:MM"
               style="padding:5px 6px;font-size:15px;width:80px;font-family:'Share Tech Mono',monospace;
-                     border:2px solid var(--accent);border-radius:6px;background:rgba(0,212,255,.08);color:var(--text);text-align:center"
+                     border:2px solid ${s.isRef ? '#e74c3c' : 'var(--accent)'};border-radius:6px;
+                     background:${s.isRef ? 'rgba(231,76,60,.12)' : 'rgba(0,212,255,.08)'};color:var(--text);text-align:center"
               oninput="svcFormatTimeInput(this,${ti},${si})"
               onchange="svcUpdateStop(${ti},${si},this.value)"
               onkeydown="svcStopNavKey(event,${ti},${si},${t.stops.length})"></td>
@@ -4372,6 +4598,232 @@ function svcMoveTrip(ti,dir) {
   if(j<0||j>=svcTrips.length) return;
   [svcTrips[ti],svcTrips[j]] = [svcTrips[j],svcTrips[ti]];
   renderSvcTrips();
+}
+
+function parseIneoFeuille() {
+  const text = document.getElementById('ineo-text').value.trim();
+  if(!text) { toast('Collez le texte INEO d\'abord'); return; }
+
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  let depotDepart = '', depotRetour = '';
+  let trips = [];
+  let currentLineNum = null, currentRefStops = [], currentDirection = 'aller';
+  let i = 0;
+
+  // Fonction pour normaliser un nom d'arrêt (pour matching)
+  function normalize(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/['\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  // Fonction pour convertir HH:MM en minutes
+  function toMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+  while(i < lines.length) {
+    const line = lines[i];
+
+    // Prise de service
+    const psMatch = line.match(/(\d{2}:\d{2})\s+PRISE DE SERVICE/i);
+    if(psMatch) { depotDepart = psMatch[1]; i++; continue; }
+
+    // Fin de service
+    const fsMatch = line.match(/FS\s+(\d{2}:\d{2})\s+FIN DE SERVICE/i) ||
+                    line.match(/(\d{2}:\d{2})\s+FIN DE SERVICE/i);
+    if(fsMatch) { depotRetour = fsMatch[1]; i++; continue; }
+
+    // HLP / P/L → ignorer
+    if(line.startsWith('HLP') || line.startsWith('P/L')) { i++; continue; }
+
+    // Ligne de service : "1206 - GARE DE CERG >> GARE DE PONT"
+    const ligneMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*>>\s*(.+)$/);
+    if(ligneMatch) {
+      // Sauvegarder trajet précédent
+      if(currentLineNum && currentRefStops.length > 0) {
+        const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+        if(trip) trips.push(trip);
+      }
+      currentLineNum = ligneMatch[1];
+      currentRefStops = [];
+      // Détecter direction : si deuxième partie contient le nom du terminus aller ou retour
+      currentDirection = 'aller'; // sera affiné selon les arrêts
+      i++; continue;
+    }
+
+    // ITINERAIRE → collecter arrêts de référence
+    if(line.startsWith('ITINERAIRE') || (line.match(/^\d{2}:\d{2}\s*-->/) && currentLineNum)) {
+      const firstM = line.match(/(\d{2}:\d{2})\s*-->\s*(.+?)(?:\s*-\s*\d+\s*)?$/);
+      if(firstM) currentRefStops.push({ time: firstM[1], name: firstM[2].replace(/\s*-\s*\d+\s*$/,'').trim() });
+      i++;
+      while(i < lines.length) {
+        const al = lines[i];
+        const am = al.match(/^(\d{2}:\d{2})\s*-->\s*(.+?)(?:\s*-\s*\d+\s*)?$/);
+        if(am) {
+          currentRefStops.push({ time: am[1], name: am[2].replace(/\s*-\s*\d+\s*$/,'').trim() });
+          i++;
+        } else break;
+      }
+      continue;
+    }
+
+    // En correspondance → ignorer
+    if(line.startsWith('En correspondance')) { i++; continue; }
+    i++;
+  }
+
+  // Dernier trajet
+  if(currentLineNum && currentRefStops.length > 0) {
+    const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+    if(trip) trips.push(trip);
+  }
+
+  if(!trips.length) { toast('❌ Aucun trajet détecté — vérifiez le format INEO'); return; }
+
+  if(depotDepart) document.getElementById('svc-depot-depart').value = depotDepart;
+  if(depotRetour) document.getElementById('svc-depot-retour').value = depotRetour;
+
+  svcTrips = trips;
+  renderSvcTrips();
+
+  document.getElementById('ineo-import-panel').style.display = 'none';
+  document.getElementById('ineo-text').value = '';
+
+  const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
+  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
+}
+
+function buildTripFromRef(lineNum, refStops, direction) {
+  // Trouver la ligne dans db
+  const dbLine = db.lines.find(l => l.num === lineNum);
+  if(!dbLine) {
+    // Ligne inconnue : créer avec juste les arrêts de référence
+    return {
+      lineNum, lineColor: '#888',
+      label: `Ligne ${lineNum}`,
+      stops: refStops.map((s,i) => ({
+        name: s.name, time: s.time,
+        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
+        isRef: true
+      }))
+    };
+  }
+
+  function normalize(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/['\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function toMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+  const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
+  const firstRef = refNorm[0];
+  const lastRef = refNorm[refNorm.length-1];
+
+  // Trouver le bon trajet dans la ligne (celui qui correspond au sens)
+  let bestTrip = null, bestScore = -1;
+  dbLine.trips.forEach(trip => {
+    let matches = 0;
+    refNorm.forEach(ref => {
+      if(trip.stops.some(s => normalize(s.name).includes(ref.norm) || ref.norm.includes(normalize(s.name)))) matches++;
+    });
+    if(matches > bestScore) { bestScore = matches; bestTrip = trip; }
+  });
+
+  // Si pas de trajet trouvé, prendre le premier
+  const sourceTrip = bestTrip || dbLine.trips[0];
+  if(!sourceTrip) return null;
+
+  // Construire la liste complète des arrêts depuis le trajet de référence
+  // Marquer les arrêts INEO comme isRef
+  const allStops = sourceTrip.stops.map(s => ({
+    name: s.name,
+    time: '',
+    intervalAfter: s.intervalAfter || 1,
+    isRef: false,
+    refTime: null
+  }));
+
+  // Associer chaque arrêt de référence INEO au meilleur arrêt de la liste
+  refNorm.forEach(ref => {
+    let bestIdx = -1, bestMatch = 0;
+    allStops.forEach((s, idx) => {
+      const sn = normalize(s.name);
+      const score = sn.includes(ref.norm) || ref.norm.includes(sn) ? Math.min(sn.length, ref.norm.length) : 0;
+      if(score > bestMatch) { bestMatch = score; bestIdx = idx; }
+    });
+    if(bestIdx >= 0 && bestMatch > 3) {
+      allStops[bestIdx].isRef = true;
+      allStops[bestIdx].refTime = ref.time;
+      allStops[bestIdx].time = ref.time;
+    }
+  });
+
+  // Interpoler les heures entre les arrêts de référence
+  const refIndices = allStops.map((s,i) => s.isRef ? i : -1).filter(i => i >= 0);
+
+  // Avant le premier arrêt de référence : extrapoler en arrière
+  if(refIndices.length > 0) {
+    const firstRefIdx = refIndices[0];
+    const firstRefMin = toMin(allStops[firstRefIdx].refTime);
+    // Calculer le temps total des intervalles jusqu'au premier ref
+    let totalBefore = 0;
+    for(let k=0; k<firstRefIdx; k++) totalBefore += (allStops[k].intervalAfter||1);
+    for(let k=0; k<firstRefIdx; k++) {
+      let cumul = 0;
+      for(let j=0; j<k; j++) cumul += (allStops[j].intervalAfter||1);
+      allStops[k].time = fromMin(firstRefMin - totalBefore + cumul);
+    }
+  }
+
+  // Entre chaque paire de références : interpoler linéairement
+  for(let r=0; r<refIndices.length-1; r++) {
+    const idxA = refIndices[r], idxB = refIndices[r+1];
+    const tA = toMin(allStops[idxA].refTime);
+    const tB = toMin(allStops[idxB].refTime);
+    const totalInterval = allStops.slice(idxA, idxB).reduce((acc,s) => acc+(s.intervalAfter||1), 0);
+    const scale = totalInterval > 0 ? (tB - tA) / totalInterval : 1;
+
+    let cumul = 0;
+    for(let k=idxA+1; k<idxB; k++) {
+      cumul += (allStops[k-1].intervalAfter||1);
+      allStops[k].time = fromMin(Math.round(tA + cumul * scale));
+    }
+  }
+
+  // Après le dernier arrêt de référence : extrapoler
+  if(refIndices.length > 0) {
+    const lastRefIdx = refIndices[refIndices.length-1];
+    const lastRefMin = toMin(allStops[lastRefIdx].refTime);
+    let cumul = 0;
+    for(let k=lastRefIdx+1; k<allStops.length; k++) {
+      cumul += (allStops[k-1].intervalAfter||1);
+      allStops[k].time = fromMin(lastRefMin + cumul);
+    }
+  }
+
+  // Recalculer intervalAfter réel entre arrêts
+  allStops.forEach((s,i) => {
+    if(i < allStops.length-1 && s.time && allStops[i+1].time) {
+      const diff = toMin(allStops[i+1].time) - toMin(s.time);
+      s.intervalAfter = Math.max(1, diff);
+    }
+  });
+
+  return {
+    lineNum,
+    lineColor: dbLine.color,
+    label: `Ligne ${lineNum} — ${sourceTrip.label||''}`,
+    stops: allStops
+  };
+}
+
+function cleanStopName(name) {
+  return name.replace(/\s*-\s*\d+\s*$/, '').trim()
+    .split(' ').map(w => w.length > 2 ? w.charAt(0).toUpperCase()+w.slice(1).toLowerCase() : w).join(' ');
 }
 
 function saveServiceEditor() {
@@ -4882,6 +5334,126 @@ function exportHeuresPDF() {
     toast('📄 Fichier téléchargé — ouvrez-le et faites Ctrl+P pour imprimer');
   }
 }
+
+function exportPrimePDF() {
+  const avsi = parseInt(document.getElementById('p-avsi').value)||0;
+  const avc  = parseInt(document.getElementById('p-avc').value)||0;
+  const rc   = parseInt(document.getElementById('p-rc').value)||0;
+  const rsc  = parseInt(document.getElementById('p-rsc').value)||0;
+  const rnc  = parseInt(document.getElementById('p-rnc').value)||0;
+  const rsi  = parseInt(document.getElementById('p-rsi').value)||0;
+  const total = avsi+avc+rc+rsc+rnc+rsi;
+
+  if(!total) { toast('Aucune mesure à exporter'); return; }
+
+  const score = (avc*1+rc*1+rsc*0.5)/total*100;
+  const pct = Math.round(score*10)/10;
+  const ok = pct >= 90;
+  const primeBase = 200;
+  const deductSae = saeCount*50;
+  const primeFinal = Math.max(0, primeBase-deductSae);
+
+  const now = new Date();
+  const moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const periode = `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 14;
+
+    // En-tête
+    const headerColor = ok ? [27,94,32] : [183,28,28];
+    doc.setFillColor(...headerColor);
+    doc.rect(0,0,pageW,28,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('BILAN REGULARITE', margin, 11);
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(periode.toUpperCase(), margin, 18);
+    doc.setFontSize(8);
+    doc.text(`Exporté le ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`, pageW-margin, 24, {align:'right'});
+
+    // Score principal
+    doc.setFillColor(245,245,245);
+    doc.roundedRect(margin, 34, pageW-2*margin, 28, 3, 3, 'F');
+    doc.setTextColor(...headerColor);
+    doc.setFontSize(36); doc.setFont('helvetica','bold');
+    doc.text(`${pct}%`, pageW/2, 54, {align:'center'});
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text(ok ? '✓ Objectif 90% atteint — prime éligible' : `✗ Objectif non atteint — manque ${(90-pct).toFixed(1)}%`, pageW/2, 60, {align:'center'});
+
+    // Tableau des mesures
+    doc.autoTable({
+      startY: 68,
+      head: [['Catégorie', 'Coefficient', 'Nombre', 'Points']],
+      body: [
+        ['⛔ Avance SI (>1min)',          '×0', avsi, 0],
+        ['✓ Avance conforme (0–1min)',     '×1', avc,  avc],
+        ['✓ Retard conforme (0–3min)',     '×1', rc,   rc],
+        ['⚠ Retard semi-conf. (3–6min)',  '×0.5', rsc, Math.round(rsc*0.5*10)/10],
+        ['✗ Retard non-conf. (6–12min)', '×0', rnc, 0],
+        ['⛔ Retard SI (>12min)',          '×0', rsi, 0],
+      ],
+      foot: [['TOTAL', '', total, `${(avc+rc+rsc*0.5).toFixed(1)} pts`]],
+      margin: { left:margin, right:margin },
+      styles: { fontSize:10, cellPadding:4 },
+      headStyles: { fillColor:[50,50,80], textColor:255, fontStyle:'bold' },
+      footStyles: { fillColor:[230,230,240], textColor:[30,30,30], fontStyle:'bold' },
+      columnStyles: { 0:{cellWidth:80}, 1:{cellWidth:22,halign:'center'}, 2:{cellWidth:20,halign:'center'}, 3:{cellWidth:22,halign:'center'} }
+    });
+
+    let y = doc.lastAutoTable.finalY + 10;
+
+    // Bloc prime
+    if(ok) {
+      doc.setFillColor(232,245,233);
+      doc.setDrawColor(27,94,32);
+      doc.roundedRect(margin, y, pageW-2*margin, 28, 3, 3, 'FD');
+      doc.setTextColor(27,94,32);
+      doc.setFontSize(9); doc.setFont('helvetica','normal');
+      doc.text('PRIME TRIMESTRIELLE ESTIMÉE (1ère année)', margin+6, y+7);
+      doc.setFontSize(20); doc.setFont('helvetica','bold');
+      doc.text(`${primeFinal}€ bruts`, margin+6, y+20);
+      if(deductSae>0) {
+        doc.setFontSize(9); doc.setFont('helvetica','normal');
+        doc.text(`${primeBase}€ − ${deductSae}€ (${saeCount} non-ouverture SAE) = ${primeFinal}€`, pageW-margin-4, y+20, {align:'right'});
+      }
+    }
+
+    // Formule
+    y += 36;
+    doc.setFillColor(240,240,248);
+    doc.roundedRect(margin, y, pageW-2*margin, 22, 3, 3, 'F');
+    doc.setTextColor(80,80,120);
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('FORMULE DE CALCUL', margin+4, y+6);
+    doc.setFont('helvetica','normal');
+    doc.text('% = (Av.conf.×1 + Ret.conf.×1 + Ret.semi×0.5) / Total mesures × 100', margin+4, y+13);
+    doc.text(`Objectif : ≥ 90,0% · Base prime : ${primeBase}€/trimestre (1ère année)`, margin+4, y+19);
+
+    // Signatures
+    y += 30;
+    doc.setDrawColor(160,160,160); doc.setTextColor(100,100,100);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.line(margin, y+20, margin+65, y+20);
+    doc.text('Signature employé', margin, y+25);
+    doc.line(pageW-margin-65, y+20, pageW-margin, y+20);
+    doc.text('Visa employeur', pageW-margin-65, y+25);
+
+    doc.setFontSize(7); doc.setTextColor(180,180,180);
+    doc.text('Généré par ChronoLigne PRO', pageW/2, doc.internal.pageSize.getHeight()-6, {align:'center'});
+
+    const moisStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    doc.save(`regularite-${moisStr}.pdf`);
+    toast('📄 PDF régularité téléchargé');
+  } catch(e) {
+    console.error('jsPDF error:', e);
+    toast('⚠️ Erreur PDF — vérifiez votre connexion internet');
+  }
+}
+
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
