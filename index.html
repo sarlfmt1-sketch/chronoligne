@@ -15,6 +15,8 @@
 <meta name="description" content="Assistant timing chauffeur de bus — Réseau Cergy-Pontoise">
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1446,17 +1448,39 @@ const PRELOADED_SERVICES = [
 
 function installPreloadedServices() {
   loadRoadmapServices();
+
+  // Table de couleurs par numéro de ligne
+  const lineColorMap = {};
+  REAL_LINES.forEach(l => { lineColorMap[l.num] = l.color; });
+
+  // Appliquer lineColor sur tous les services existants (localStorage inclus)
+  roadmapServices.forEach(svc => {
+    if(!Array.isArray(svc.trips)) svc.trips = [];
+    svc.trips.forEach(t => {
+      if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
+    });
+  });
+
   PRELOADED_SERVICES.forEach(ps => {
+    if(!Array.isArray(ps.trips)) ps.trips = [];
+    // Appliquer les couleurs sur les trips préchargés
+    ps.trips.forEach(t => {
+      if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
+    });
     const idx = roadmapServices.findIndex(s => s.num === ps.num && s.jour === ps.jour);
     if(idx >= 0) {
-      // Mettre à jour les heures dépôt sans écraser les modifications utilisateur
       roadmapServices[idx].depotDepart = ps.depotDepart;
       roadmapServices[idx].depotRetour = ps.depotRetour;
-      roadmapServices[idx].heures = ps.heures;
+      roadmapServices[idx].heures      = ps.heures;
+      if(!Array.isArray(roadmapServices[idx].trips)) roadmapServices[idx].trips = [];
+      roadmapServices[idx].trips.forEach(t => {
+        if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
+      });
     } else {
       roadmapServices.push(ps);
     }
   });
+
   saveRoadmapServices();
 }
 
@@ -4075,15 +4099,42 @@ function saveSettings() {
 
 // ══ SAUVEGARDE ═══════════════════════════════════════════════
 function saveHTMLCopy() {
-  const html = document.documentElement.outerHTML;
+  // Collecter toutes les clés localStorage de l'app
+  const keys = [
+    'chronoligne_db',
+    'chronoligne_roadmaps',
+    'chronoligne_heures',
+    'chronoligne_gps_coords',
+    'chronoligne_gps_sessions',
+    'chronoligne_prime_sessions',
+    'chronoligne_theme',
+    'chronoligne_settings'
+  ];
+  const data = {};
+  keys.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
+
+  // Injecter un script de restauration automatique dans la copie HTML
+  const restoreScript = `<script>
+(function(){
+  const data = ${JSON.stringify(data)};
+  Object.entries(data).forEach(([k,v]) => { try { localStorage.setItem(k,v); } catch(e){} });
+})();
+<\/script>`;
+
+  let html = document.documentElement.outerHTML;
+  // Injecter juste avant </body>
+  html = html.replace('</body>', restoreScript + '</body>');
+
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   const d = new Date();
   a.download = `chronoligne-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.html`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
-  toast('💾 Copie sauvegardée !');
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 200);
+  toast('💾 Copie complète sauvegardée (GPS inclus) !');
 }
 
 function exportData() {
