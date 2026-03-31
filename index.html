@@ -664,8 +664,45 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
+  <div class="card" style="border:2px solid rgba(66,133,244,.3);background:rgba(66,133,244,.05)">
+    <div class="card-title" style="color:#4285f4">☁️ Sync JSONBin</div>
+    <div id="jbin-status" style="font-size:12px;color:var(--muted);margin-bottom:10px">⚪ Non configuré</div>
+
+    <div id="jbin-not-configured">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+        1. Allez sur <strong style="color:var(--accent)">jsonbin.io</strong> → créez un compte gratuit<br>
+        2. Copiez votre <strong>Master Key</strong> (dans Account → API Keys)<br>
+        3. Collez-la ici :
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="password" id="jbin-key-input" placeholder="$2b$10$..." style="flex:1;padding:8px 10px;font-size:13px;font-family:monospace">
+        <button onclick="jbinConfigure()" class="btn" style="background:#4285f4;color:#fff;font-weight:700;border:none;white-space:nowrap">
+          ✅ Configurer
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);text-align:center">Gratuit · Sync PC ↔ Téléphone · Aucune installation</div>
+    </div>
+
+    <div id="jbin-configured" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button onclick="jbinSave()" class="btn" style="flex:1;background:rgba(52,168,83,.2);border:1px solid #34a853;color:#34a853;font-weight:700">
+          ☁️ Sauvegarder
+        </button>
+        <button onclick="jbinLoad()" class="btn" style="flex:1;background:rgba(66,133,244,.2);border:1px solid #4285f4;color:#4285f4;font-weight:700">
+          ⬇️ Charger
+        </button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="jbinToggleAuto()" id="jbin-autosync-btn" class="btn btn-sm btn-ghost" style="flex:1">
+          🔄 Sync auto : OFF
+        </button>
+        <button onclick="jbinReset()" class="btn btn-sm btn-danger">Effacer clé</button>
+      </div>
+      <div id="jbin-last-sync" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
+    </div>
+  </div>
   <div class="card">
-    <div class="card-title">💾 Sauvegarde</div>
+    <div class="card-title">💾 Sauvegarde locale</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <button class="btn btn-sm" style="background:var(--green);color:#000;font-weight:700" onclick="saveHTMLCopy()">💾 Copie HTML</button>
       <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
@@ -735,6 +772,64 @@ function hDisplay(h) {
 
 // ══ COORDONNÉES GPS PRÉCHARGÉES ═══════════════════════════════
 const PRELOADED_GPS = {
+  '1201': {
+    aller: {
+      'Gare de Pontoise (Quai Canrobert)':    { lat: 49.04639749219145,  lon: 2.093204101837572  },
+      'Gare de Pontoise Canrobert':           { lat: 49.04639749219145,  lon: 2.093204101837572  },
+      'Gare de Pontoise':                     { lat: 49.04639749219145,  lon: 2.093204101837572  },
+      'Avenue du Premier Dragon':             { lat: 49.042046133969976, lon: 2.09018929891555   },
+      'Lycée Kastler':                        { lat: 49.03705180093216,  lon: 2.0854411033297757 },
+      'Gare de Cergy Préfecture (Quai G)':   { lat: 49.036279866989766, lon: 2.0805031565692125 },
+      'Gare de Cergy Préfecture - Quai G':   { lat: 49.036279866989766, lon: 2.0805031565692125 },
+      'Chemin Dupuis':                        { lat: 49.03644164002091,  lon: 2.070316126824662  },
+      'La Croix Petit':                       { lat: 49.03688299636243,  lon: 2.0684627202978683 },
+      'Le Ponceau':                           { lat: 49.03839694193277,  lon: 2.0681301263695295 },
+      'Les Chênes':                           { lat: 49.040644037490345, lon: 2.0692968872350397 },
+      'Linandes Vertes':                      { lat: 49.04255346145431,  lon: 2.067886045322722  },
+      'Le Collège':                           { lat: 49.0433868334676,   lon: 2.0624572543056603 },
+      'Clos Couturier':                       { lat: 49.04380703051008,  lon: 2.057690968919865  },
+      'La Justice':                           { lat: 49.04453313670761,  lon: 2.054829051860308  },
+      'La Sébille':                           { lat: 49.047746864379214, lon: 2.0512322096117828 },
+      'Rond-Point Haut Gency':                { lat: 49.04824085990567,  lon: 2.04564516817255   },
+      'Martelet':                             { lat: 49.045962462460096, lon: 2.0395431428014    },
+      'Rue du Chemin de Fer':                 { lat: 49.04813711641042,  lon: 2.036773915816765  },
+      'Gare de Cergy Saint-Christophe':       { lat: 49.049899551074496, lon: 2.0351122958429464 },
+      'Cergy Saint-Christophe RER':           { lat: 49.049899551074496, lon: 2.0351122958429464 },
+      'La Constellation':                     { lat: 49.05078551753398,  lon: 2.0318062679244937 },
+      'Moulin à Vent':                        { lat: 49.05408073031459,  lon: 2.026159543405172  },
+      'Puiseux':                              { lat: 49.05494108535151,  lon: 2.017775247078248  },
+      'Lycée Jules Verne':                    { lat: 49.05422931665771,  lon: 2.0146732023187712 },
+      'Lycée Jules Verne (Terminus)':         { lat: 49.05422931665771,  lon: 2.0146732023187712 },
+    },
+    retour: {
+      'Lycée Jules Verne':                    { lat: 49.05422931665771,  lon: 2.0146732023187712 },
+      'Lycée Jules Verne (Terminus)':         { lat: 49.05422931665771,  lon: 2.0146732023187712 },
+      'Puiseux':                              { lat: 49.05473978699931,  lon: 2.017858659070086  },
+      'Moulin à Vent':                        { lat: 49.05388116384259,  lon: 2.0267262153497234 },
+      'La Constellation':                     { lat: 49.05151180734141,  lon: 2.031925427895783  },
+      'Gare de Cergy Saint-Christophe':       { lat: 49.04971819067011,  lon: 2.0352963318249384 },
+      'Cergy Saint-Christophe RER':           { lat: 49.04971819067011,  lon: 2.0352963318249384 },
+      'Rue du Chemin de Fer':                 { lat: 49.047467341616745, lon: 2.036482742264469  },
+      'Martelet':                             { lat: 49.046568990483806, lon: 2.041139057035181  },
+      'Rond-Point Haut Gency':                { lat: 49.048065061353874, lon: 2.0460099485688423 },
+      'La Sébille':                           { lat: 49.0474075692455,   lon: 2.0526162293506585 },
+      'La Justice':                           { lat: 49.044366115644806, lon: 2.055282345146877  },
+      'Clos Couturier':                       { lat: 49.043580230040114, lon: 2.058348110074951  },
+      'Le Collège':                           { lat: 49.04340968946467,  lon: 2.0630232003616737 },
+      'Linandes Vertes':                      { lat: 49.04227039310729,  lon: 2.068328609774107  },
+      'Les Chênes':                           { lat: 49.040269528619305, lon: 2.0692968872350397 },
+      'Le Ponceau':                           { lat: 49.038094508179455, lon: 2.068073799984808  },
+      'La Croix Petit':                       { lat: 49.03675287578007,  lon: 2.0684278515835164 },
+      'Chemin Dupuis':                        { lat: 49.036888271501525, lon: 2.071708193189927  },
+      'Gare de Cergy Préfecture (Quai F)':   { lat: 49.03613391913832,  lon: 2.0810476449548556 },
+      'Gare de Cergy Préfecture - Quai F':   { lat: 49.03613391913832,  lon: 2.0810476449548556 },
+      'Lycée Kastler':                        { lat: 49.036626271640614, lon: 2.085293581845981  },
+      'Avenue du Premier Dragon':             { lat: 49.042925226911706, lon: 2.0907096474220266 },
+      'Gare de Pontoise (Canrobert)':         { lat: 49.04621289685249,  lon: 2.093499144805162  },
+      'Gare de Pontoise Canrobert':           { lat: 49.04621289685249,  lon: 2.093499144805162  },
+      'Gare de Pontoise':                     { lat: 49.04621289685249,  lon: 2.093499144805162  },
+    },
+  },
   '1203': {
     aller: {
       'Gare de Cergy Le Haut RER':         { lat: 49.04737965622506,  lon: 2.0104025106434573 },
@@ -847,6 +942,115 @@ const PRELOADED_GPS = {
       'Gare de Neuville Université':       { lat: 49.014693358937166, lon: 2.0794597480620065 },
     },
   },
+  '1203': {
+    aller: {
+      'Gare de Cergy Le Haut RER':         { lat: 49.04737965622506,  lon: 2.0104025106434573 },
+      'Gare de Cergy-le-Haut':             { lat: 49.04737965622506,  lon: 2.0104025106434573 },
+      "L'Orangerie":                       { lat: 49.04492244340146,  lon: 2.010650813504841  },
+      'Rond-Point du Golf':                { lat: 49.039556815027524, lon: 2.015841081082946  },
+      'Boris Vian':                        { lat: 49.03541643676511,  lon: 2.017824841376038  },
+      'La Bussie':                         { lat: 49.03283389331437,  lon: 2.020226288039761  },
+      'La Croix Lieu':                     { lat: 49.030521253736744, lon: 2.0218382331651257 },
+      'La Marnière':                       { lat: 49.023447067659504, lon: 2.0221804568847395 },
+      'Les Valanchards':                   { lat: 49.020505604851984, lon: 2.0216121325529257 },
+      'Les Tremblays':                     { lat: 49.01302430636136,  lon: 2.028015204567672  },
+      'Le Noyer':                          { lat: 49.01046997100391,  lon: 2.031726660032525  },
+      'Les Forboeufs':                     { lat: 49.00864848514245,  lon: 2.0354862812164245 },
+      'Théâtre de Jouy-le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
+      'Théâtre de Jouy-Le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
+      'Les Jouannes':                      { lat: 49.010731184802694, lon: 2.046964561909822  },
+      'Vignes Blanches':                   { lat: 49.01116245566417,  lon: 2.0508587540296346 },
+      'Croix Saint-Jacques':               { lat: 49.01178950199553,  lon: 2.053150925556433  },
+      'Le Pont':                           { lat: 49.014187267091124, lon: 2.059600970443417  },
+      'Mairie (Neuville-sur-Oise)':        { lat: 49.013389184203064, lon: 2.062729515930422  },
+      'Mairie / Neuville':                 { lat: 49.013389184203064, lon: 2.062729515930422  },
+      'Les Trembles':                      { lat: 49.01497947184223,  lon: 2.0704719637535334 },
+      'Gay Lussac':                        { lat: 49.01592006507906,  lon: 2.0767505420730474 },
+      'Gare de Neuville Université':       { lat: 49.01507894285911,  lon: 2.0803782493302885 },
+    },
+    retour: {
+      'Gare de Neuville Université':       { lat: 49.014693358937166, lon: 2.0794597480620065 },
+      'Gay Lussac':                        { lat: 49.01579222144282,  lon: 2.075244137572436  },
+      'Les Trembles':                      { lat: 49.0149416294449,   lon: 2.0699885420333852 },
+      'Mairie (Neuville-sur-Oise)':        { lat: 49.01345771174113,  lon: 2.06252211241823   },
+      'Mairie / Neuville':                 { lat: 49.01345771174113,  lon: 2.06252211241823   },
+      'Le Pont':                           { lat: 49.014429666162656, lon: 2.059314036261135  },
+      'Croix Saint-Jacques':               { lat: 49.01189996779862,  lon: 2.0527158460082995 },
+      'Vignes Blanches':                   { lat: 49.011169615581984, lon: 2.0495410399189318 },
+      'Les Jouannes':                      { lat: 49.01087949846797,  lon: 2.0458386571293468 },
+      'Théâtre de Jouy-le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
+      'Théâtre de Jouy-Le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
+      'Les Forboeufs':                     { lat: 49.00885313934888,  lon: 2.0343426116935275 },
+      'Le Noyer':                          { lat: 49.011259161114126, lon: 2.030460020297543  },
+      'Les Tremblays':                     { lat: 49.013860955691904, lon: 2.0271965064697874 },
+      'Les Valanchards':                   { lat: 49.021477354291214, lon: 2.022144763457037  },
+      'La Marnière':                       { lat: 49.02450748544444,  lon: 2.022348874784385  },
+      'La Croix Lieu':                     { lat: 49.03097828578289,  lon: 2.021760261919941  },
+      'La Bussie':                         { lat: 49.03328055718771,  lon: 2.0204515935823517 },
+      'Boris Vian':                        { lat: 49.036339735958116, lon: 2.0170367349198473 },
+      'Rond-Point du Golf':                { lat: 49.0408201670701,   lon: 2.014977269303095  },
+      "L'Orangerie":                       { lat: 49.04445309689046,  lon: 2.0102860658347064 },
+      'Gare de Cergy Le Haut RER':         { lat: 49.04735038823243,  lon: 2.0108171432807374 },
+      'Gare de Cergy-le-Haut':             { lat: 49.04735038823243,  lon: 2.0108171432807374 },
+    },
+    dimanche_aller: {
+      'Gare de Cergy Le Haut RER':         { lat: 49.04737965622506,  lon: 2.0104025106434573 },
+      'Gare de Cergy-le-Haut':             { lat: 49.04737965622506,  lon: 2.0104025106434573 },
+      "L'Orangerie":                       { lat: 49.04492244340146,  lon: 2.010650813504841  },
+      'Rond-Point du Golf':                { lat: 49.039556815027524, lon: 2.015841081082946  },
+      'Boris Vian':                        { lat: 49.03541643676511,  lon: 2.017824841376038  },
+      'La Bussie':                         { lat: 49.03283389331437,  lon: 2.020226288039761  },
+      'La Croix Lieu':                     { lat: 49.030521253736744, lon: 2.0218382331651257 },
+      'Colucci Gandhi':                    { lat: 49.028771214592645, lon: 2.016883077062708  },
+      'Le Boulingrin':                     { lat: 49.026249843559846, lon: 2.0174213602781115 },
+      'Simone Signoret':                   { lat: 49.02398808163705,  lon: 2.0202215990063324 },
+      'La Marnière':                       { lat: 49.02379907529562,  lon: 2.0237357362950417 },
+      'Mendès France':                     { lat: 49.02283025006923,  lon: 2.0273605851955963 },
+      'Georges Brassens':                  { lat: 49.02027986756569,  lon: 2.0262832893350233 },
+      'Les Valanchards':                   { lat: 49.020505604851984, lon: 2.0216121325529257 },
+      'Les Tremblays':                     { lat: 49.01302430636136,  lon: 2.028015204567672  },
+      'Le Noyer':                          { lat: 49.01046997100391,  lon: 2.031726660032525  },
+      'Les Forboeufs':                     { lat: 49.00864848514245,  lon: 2.0354862812164245 },
+      'Théâtre de Jouy-le-Moutier':        { lat: 49.01045031247477,  lon: 2.0406031318339206 },
+      'Les Jouannes':                      { lat: 49.010731184802694, lon: 2.046964561909822  },
+      'Vignes Blanches':                   { lat: 49.01116245566417,  lon: 2.0508587540296346 },
+      'Croix Saint-Jacques':               { lat: 49.01178950199553,  lon: 2.053150925556433  },
+      'Le Pont':                           { lat: 49.014187267091124, lon: 2.059600970443417  },
+      'Mairie (Neuville-sur-Oise)':        { lat: 49.013389184203064, lon: 2.062729515930422  },
+      'Les Trembles':                      { lat: 49.01497947184223,  lon: 2.0704719637535334 },
+      'Gay Lussac':                        { lat: 49.01592006507906,  lon: 2.0767505420730474 },
+      'Gare de Neuville Université':       { lat: 49.01507894285911,  lon: 2.0803782493302885 },
+    },
+    dimanche_retour: {
+      'Gare de Cergy Le Haut RER':         { lat: 49.04735038823243,  lon: 2.0108171432807374 },
+      'Gare de Cergy-le-Haut':             { lat: 49.04735038823243,  lon: 2.0108171432807374 },
+      "L'Orangerie":                       { lat: 49.04445309689046,  lon: 2.0102860658347064 },
+      'Rond-Point du Golf':                { lat: 49.0408201670701,   lon: 2.014977269303095  },
+      'Boris Vian':                        { lat: 49.036339735958116, lon: 2.0170367349198473 },
+      'La Bussie':                         { lat: 49.03328055718771,  lon: 2.0204515935823517 },
+      'La Croix Lieu':                     { lat: 49.03097828578289,  lon: 2.021760261919941  },
+      'Colucci Gandhi':                    { lat: 49.02894893813686,  lon: 2.017467176625732  },
+      'Le Boulingrin':                     { lat: 49.02684937470941,  lon: 2.016508944465288  },
+      'Simone Signoret':                   { lat: 49.024270963954365, lon: 2.0187136313443985 },
+      'La Marnière':                       { lat: 49.0240869654616,   lon: 2.0214088849817746 },
+      'Mendès France':                     { lat: 49.023269603374715, lon: 2.02662759843383   },
+      'Georges Brassens':                  { lat: 49.020542742454445, lon: 2.0264722624845417 },
+      'Les Valanchards':                   { lat: 49.020811580913254, lon: 2.0225990528952926 },
+      'Les Tremblays':                     { lat: 49.013860955691904, lon: 2.0271965064697874 },
+      'Le Noyer':                          { lat: 49.011259161114126, lon: 2.030460020297543  },
+      'Les Forboeufs':                     { lat: 49.00885313934888,  lon: 2.0343426116935275 },
+      'Théâtre de Jouy-le-Moutier':        { lat: 49.010291768897,    lon: 2.038897120890334  },
+      'Les Jouannes':                      { lat: 49.01087949846797,  lon: 2.0458386571293468 },
+      'Vignes Blanches':                   { lat: 49.011169615581984, lon: 2.0495410399189318 },
+      'Croix Saint-Jacques':               { lat: 49.01189996779862,  lon: 2.0527158460082995 },
+      'Le Pont':                           { lat: 49.014429666162656, lon: 2.059314036261135  },
+      'Mairie (Neuville-sur-Oise)':        { lat: 49.01345771174113,  lon: 2.06252211241823   },
+      'Les Trembles':                      { lat: 49.0149416294449,   lon: 2.0699885420333852 },
+      'Gay Lussac':                        { lat: 49.01579222144282,  lon: 2.075244137572436  },
+      'Gare de Neuville Université':       { lat: 49.014693358937166, lon: 2.0794597480620065 },
+    },
+  },
+
   '1233': {
     aller: {
       'Gare de Pontoise':                  { lat: 49.04702710110386,  lon: 2.0960888305510443 },
@@ -1449,11 +1653,9 @@ const PRELOADED_SERVICES = [
 function installPreloadedServices() {
   loadRoadmapServices();
 
-  // Table de couleurs par numéro de ligne
   const lineColorMap = {};
   REAL_LINES.forEach(l => { lineColorMap[l.num] = l.color; });
 
-  // Appliquer lineColor sur tous les services existants (localStorage inclus)
   roadmapServices.forEach(svc => {
     if(!Array.isArray(svc.trips)) svc.trips = [];
     svc.trips.forEach(t => {
@@ -1463,7 +1665,6 @@ function installPreloadedServices() {
 
   PRELOADED_SERVICES.forEach(ps => {
     if(!Array.isArray(ps.trips)) ps.trips = [];
-    // Appliquer les couleurs sur les trips préchargés
     ps.trips.forEach(t => {
       if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
     });
@@ -1471,7 +1672,7 @@ function installPreloadedServices() {
     if(idx >= 0) {
       roadmapServices[idx].depotDepart = ps.depotDepart;
       roadmapServices[idx].depotRetour = ps.depotRetour;
-      roadmapServices[idx].heures      = ps.heures;
+      roadmapServices[idx].heures = ps.heures;
       if(!Array.isArray(roadmapServices[idx].trips)) roadmapServices[idx].trips = [];
       roadmapServices[idx].trips.forEach(t => {
         if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
@@ -4099,32 +4300,16 @@ function saveSettings() {
 
 // ══ SAUVEGARDE ═══════════════════════════════════════════════
 function saveHTMLCopy() {
-  // Collecter toutes les clés localStorage de l'app
   const keys = [
-    'chronoligne_db',
-    'chronoligne_roadmaps',
-    'chronoligne_heures',
-    'chronoligne_gps_coords',
-    'chronoligne_gps_sessions',
-    'chronoligne_prime_sessions',
-    'chronoligne_theme',
-    'chronoligne_settings'
+    'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
+    'chronoligne_gps_coords','chronoligne_gps_sessions',
+    'chronoligne_prime_sessions','chronoligne_theme','chronoligne_settings'
   ];
   const data = {};
   keys.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
-
-  // Injecter un script de restauration automatique dans la copie HTML
-  const restoreScript = `<script>
-(function(){
-  const data = ${JSON.stringify(data)};
-  Object.entries(data).forEach(([k,v]) => { try { localStorage.setItem(k,v); } catch(e){} });
-})();
-<\/script>`;
-
+  const restoreScript = `<script>(function(){const d=${JSON.stringify(data)};Object.entries(d).forEach(([k,v])=>{try{localStorage.setItem(k,v)}catch(e){}})})();<\/script>`;
   let html = document.documentElement.outerHTML;
-  // Injecter juste avant </body>
   html = html.replace('</body>', restoreScript + '</body>');
-
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -6057,6 +6242,160 @@ function pwaInstall() {
   }
 }
 
+// ══ SYNCHRONISATION JSONBIN.IO ═══════════════════════════════
+const JBIN_API = 'https://api.jsonbin.io/v3';
+const JBIN_KEYS = [
+  'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
+  'chronoligne_gps_coords','chronoligne_gps_sessions',
+  'chronoligne_prime_sessions','chronoligne_settings'
+];
+
+let jbinAutoSyncOn = false;
+let jbinAutoSyncTimer = null;
+
+function jbinGetConfig() {
+  return {
+    key:   localStorage.getItem('chronoligne_jbin_key') || '',
+    binId: localStorage.getItem('chronoligne_jbin_bin') || ''
+  };
+}
+
+function jbinConfigure() {
+  const key = document.getElementById('jbin-key-input').value.trim();
+  if(!key) { toast('Collez votre Master Key JSONBin'); return; }
+  localStorage.setItem('chronoligne_jbin_key', key);
+  jbinInitUI();
+  toast('✅ Clé JSONBin configurée !');
+}
+
+function jbinInitUI() {
+  const { key } = jbinGetConfig();
+  const notConf = document.getElementById('jbin-not-configured');
+  const conf    = document.getElementById('jbin-configured');
+  const status  = document.getElementById('jbin-status');
+  if(!notConf || !conf || !status) return;
+  if(key) {
+    notConf.style.display = 'none';
+    conf.style.display    = 'block';
+    status.textContent    = '🟢 Configuré';
+    status.style.color    = 'var(--green)';
+  } else {
+    notConf.style.display = 'block';
+    conf.style.display    = 'none';
+    status.textContent    = '⚪ Non configuré';
+    status.style.color    = 'var(--muted)';
+  }
+}
+
+function jbinCollectData() {
+  const data = {};
+  JBIN_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
+  data._savedAt = new Date().toISOString();
+  data._device  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '💻 PC';
+  return data;
+}
+
+async function jbinSave() {
+  const { key, binId } = jbinGetConfig();
+  if(!key) { toast('Configurez JSONBin d\'abord'); return; }
+
+  const payload = jbinCollectData();
+  const headers = { 'Content-Type':'application/json', 'X-Master-Key': key };
+
+  try {
+    let res, data;
+    if(binId) {
+      // Mettre à jour le bin existant
+      res  = await fetch(`${JBIN_API}/b/${binId}`, {
+        method: 'PUT', headers, body: JSON.stringify(payload)
+      });
+      data = await res.json();
+      if(data.message) throw new Error(data.message);
+    } else {
+      // Créer un nouveau bin
+      res  = await fetch(`${JBIN_API}/b`, {
+        method: 'POST',
+        headers: { ...headers, 'X-Bin-Name':'ChronoLigne', 'X-Bin-Private':'true' },
+        body: JSON.stringify(payload)
+      });
+      data = await res.json();
+      if(data.message) throw new Error(data.message);
+      localStorage.setItem('chronoligne_jbin_bin', data.metadata.id);
+    }
+    const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const el = document.getElementById('jbin-last-sync');
+    if(el) el.innerHTML = `☁️ Sauvegardé le ${now} · ${payload._device}`;
+    toast('☁️ Données sauvegardées sur JSONBin !');
+  } catch(e) {
+    toast('❌ Erreur JSONBin : ' + e.message);
+  }
+}
+
+async function jbinLoad() {
+  const { key, binId } = jbinGetConfig();
+  if(!key) { toast('Configurez JSONBin d\'abord'); return; }
+  if(!binId) { toast('Aucune sauvegarde — faites d\'abord ☁️ Sauvegarder'); return; }
+
+  try {
+    const res  = await fetch(`${JBIN_API}/b/${binId}/latest`, {
+      headers: { 'X-Master-Key': key }
+    });
+    const data = await res.json();
+    if(data.message) throw new Error(data.message);
+
+    const record = data.record;
+    let count = 0;
+    JBIN_KEYS.forEach(k => { if(record[k]) { localStorage.setItem(k, record[k]); count++; } });
+
+    const savedAt = record._savedAt ? new Date(record._savedAt).toLocaleString('fr-FR') : '';
+    const device  = record._device || '';
+    const now     = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const el = document.getElementById('jbin-last-sync');
+    if(el) el.innerHTML = `⬇️ Chargé le ${now}<br><span style="font-size:10px">Sauvegarde : ${device} — ${savedAt}</span>`;
+
+    toast(`✅ ${count} données chargées (${device})`);
+    // Recharger l'app avec les nouvelles données
+    setTimeout(() => {
+      initDB();
+      if(typeof heuresRender === 'function') heuresRender();
+      if(typeof renderLineGrid === 'function') renderLineGrid();
+      if(typeof renderRoadmapView === 'function') renderRoadmapView();
+    }, 300);
+  } catch(e) {
+    toast('❌ Erreur JSONBin : ' + e.message);
+  }
+}
+
+function jbinToggleAuto() {
+  jbinAutoSyncOn = !jbinAutoSyncOn;
+  const btn = document.getElementById('jbin-autosync-btn');
+  if(!btn) return;
+  if(jbinAutoSyncOn) {
+    btn.textContent = '🔄 Sync auto : ON';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    jbinAutoSyncTimer = setInterval(() => jbinSave(), 5 * 60 * 1000);
+    jbinSave();
+    toast('🔄 Sync auto ON — sauvegarde toutes les 5 min');
+  } else {
+    btn.textContent = '🔄 Sync auto : OFF';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    clearInterval(jbinAutoSyncTimer);
+    toast('Sync auto désactivée');
+  }
+}
+
+function jbinReset() {
+  if(!confirm('Effacer la clé JSONBin de cet appareil ?')) return;
+  localStorage.removeItem('chronoligne_jbin_key');
+  localStorage.removeItem('chronoligne_jbin_bin');
+  jbinAutoSyncOn = false;
+  clearInterval(jbinAutoSyncTimer);
+  jbinInitUI();
+  toast('Clé JSONBin effacée');
+}
+
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
 initDB();
@@ -6065,6 +6404,7 @@ heuresInit();
 updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
+jbinInitUI();
 </script>
 </body>
 </html>
