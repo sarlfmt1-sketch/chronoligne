@@ -47,9 +47,9 @@ body {
 #app { padding-bottom: 70px; }
 
 /* HEADER */
-#header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
-#header-logo { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; color:var(--accent); }
-#clock-header { font-family:'Share Tech Mono',monospace; font-size:clamp(28px,8vw,48px); color:var(--text); font-weight:700; }
+#header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+#header-logo { display:none; }
+#clock-header { font-family:'Share Tech Mono',monospace; font-size:clamp(42px,11vw,64px); color:var(--text); font-weight:700; line-height:1; position:absolute; left:50%; transform:translateX(-50%); }
 
 /* NAV */
 nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--border); z-index:200; backdrop-filter:blur(10px); }
@@ -81,8 +81,8 @@ nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--
 /* LIVE */
 .live-block { border-radius:10px; padding:12px 14px; }
 .live-name { font-family:'Rajdhani',sans-serif; font-size:clamp(18px,5vw,26px); font-weight:700; }
-.live-time { font-family:'Share Tech Mono',monospace; font-size:clamp(36px,10vw,60px); font-weight:700; line-height:1; }
-.live-cd { font-family:'Rajdhani',sans-serif; font-size:clamp(28px,8vw,50px); font-weight:700; }
+.live-time { font-family:'Share Tech Mono',monospace; font-size:clamp(48px,13vw,80px); font-weight:700; line-height:1; }
+.live-cd { font-family:'Rajdhani',sans-serif; font-size:clamp(36px,10vw,60px); font-weight:700; }
 
 /* STOP TABLE */
 .stop-table { width:100%; border-collapse:collapse; }
@@ -131,10 +131,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- HEADER -->
 <div id="header">
-  <div id="header-logo">🚌 ChronoLigne PRO</div>
-  <div id="clock-header">--:--:--</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+    <div id="clock-header">--:--:--</div>
+    <div id="header-logo">🚌 ChronoLigne PRO</div>
+  </div>
   <div style="display:flex;gap:6px;align-items:center">
-    <div id="gps-status-icon" title="GPS" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.08);border:1px solid var(--border);cursor:default" title="GPS inactif">📍</div>
+    <div id="gps-status-icon" title="GPS" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.08);border:1px solid var(--border);cursor:default">📍</div>
     <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
       style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
     <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
@@ -166,10 +168,18 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   <!-- Bannière GPS mode conduite auto -->
   <div id="gps-auto-banner" style="display:none;background:rgba(39,174,96,.1);border:2px solid var(--green);border-radius:12px;padding:10px 14px">
-    <div style="display:flex;align-items:center;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <div id="gps-auto-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
       <div style="flex:1;font-size:12px;color:var(--green);font-weight:700">GPS ACTIF — Détection automatique</div>
       <div id="gps-auto-acc" style="font-size:10px;color:var(--muted)"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="gpsForceNext()" style="flex:1;padding:10px;font-size:13px;font-weight:700;background:rgba(255,193,7,.2);border:2px solid #ffc107;color:#ffc107;border-radius:10px;cursor:pointer">
+        ⏭ Arrêt suivant
+      </button>
+      <button onclick="stopGpsAuto()" style="padding:10px;font-size:12px;background:rgba(231,76,60,.1);border:1px solid var(--red);color:var(--red);border-radius:10px;cursor:pointer">
+        ⏹ Stop
+      </button>
     </div>
   </div>
 
@@ -199,14 +209,29 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <button class="btn btn-sm btn-ghost" onclick="showView('view-lines')">Changer</button>
     </div>
     <div class="prog-bar"><div class="prog-fill" id="live-prog" style="width:0%"></div></div>
+
+    <!-- Démarrer depuis un arrêt précis -->
+    <div id="start-from-stop-bar" style="display:none;margin-top:8px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Démarrer depuis quel arrêt ?</div>
+      <div style="display:flex;gap:6px">
+        <select id="start-from-stop-sel" style="flex:1;padding:6px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px"></select>
+        <button onclick="applyStartFromStop()" style="padding:6px 12px;background:var(--green);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer">▶ Go</button>
+        <button onclick="document.getElementById('start-from-stop-bar').style.display='none'" style="padding:6px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer">✕</button>
+      </div>
+    </div>
+
     <!-- Boutons GPS -->
-    <div id="gps-btns" style="display:none;margin-top:10px;display:flex;gap:8px">
+    <div id="gps-btns" style="display:none;margin-top:10px;flex-wrap:wrap;gap:8px">
       <button onclick="startGpsRecord()" id="btn-gps-record" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(255,165,0,.15);border:1px solid orange;color:orange;border-radius:8px;cursor:pointer">
         📍 Enregistrer GPS
       </button>
-      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer" id="btn-gps-auto">
+      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer">
         🚗 Conduite auto
       </button>
+      <button onclick="showStartFromStop()" style="width:100%;padding:8px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer">
+        ✂️ Démarrer depuis un arrêt précis
+      </button>
+      <div id="gps-count-info" style="width:100%;font-size:11px;color:var(--muted);text-align:center;padding-top:2px"></div>
     </div>
   </div>
 
@@ -3873,9 +3898,10 @@ function updateLive() {
 
   const now = new Date();
   const nowMin = now.getHours()*60 + now.getMinutes();
+  const startFrom = activeTrip.startStopIdx || 0;
 
   let nextIdx = trip.stops.length - 1;
-  for(let i = 0; i < trip.stops.length; i++) {
+  for(let i = startFrom; i < trip.stops.length; i++) {
     const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
     if(h*60+m >= nowMin) { nextIdx = i; break; }
   }
@@ -3903,8 +3929,8 @@ function updateLive() {
   document.getElementById('lb-name').textContent = s2?.name || '—';
   document.getElementById('lb-time').textContent = fmt(s2?.time);
 
-  const prog = Math.round(nextIdx / Math.max(trip.stops.length-1,1) * 100);
-  document.getElementById('live-prog').style.width = prog + '%';
+  const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
+  document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
 }
 
 function confirmTerminus() {
@@ -3978,7 +4004,49 @@ function activateTrip(lineIdx, tripIdx) {
   showGpsBtns(true);
   updateLive();
   showView('view-live');
+  updateGpsCountInfo();
   toast('▶ Trajet activé !');
+}
+
+function showStartFromStop() {
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  const sel = document.getElementById('start-from-stop-sel');
+  sel.innerHTML = trip.stops.map((s,i) =>
+    `<option value="${i}">${String(i+1).padStart(2,'0')}. ${s.name} ${s.time ? '('+s.time+')' : ''}</option>`
+  ).join('');
+  document.getElementById('start-from-stop-bar').style.display = 'block';
+}
+
+function applyStartFromStop() {
+  const idx = parseInt(document.getElementById('start-from-stop-sel').value);
+  if(isNaN(idx)) return;
+  // Mettre à jour l'index de départ pour EN DIRECT et GPS
+  activeTrip.startStopIdx = idx;
+  gpsAutoNextIdx = idx;
+  gpsRecStopIdx = idx;
+  document.getElementById('start-from-stop-bar').style.display = 'none';
+  updateLive();
+  toast(`✂️ Départ depuis l'arrêt ${idx+1}`);
+}
+
+function updateGpsCountInfo() {
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  loadGpsCoordsDB();
+  let count = 0;
+  trip.stops.forEach((s,i) => {
+    if(gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, i)]) count++;
+  });
+  const total = trip.stops.length;
+  const el = document.getElementById('gps-count-info');
+  if(el) {
+    const pct = Math.round(count/total*100);
+    const color = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : 'var(--red)';
+    el.innerHTML = `📍 GPS : <span style="color:${color};font-weight:700">${count}/${total} arrêts enregistrés (${pct}%)</span>`;
+  }
 }
 
 // ══ TOAST ════════════════════════════════════════════════════
@@ -5642,8 +5710,22 @@ function checkGpsAutoDetect(coords) {
   if(!savedCoords) { gpsAutoNextIdx++; return; } // pas de coords → passer
 
   const dist = haversine(coords.lat, coords.lon, savedCoords.lat, savedCoords.lon);
-  if(dist <= GPS_DETECT_DIST) {
-    // Arrêt détecté !
+
+  // Rayon adaptatif : si arrêt suivant très proche, réduire le rayon pour éviter
+  // de sauter un arrêt par erreur
+  let detectDist = GPS_DETECT_DIST;
+  const nextKey = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx + 1);
+  const nextCoords = gpsCoordsDB[nextKey];
+  if(nextCoords && savedCoords) {
+    const distBetween = haversine(savedCoords.lat, savedCoords.lon, nextCoords.lat, nextCoords.lon);
+    if(distBetween < 150) detectDist = Math.min(40, distBetween / 3);
+  }
+
+  // Mettre à jour la précision affichée
+  const accEl = document.getElementById('gps-auto-acc');
+  if(accEl) accEl.textContent = `📍 ${Math.round(dist)}m`;
+
+  if(dist <= detectDist) {
     const now = new Date();
     const nowMin = now.getHours()*60 + now.getMinutes();
     const [ph, pm] = (stop.time||'00:00').split(':').map(Number);
@@ -5653,29 +5735,56 @@ function checkGpsAutoDetect(coords) {
     gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status });
     saveGpsSession();
     gpsAutoNextIdx++;
-    // Feedback visuel
     flashAutoDetect(stop.name, diffMin, status);
   }
+}
+
+// Forcer manuellement le passage à l'arrêt suivant
+function gpsForceNext() {
+  if(!activeTrip || gpsMode !== 'auto') return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  if(gpsAutoNextIdx >= trip.stops.length) return;
+
+  const stop = trip.stops[gpsAutoNextIdx];
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const [ph, pm] = (stop.time||'00:00').split(':').map(Number);
+  const diffMin = nowMin - (ph*60+pm);
+  const status = diffMin < -1 ? 'avsi' : diffMin <= 0 ? 'avc' : diffMin <= 3 ? 'rc' : diffMin <= 6 ? 'rsc' : diffMin <= 12 ? 'rnc' : 'rsi';
+  gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status, manual: true });
+  saveGpsSession();
+  gpsAutoNextIdx++;
+  flashAutoDetect('⏭ ' + stop.name, diffMin, status);
+  toast(`⏭ Arrêt suivant : ${trip.stops[gpsAutoNextIdx]?.name || 'Terminus'}`);
 }
 
 function flashAutoDetect(name, diff, status) {
   const colors = { avsi:'#e74c3c', avc:'#27ae60', rc:'#27ae60', rsc:'orange', rnc:'#e74c3c', rsi:'#e74c3c' };
   const labels = { avsi:'⛔ Avance >1min', avc:'✅ Avance OK', rc:'✅ Conforme', rsc:'⚠️ Semi-conf.', rnc:'❌ Non-conf.', rsi:'⛔ Retard >12min' };
   const col = colors[status];
-  // Flash sur le banner
   const banner = document.getElementById('gps-auto-banner');
-  const orig = banner.style.background;
-  banner.style.background = `rgba(${col.includes('27ae60')?'39,174,96':'231,76,60'},.3)`;
+  const origBg = 'rgba(39,174,96,.1)';
+  banner.style.background = col === '#27ae60' ? 'rgba(39,174,96,.3)' : 'rgba(231,76,60,.3)';
   banner.innerHTML = `<div style="text-align:center;padding:4px">
     <div style="font-size:13px;font-weight:700;color:${col}">${labels[status]}</div>
     <div style="font-size:12px;color:var(--muted)">${name} · ${diff>=0?'+':''}${diff}min</div>
   </div>`;
   setTimeout(() => {
-    banner.style.background = 'rgba(39,174,96,.1)';
-    banner.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+    banner.style.background = origBg;
+    banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <div id="gps-auto-dot" style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
       <div style="flex:1;font-size:12px;color:var(--green);font-weight:700">GPS ACTIF — Détection automatique</div>
       <div id="gps-auto-acc" style="font-size:10px;color:var(--muted)"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="gpsForceNext()" style="flex:1;padding:10px;font-size:13px;font-weight:700;background:rgba(255,193,7,.2);border:2px solid #ffc107;color:#ffc107;border-radius:10px;cursor:pointer">
+        ⏭ Arrêt suivant
+      </button>
+      <button onclick="stopGpsAuto()" style="padding:10px;font-size:12px;background:rgba(231,76,60,.1);border:1px solid var(--red);color:var(--red);border-radius:10px;cursor:pointer">
+        ⏹ Stop
+      </button>
     </div>`;
   }, 3000);
 }
