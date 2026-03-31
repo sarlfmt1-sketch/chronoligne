@@ -18,6 +18,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -665,40 +668,31 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
   <div class="card" style="border:2px solid rgba(66,133,244,.3);background:rgba(66,133,244,.05)">
-    <div class="card-title" style="color:#4285f4">☁️ Sync JSONBin</div>
-    <div id="jbin-status" style="font-size:12px;color:var(--muted);margin-bottom:10px">⚪ Non configuré</div>
-
-    <div id="jbin-not-configured">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-        1. Allez sur <strong style="color:var(--accent)">jsonbin.io</strong> → créez un compte gratuit<br>
-        2. Copiez votre <strong>Master Key</strong> (dans Account → API Keys)<br>
-        3. Collez-la ici :
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input type="password" id="jbin-key-input" placeholder="$2b$10$..." style="flex:1;padding:8px 10px;font-size:13px;font-family:monospace">
-        <button onclick="jbinConfigure()" class="btn" style="background:#4285f4;color:#fff;font-weight:700;border:none;white-space:nowrap">
-          ✅ Configurer
-        </button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);text-align:center">Gratuit · Sync PC ↔ Téléphone · Aucune installation</div>
+    <div class="card-title" style="color:#4285f4">☁️ Sync Google Drive</div>
+    <div id="gdrive-status" style="font-size:12px;color:var(--muted);margin-bottom:10px">⚪ Non connecté</div>
+    <div id="gdrive-not-connected">
+      <button onclick="gdriveSignIn()" class="btn" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;font-weight:700;font-size:14px;border:none;padding:12px">
+        🔑 Connecter Google Drive
+      </button>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Sync automatique PC ↔ Téléphone</div>
     </div>
-
-    <div id="jbin-configured" style="display:none">
+    <div id="gdrive-connected" style="display:none">
+      <div id="gdrive-user" style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px"></div>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button onclick="jbinSave()" class="btn" style="flex:1;background:rgba(52,168,83,.2);border:1px solid #34a853;color:#34a853;font-weight:700">
+        <button onclick="gdriveSave()" class="btn" style="flex:1;background:rgba(52,168,83,.2);border:1px solid #34a853;color:#34a853;font-weight:700">
           ☁️ Sauvegarder
         </button>
-        <button onclick="jbinLoad()" class="btn" style="flex:1;background:rgba(66,133,244,.2);border:1px solid #4285f4;color:#4285f4;font-weight:700">
+        <button onclick="gdriveLoad()" class="btn" style="flex:1;background:rgba(66,133,244,.2);border:1px solid #4285f4;color:#4285f4;font-weight:700">
           ⬇️ Charger
         </button>
       </div>
       <div style="display:flex;gap:8px">
-        <button onclick="jbinToggleAuto()" id="jbin-autosync-btn" class="btn btn-sm btn-ghost" style="flex:1">
+        <button onclick="gdriveToggleAuto()" id="gdrive-autosync-btn" class="btn btn-sm btn-ghost" style="flex:1">
           🔄 Sync auto : OFF
         </button>
-        <button onclick="jbinReset()" class="btn btn-sm btn-danger">Effacer clé</button>
+        <button onclick="gdriveSignOut()" class="btn btn-sm btn-danger">Déconnecter</button>
       </div>
-      <div id="jbin-last-sync" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
+      <div id="gdrive-last-sync" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
     </div>
   </div>
   <div class="card">
@@ -6242,158 +6236,167 @@ function pwaInstall() {
   }
 }
 
-// ══ SYNCHRONISATION JSONBIN.IO ═══════════════════════════════
-const JBIN_API = 'https://api.jsonbin.io/v3';
-const JBIN_KEYS = [
+// ══ SYNCHRONISATION GOOGLE DRIVE ════════════════════════════
+const GDRIVE_CLIENT_ID = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const GDRIVE_FILE = 'chronoligne_sync.json';
+const GDRIVE_KEYS = [
   'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
   'chronoligne_gps_coords','chronoligne_gps_sessions',
   'chronoligne_prime_sessions','chronoligne_settings'
 ];
 
-let jbinAutoSyncOn = false;
-let jbinAutoSyncTimer = null;
+let gdriveToken = null;
+let gdriveAutoSyncOn = false;
+let gdriveAutoTimer = null;
+let gdriveFileId = localStorage.getItem('chronoligne_gdrive_fid') || null;
 
-function jbinGetConfig() {
-  return {
-    key:   localStorage.getItem('chronoligne_jbin_key') || '',
-    binId: localStorage.getItem('chronoligne_jbin_bin') || ''
-  };
-}
-
-function jbinConfigure() {
-  const key = document.getElementById('jbin-key-input').value.trim();
-  if(!key) { toast('Collez votre Master Key JSONBin'); return; }
-  localStorage.setItem('chronoligne_jbin_key', key);
-  jbinInitUI();
-  toast('✅ Clé JSONBin configurée !');
-}
-
-function jbinInitUI() {
-  const { key } = jbinGetConfig();
-  const notConf = document.getElementById('jbin-not-configured');
-  const conf    = document.getElementById('jbin-configured');
-  const status  = document.getElementById('jbin-status');
-  if(!notConf || !conf || !status) return;
-  if(key) {
-    notConf.style.display = 'none';
-    conf.style.display    = 'block';
-    status.textContent    = '🟢 Configuré';
-    status.style.color    = 'var(--green)';
-  } else {
-    notConf.style.display = 'block';
-    conf.style.display    = 'none';
-    status.textContent    = '⚪ Non configuré';
-    status.style.color    = 'var(--muted)';
+function gdriveSignIn() {
+  if(typeof google === 'undefined') {
+    toast('⏳ API Google en cours de chargement, réessayez dans 2 secondes');
+    return;
   }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: (resp) => {
+      if(resp.error) { toast('❌ Connexion Google échouée : ' + resp.error); return; }
+      gdriveToken = resp.access_token;
+      gdriveOnConnected();
+      gdriveCheckFile();
+    }
+  });
+  client.requestAccessToken();
 }
 
-function jbinCollectData() {
+function gdriveOnConnected() {
+  document.getElementById('gdrive-not-connected').style.display = 'none';
+  document.getElementById('gdrive-connected').style.display = 'block';
+  document.getElementById('gdrive-status').textContent = '🟢 Connecté';
+  document.getElementById('gdrive-status').style.color = 'var(--green)';
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: 'Bearer ' + gdriveToken }
+  }).then(r => r.json()).then(info => {
+    const el = document.getElementById('gdrive-user');
+    if(el) el.textContent = '👤 ' + (info.name || info.email || '');
+  }).catch(() => {});
+}
+
+function gdriveCheckFile() {
+  fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDRIVE_FILE}'&fields=files(id,modifiedTime)`, {
+    headers: { Authorization: 'Bearer ' + gdriveToken }
+  }).then(r => r.json()).then(data => {
+    if(data.files && data.files.length > 0) {
+      gdriveFileId = data.files[0].id;
+      localStorage.setItem('chronoligne_gdrive_fid', gdriveFileId);
+      const modif = new Date(data.files[0].modifiedTime).toLocaleString('fr-FR');
+      if(confirm(`☁️ Sauvegarde trouvée sur Drive (${modif})\n\nCharger sur cet appareil ?`)) {
+        gdriveLoad();
+      }
+    }
+  }).catch(() => {});
+}
+
+function gdriveCollect() {
   const data = {};
-  JBIN_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
+  GDRIVE_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
   data._savedAt = new Date().toISOString();
   data._device  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '💻 PC';
   return data;
 }
 
-async function jbinSave() {
-  const { key, binId } = jbinGetConfig();
-  if(!key) { toast('Configurez JSONBin d\'abord'); return; }
-
-  const payload = jbinCollectData();
-  const headers = { 'Content-Type':'application/json', 'X-Master-Key': key };
+async function gdriveSave() {
+  if(!gdriveToken) { toast('Connectez-vous d\'abord'); return; }
+  const body = JSON.stringify(gdriveCollect());
+  const meta = JSON.stringify({ name: GDRIVE_FILE, parents: gdriveFileId ? undefined : ['appDataFolder'] });
+  const form = new FormData();
+  form.append('metadata', new Blob([meta], {type:'application/json'}));
+  form.append('file',     new Blob([body], {type:'application/json'}));
 
   try {
-    let res, data;
-    if(binId) {
-      // Mettre à jour le bin existant
-      res  = await fetch(`${JBIN_API}/b/${binId}`, {
-        method: 'PUT', headers, body: JSON.stringify(payload)
-      });
-      data = await res.json();
-      if(data.message) throw new Error(data.message);
-    } else {
-      // Créer un nouveau bin
-      res  = await fetch(`${JBIN_API}/b`, {
-        method: 'POST',
-        headers: { ...headers, 'X-Bin-Name':'ChronoLigne', 'X-Bin-Private':'true' },
-        body: JSON.stringify(payload)
-      });
-      data = await res.json();
-      if(data.message) throw new Error(data.message);
-      localStorage.setItem('chronoligne_jbin_bin', data.metadata.id);
-    }
+    const url = gdriveFileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=multipart`
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const method = gdriveFileId ? 'PATCH' : 'POST';
+    const res  = await fetch(url, { method, headers:{ Authorization:'Bearer '+gdriveToken }, body: form });
+    const json = await res.json();
+    if(json.error) throw new Error(json.error.message);
+    gdriveFileId = json.id;
+    localStorage.setItem('chronoligne_gdrive_fid', gdriveFileId);
     const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const el = document.getElementById('jbin-last-sync');
-    if(el) el.innerHTML = `☁️ Sauvegardé le ${now} · ${payload._device}`;
-    toast('☁️ Données sauvegardées sur JSONBin !');
+    const el = document.getElementById('gdrive-last-sync');
+    if(el) el.innerHTML = `☁️ Sauvegardé à ${now}`;
+    toast('☁️ Sauvegardé sur Google Drive !');
   } catch(e) {
-    toast('❌ Erreur JSONBin : ' + e.message);
+    toast('❌ Erreur Drive : ' + e.message);
   }
 }
 
-async function jbinLoad() {
-  const { key, binId } = jbinGetConfig();
-  if(!key) { toast('Configurez JSONBin d\'abord'); return; }
-  if(!binId) { toast('Aucune sauvegarde — faites d\'abord ☁️ Sauvegarder'); return; }
-
+async function gdriveLoad() {
+  if(!gdriveToken) { toast('Connectez-vous d\'abord'); return; }
+  if(!gdriveFileId) { toast('Aucune sauvegarde — faites d\'abord ☁️ Sauvegarder'); return; }
   try {
-    const res  = await fetch(`${JBIN_API}/b/${binId}/latest`, {
-      headers: { 'X-Master-Key': key }
+    const res  = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + gdriveToken }
     });
     const data = await res.json();
-    if(data.message) throw new Error(data.message);
-
-    const record = data.record;
+    if(data.error) throw new Error(data.error.message);
     let count = 0;
-    JBIN_KEYS.forEach(k => { if(record[k]) { localStorage.setItem(k, record[k]); count++; } });
-
-    const savedAt = record._savedAt ? new Date(record._savedAt).toLocaleString('fr-FR') : '';
-    const device  = record._device || '';
-    const now     = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const el = document.getElementById('jbin-last-sync');
-    if(el) el.innerHTML = `⬇️ Chargé le ${now}<br><span style="font-size:10px">Sauvegarde : ${device} — ${savedAt}</span>`;
-
-    toast(`✅ ${count} données chargées (${device})`);
-    // Recharger l'app avec les nouvelles données
+    GDRIVE_KEYS.forEach(k => { if(data[k]) { localStorage.setItem(k, data[k]); count++; } });
+    const device  = data._device  || '';
+    const savedAt = data._savedAt ? new Date(data._savedAt).toLocaleString('fr-FR') : '';
+    const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const el = document.getElementById('gdrive-last-sync');
+    if(el) el.innerHTML = `⬇️ Chargé à ${now}<br><span style="font-size:10px">${device} — ${savedAt}</span>`;
+    toast(`✅ ${count} données chargées depuis Drive`);
     setTimeout(() => {
       initDB();
-      if(typeof heuresRender === 'function') heuresRender();
-      if(typeof renderLineGrid === 'function') renderLineGrid();
-      if(typeof renderRoadmapView === 'function') renderRoadmapView();
+      if(typeof heuresRender==='function') heuresRender();
+      if(typeof renderLineGrid==='function') renderLineGrid();
+      if(typeof renderRoadmapView==='function') renderRoadmapView();
     }, 300);
   } catch(e) {
-    toast('❌ Erreur JSONBin : ' + e.message);
+    toast('❌ Erreur Drive : ' + e.message);
   }
 }
 
-function jbinToggleAuto() {
-  jbinAutoSyncOn = !jbinAutoSyncOn;
-  const btn = document.getElementById('jbin-autosync-btn');
+function gdriveToggleAuto() {
+  gdriveAutoSyncOn = !gdriveAutoSyncOn;
+  const btn = document.getElementById('gdrive-autosync-btn');
   if(!btn) return;
-  if(jbinAutoSyncOn) {
+  if(gdriveAutoSyncOn) {
     btn.textContent = '🔄 Sync auto : ON';
     btn.style.color = 'var(--green)';
     btn.style.borderColor = 'var(--green)';
-    jbinAutoSyncTimer = setInterval(() => jbinSave(), 5 * 60 * 1000);
-    jbinSave();
-    toast('🔄 Sync auto ON — sauvegarde toutes les 5 min');
+    gdriveAutoTimer = setInterval(() => gdriveSave(), 5 * 60 * 1000);
+    gdriveSave();
+    toast('🔄 Sync auto ON — toutes les 5 min');
   } else {
     btn.textContent = '🔄 Sync auto : OFF';
     btn.style.color = '';
     btn.style.borderColor = '';
-    clearInterval(jbinAutoSyncTimer);
+    clearInterval(gdriveAutoTimer);
     toast('Sync auto désactivée');
   }
 }
 
-function jbinReset() {
-  if(!confirm('Effacer la clé JSONBin de cet appareil ?')) return;
-  localStorage.removeItem('chronoligne_jbin_key');
-  localStorage.removeItem('chronoligne_jbin_bin');
-  jbinAutoSyncOn = false;
-  clearInterval(jbinAutoSyncTimer);
-  jbinInitUI();
-  toast('Clé JSONBin effacée');
+function gdriveSignOut() {
+  gdriveToken = null;
+  gdriveAutoSyncOn = false;
+  clearInterval(gdriveAutoTimer);
+  document.getElementById('gdrive-not-connected').style.display = 'block';
+  document.getElementById('gdrive-connected').style.display = 'none';
+  document.getElementById('gdrive-status').textContent = '⚪ Non connecté';
+  document.getElementById('gdrive-status').style.color = 'var(--muted)';
+  toast('Déconnecté de Google Drive');
+}
+
+function gdriveInit() {
+  // Initialiser l'UI
+  const notConn = document.getElementById('gdrive-not-connected');
+  const conn    = document.getElementById('gdrive-connected');
+  if(notConn) notConn.style.display = 'block';
+  if(conn)    conn.style.display    = 'none';
 }
 
 // ══ BOOT ═════════════════════════════════════════════════════
@@ -6404,7 +6407,7 @@ heuresInit();
 updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
-jbinInitUI();
+gdriveInit();
 </script>
 </body>
 </html>
