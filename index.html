@@ -15,12 +15,8 @@
 <meta name="description" content="Assistant timing chauffeur de bus — Réseau Cergy-Pontoise">
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -54,7 +50,7 @@ body {
 /* HEADER */
 #header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
 #header-logo { display:none; }
-#clock-header { font-family:'Share Tech Mono',monospace; font-size:clamp(42px,11vw,64px); color:var(--text); font-weight:700; line-height:1; position:absolute; left:50%; transform:translateX(-50%); }
+#clock-header { font-family:'Rajdhani',sans-serif; font-size:clamp(52px,14vw,80px); color:var(--text); font-weight:700; line-height:1; letter-spacing:2px; }
 
 /* NAV */
 nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--border); z-index:200; backdrop-filter:blur(10px); }
@@ -85,8 +81,8 @@ nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--
 
 /* LIVE */
 .live-block { border-radius:10px; padding:12px 14px; }
-.live-name { font-family:'Rajdhani',sans-serif; font-size:clamp(18px,5vw,26px); font-weight:700; }
-.live-time { font-family:'Share Tech Mono',monospace; font-size:clamp(48px,13vw,80px); font-weight:700; line-height:1; }
+.live-name { font-family:'Rajdhani',sans-serif; font-size:clamp(22px,6vw,34px); font-weight:700; line-height:1.1; }
+.live-time { font-family:'Rajdhani',sans-serif; font-size:clamp(48px,13vw,80px); font-weight:700; line-height:1; letter-spacing:2px; }
 .live-cd { font-family:'Rajdhani',sans-serif; font-size:clamp(36px,10vw,60px); font-weight:700; }
 
 /* STOP TABLE */
@@ -136,10 +132,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- HEADER -->
 <div id="header">
-  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
-    <div id="clock-header">--:--:--</div>
-    <div id="header-logo">🚌 ChronoLigne PRO</div>
-  </div>
+  <div id="clock-header">--:--:--</div>
   <div style="display:flex;gap:6px;align-items:center">
     <div id="gps-status-icon" title="GPS" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.08);border:1px solid var(--border);cursor:default">📍</div>
     <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
@@ -188,24 +181,41 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
-  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4)">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
-    <div class="live-name" id="ln-name">—</div>
-    <div class="live-time" id="ln-time" style="color:var(--red)">--:--</div>
-    <div class="live-cd" id="ln-countdown" style="color:rgba(231,76,60,.7)">--</div>
+  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);position:relative;overflow:hidden;padding:14px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">🎯 PROCHAIN ARRÊT</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div class="live-name" id="ln-name" style="flex:1;font-size:clamp(22px,6vw,34px);line-height:1.1">—</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="live-time" id="ln-time" style="color:var(--red)">--:--</div>
+        <div class="live-cd" id="ln-countdown" style="color:rgba(231,76,60,.7);font-size:clamp(20px,5vw,32px)">--</div>
+      </div>
+    </div>
+    <!-- Bouton validation manuelle -->
+    <button onclick="validateStopManual()" id="btn-validate-stop"
+      style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
+             background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
+             border-radius:10px;cursor:pointer">
+      ✅ J'ai passé cet arrêt → Suivant
+    </button>
   </div>
 
-  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2)">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">👁 ARRÊT SUIVANT</div>
-    <div class="live-name" id="la-name">—</div>
-    <div class="live-time" id="la-time" style="color:var(--accent)">--:--</div>
-    <div class="live-cd" id="la-countdown" style="color:rgba(0,212,255,.5)">--</div>
+  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);position:relative;overflow:hidden;padding:12px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">👁 ARRÊT SUIVANT</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div class="live-name" id="la-name" style="flex:1;font-size:clamp(18px,5vw,28px);line-height:1.1">—</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="live-time" id="la-time" style="color:var(--accent);font-size:clamp(28px,8vw,44px)">--:--</div>
+        <div class="live-cd" id="la-countdown" style="color:rgba(0,212,255,.5);font-size:clamp(16px,4vw,24px)">--</div>
+      </div>
+    </div>
   </div>
 
-  <div class="card" style="background:rgba(255,255,255,.02)">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">👁 ARRÊT +2</div>
-    <div class="live-name" id="lb-name" style="color:var(--muted)">—</div>
-    <div class="live-time" id="lb-time" style="color:var(--muted);font-size:clamp(24px,6vw,40px)">--:--</div>
+  <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">👁 ARRÊT +2</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div class="live-name" id="lb-name" style="flex:1;font-size:clamp(16px,4vw,24px);color:var(--muted);line-height:1.1">—</div>
+      <div class="live-time" id="lb-time" style="color:var(--muted);font-size:clamp(22px,6vw,36px);flex-shrink:0">--:--</div>
+    </div>
   </div>
 
   <div class="card">
@@ -667,6 +677,27 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
+  <div class="card">
+    <div class="card-title">💾 Sauvegarde</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn btn-sm" style="background:var(--green);color:#000;font-weight:700" onclick="saveHTMLCopy()">💾 Copie HTML</button>
+      <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
+      <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+    </div>
+    <hr>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn btn-sm" onclick="reloadOfficialTrips()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recharger trajets officiels</button>
+      <button class="btn btn-sm btn-danger" onclick="resetAll()">⚠ Réinitialiser</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">ℹ À propos</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8">
+      ChronoLigne PRO — Assistant conducteur<br>
+      Réseau Cergy-Pontoise
+    </div>
+  </div>
+
   <div class="card" style="border:2px solid rgba(66,133,244,.3);background:rgba(66,133,244,.05)">
     <div class="card-title" style="color:#4285f4">☁️ Sync Google Drive</div>
     <div id="gdrive-status" style="font-size:12px;color:var(--muted);margin-bottom:10px">⚪ Non connecté</div>
@@ -693,26 +724,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <button onclick="gdriveSignOut()" class="btn btn-sm btn-danger">Déconnecter</button>
       </div>
       <div id="gdrive-last-sync" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">💾 Sauvegarde locale</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <button class="btn btn-sm" style="background:var(--green);color:#000;font-weight:700" onclick="saveHTMLCopy()">💾 Copie HTML</button>
-      <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
-      <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
-    </div>
-    <hr>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      <button class="btn btn-sm" onclick="reloadOfficialTrips()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recharger trajets officiels</button>
-      <button class="btn btn-sm btn-danger" onclick="resetAll()">⚠ Réinitialiser</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">ℹ À propos</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.8">
-      ChronoLigne PRO — Assistant conducteur<br>
-      Réseau Cergy-Pontoise
     </div>
   </div>
 </div>
@@ -1646,36 +1657,17 @@ const PRELOADED_SERVICES = [
 
 function installPreloadedServices() {
   loadRoadmapServices();
-
-  const lineColorMap = {};
-  REAL_LINES.forEach(l => { lineColorMap[l.num] = l.color; });
-
-  roadmapServices.forEach(svc => {
-    if(!Array.isArray(svc.trips)) svc.trips = [];
-    svc.trips.forEach(t => {
-      if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
-    });
-  });
-
   PRELOADED_SERVICES.forEach(ps => {
-    if(!Array.isArray(ps.trips)) ps.trips = [];
-    ps.trips.forEach(t => {
-      if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
-    });
     const idx = roadmapServices.findIndex(s => s.num === ps.num && s.jour === ps.jour);
     if(idx >= 0) {
+      // Mettre à jour les heures dépôt sans écraser les modifications utilisateur
       roadmapServices[idx].depotDepart = ps.depotDepart;
       roadmapServices[idx].depotRetour = ps.depotRetour;
       roadmapServices[idx].heures = ps.heures;
-      if(!Array.isArray(roadmapServices[idx].trips)) roadmapServices[idx].trips = [];
-      roadmapServices[idx].trips.forEach(t => {
-        if(t && t.lineNum && lineColorMap[t.lineNum]) t.lineColor = lineColorMap[t.lineNum];
-      });
     } else {
       roadmapServices.push(ps);
     }
   });
-
   saveRoadmapServices();
 }
 
@@ -4119,10 +4111,17 @@ function updateLive() {
   const nowMin = now.getHours()*60 + now.getMinutes();
   const startFrom = activeTrip.startStopIdx || 0;
 
-  let nextIdx = trip.stops.length - 1;
-  for(let i = startFrom; i < trip.stops.length; i++) {
-    const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
-    if(h*60+m >= nowMin) { nextIdx = i; break; }
+  // Utiliser l'index validé GPS/manuel si disponible
+  // sinon fallback sur l'heure (mode sans GPS)
+  let nextIdx;
+  if(activeTrip.validatedStopIdx !== undefined) {
+    nextIdx = activeTrip.validatedStopIdx;
+  } else {
+    nextIdx = trip.stops.length - 1;
+    for(let i = startFrom; i < trip.stops.length; i++) {
+      const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
+      if(h*60+m >= nowMin) { nextIdx = i; break; }
+    }
   }
 
   function fmt(t) { return t ? t.substring(0,5) : '--:--'; }
@@ -4150,12 +4149,40 @@ function updateLive() {
 
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
   document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
+
+  // Dernier arrêt passé → proposer trajet suivant automatiquement
+  const lastStop = trip.stops[trip.stops.length-1];
+  if(lastStop?.time) {
+    const [lh,lm] = lastStop.time.split(':').map(Number);
+    if(nowMin > lh*60+lm + 2 && !activeTrip._nextProposed) {
+      activeTrip._nextProposed = true;
+      if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
+        // Feuille de service : proposer le suivant
+        const next = currentRoadmap[roadmapCursor + 1];
+        toast(`⏭ Prochain trajet prêt : ${next.label} — tapez TERMINUS`);
+        const btn = document.getElementById('terminus-btn');
+        if(btn) { btn.style.background='#ffc107'; btn.style.color='#000'; btn.textContent='⏭ Trajet suivant'; }
+      }
+    }
+  }
 }
 
 function confirmTerminus() {
   if(gpsMode === 'auto') stopGpsAuto();
   if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
+
+  // Si on est dans une feuille de service, passer au trajet suivant automatiquement
+  if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
+    roadmapCursor++;
+    activateRoadmapTrip();
+    const next = currentRoadmap[roadmapCursor];
+    toast(`⏭ Trajet suivant : ${next.label}`);
+    return;
+  }
+
+  // Dernier trajet ou pas de feuille → arrêt complet
   activeTrip = null;
+  roadmapCursor = -1;
   showGpsBtns(false);
   document.getElementById('live-trip-label').textContent = 'Aucun trajet sélectionné';
   document.getElementById('live-prog').style.width = '0%';
@@ -4168,7 +4195,10 @@ function confirmTerminus() {
   document.getElementById('lb-name').textContent = '—';
   document.getElementById('lb-time').textContent = '--:--';
   document.getElementById('terminus-btn').style.display = 'none';
-  toast('🏁 Terminus — trajet terminé');
+  // Reset style du bouton terminus
+  const btn = document.getElementById('terminus-btn');
+  if(btn) { btn.style.background=''; btn.style.color=''; btn.style.animation=''; btn.textContent='🏁 TERMINUS'; }
+  toast('🏁 Fin de service — tous les trajets terminés');
 }
 
 // ══ LIGNES / TRAJETS ═════════════════════════════════════════
@@ -4214,7 +4244,7 @@ function renderLineDetail(idx) {
 }
 
 function activateTrip(lineIdx, tripIdx) {
-  activeTrip = { lineIdx, tripIdx };
+  activeTrip = { lineIdx, tripIdx, validatedStopIdx: 0 };
   const line = db.lines[lineIdx];
   const trip = line.trips[tripIdx];
   const col = line.color || '#00d4ff';
@@ -4294,26 +4324,15 @@ function saveSettings() {
 
 // ══ SAUVEGARDE ═══════════════════════════════════════════════
 function saveHTMLCopy() {
-  const keys = [
-    'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
-    'chronoligne_gps_coords','chronoligne_gps_sessions',
-    'chronoligne_prime_sessions','chronoligne_theme','chronoligne_settings'
-  ];
-  const data = {};
-  keys.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
-  const restoreScript = `<script>(function(){const d=${JSON.stringify(data)};Object.entries(d).forEach(([k,v])=>{try{localStorage.setItem(k,v)}catch(e){}})})();<\/script>`;
-  let html = document.documentElement.outerHTML;
-  html = html.replace('</body>', restoreScript + '</body>');
+  const html = document.documentElement.outerHTML;
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   const d = new Date();
   a.download = `chronoligne-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.html`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
   a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 200);
-  toast('💾 Copie complète sauvegardée (GPS inclus) !');
+  URL.revokeObjectURL(a.href);
+  toast('💾 Copie sauvegardée !');
 }
 
 function exportData() {
@@ -5811,13 +5830,33 @@ function updateGpsIcon(mode) {
 function startGpsWatch(onSuccess, onError) {
   if(!navigator.geolocation) { toast('GPS non supporté'); return false; }
   if(gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+
+  // Forcer une première position immédiate avant watchPosition
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      if(pos.coords.accuracy <= 50) {
+        gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
+        if(onSuccess) onSuccess(gpsCoords);
+      }
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+  );
+
   gpsWatchId = navigator.geolocation.watchPosition(
     pos => {
-      gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
+      const acc = pos.coords.accuracy;
+      // Ignorer les positions imprécises (> 50m)
+      if(acc > 50) return;
+      gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(acc) };
       if(onSuccess) onSuccess(gpsCoords);
     },
     err => { if(onError) onError(err); else toast('Erreur GPS'); },
-    { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,        // Toujours une position fraîche
+      timeout: 5000         // Réponse en max 5 secondes
+    }
   );
   return true;
 }
@@ -5965,7 +6004,35 @@ function checkGpsAutoDetect(coords) {
     gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status });
     saveGpsSession();
     gpsAutoNextIdx++;
+    // Mettre à jour l'index validé pour EN DIRECT
+    if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
+    updateLive();
     flashAutoDetect(stop.name, diffMin, status);
+
+    // Si c'était le dernier arrêt → passer au trajet suivant automatiquement
+    if(gpsAutoNextIdx >= trip.stops.length) {
+      setTimeout(() => autoNextTrip(), 2000);
+    }
+  }
+}
+
+function autoNextTrip() {
+  // Si on est dans une feuille de service avec un trajet suivant
+  if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
+    roadmapCursor++;
+    activateRoadmapTrip();
+    const next = currentRoadmap[roadmapCursor];
+    toast(`⏭ Trajet suivant automatique : ${next.label}`);
+  } else {
+    // Pas de feuille ou dernier trajet → afficher bouton terminus
+    toast('🏁 Dernier arrêt atteint — tapez TERMINUS pour terminer');
+    const btn = document.getElementById('terminus-btn');
+    if(btn) {
+      btn.style.background = '#ffc107';
+      btn.style.color = '#000';
+      btn.style.animation = 'pulse 0.5s infinite';
+      btn.textContent = '🏁 TERMINUS';
+    }
   }
 }
 
@@ -6067,6 +6134,27 @@ function savePrimeSession(counts, total) {
 function showGpsBtns(show) {
   const el = document.getElementById('gps-btns');
   if(el) el.style.display = show ? 'flex' : 'none';
+  const btnVal = document.getElementById('btn-validate-stop');
+  if(btnVal) btnVal.style.display = show ? 'block' : 'none';
+}
+
+function validateStopManual() {
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line.trips[activeTrip.tripIdx];
+  const currentIdx = activeTrip.validatedStopIdx || 0;
+  if(currentIdx >= trip.stops.length - 1) {
+    // Dernier arrêt → terminus
+    confirmTerminus();
+    return;
+  }
+  // Avancer d'un arrêt
+  activeTrip.validatedStopIdx = currentIdx + 1;
+  gpsAutoNextIdx = activeTrip.validatedStopIdx;
+  const passedStop = trip.stops[currentIdx];
+  const nextStop = trip.stops[activeTrip.validatedStopIdx];
+  toast(`✅ ${passedStop.name} → ${nextStop.name}`);
+  updateLive();
 }
 
 // ══ CALCULATEUR PRIME MÉTIER ══════════════════════════════════
@@ -6236,7 +6324,6 @@ function pwaInstall() {
   }
 }
 
-// ══ SYNCHRONISATION GOOGLE DRIVE ════════════════════════════
 const GDRIVE_CLIENT_ID = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'chronoligne_sync.json';
@@ -6398,6 +6485,7 @@ function gdriveInit() {
   if(notConn) notConn.style.display = 'block';
   if(conn)    conn.style.display    = 'none';
 }
+
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
