@@ -263,6 +263,32 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div id="line-detail-title" class="card-title"></div>
       <div id="trip-list"></div>
     </div>
+
+    <!-- Parseur GPS -->
+    <div class="card" style="border:1px solid rgba(255,165,0,.3);background:rgba(255,165,0,.05)">
+      <div class="card-title" style="color:orange">📍 Importer coordonnées GPS</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+        Collez une liste d'arrêts avec leurs coordonnées (une par ligne) :<br>
+        <code style="color:orange;font-size:10px">Nom Arrêt  49.047, 2.096</code> ou <code style="color:orange;font-size:10px">Nom Arrêt  49.047  2.096</code>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Sens du trajet</div>
+        <select id="gps-import-dir" style="width:100%;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+          <option value="aller">Aller</option>
+          <option value="retour">Retour</option>
+          <option value="dimanche_aller">Dimanche aller</option>
+          <option value="dimanche_retour">Dimanche retour</option>
+          <option value="tous">Tous les sens (même coords)</option>
+        </select>
+      </div>
+      <textarea id="gps-import-text" rows="7"
+        placeholder="Gare de Pontoise  49.04702, 2.09608&#10;Hôtel Dieu  49.04786, 2.10042&#10;La Poste  49.04634, 2.10589&#10;..."
+        style="width:100%;padding:8px;font-size:11px;font-family:monospace;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box;margin-bottom:8px"></textarea>
+      <button onclick="parseGpsImport()" class="btn" style="width:100%;background:orange;color:#000;font-weight:700">
+        ⚡ Importer ces coordonnées
+      </button>
+      <div id="gps-import-result" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center"></div>
+    </div>
   </div>
 </div>
 
@@ -1235,6 +1261,111 @@ const PRELOADED_GPS = {
     },
   },
 };
+
+function parseGpsImport() {
+  const text = document.getElementById('gps-import-text').value.trim();
+  const dir  = document.getElementById('gps-import-dir').value;
+  const result = document.getElementById('gps-import-result');
+
+  if(!text) { result.textContent = '❌ Collez des coordonnées d\'abord'; result.style.color='var(--red)'; return; }
+  if(activeLine === null) { result.textContent = '❌ Sélectionnez une ligne d\'abord'; result.style.color='var(--red)'; return; }
+
+  const line = db.lines[activeLine];
+
+  // Parser chaque ligne du texte
+  const parsed = [];
+  text.split('\n').forEach(l => {
+    l = l.trim();
+    if(!l) return;
+    // Formats acceptés :
+    // "Nom Arrêt  49.047, 2.096"
+    // "Nom Arrêt  49.047  2.096"
+    // "1. Nom Arrêt  49.047, 2.096"
+    // "*  Nom Arrêt  49.047, 2.096"
+    // Supprimer les préfixes numérotés
+    l = l.replace(/^[\d]+[\.\)]\s*/, '').replace(/^\*\s*/, '');
+
+    // Extraire les coordonnées à la fin
+    const m = l.match(/^(.+?)\s+([\d]+\.[\d]+)[,\s]+([\d]+\.[\d]+)\s*$/);
+    if(m) {
+      parsed.push({
+        name: m[1].trim(),
+        lat: parseFloat(m[2]),
+        lon: parseFloat(m[3])
+      });
+    }
+  });
+
+  if(!parsed.length) {
+    result.textContent = '❌ Aucune coordonnée reconnue — vérifiez le format';
+    result.style.color = 'var(--red)';
+    return;
+  }
+
+  // Fonction de normalisation pour matching
+  function norm(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/Ç/g,'C')
+      .replace(/['\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  loadGpsCoordsDB();
+  let added = 0, skipped = 0;
+
+  // Pour chaque trajet de la ligne, associer les coords aux arrêts
+  const dirs = dir === 'tous'
+    ? ['aller','retour','dimanche_aller','dimanche_retour']
+    : [dir];
+
+  line.trips.forEach((trip, tripIdx) => {
+    const tripDir = trip.direction || 'aller';
+    const isDimanche = (trip.label||'').includes('DIMANCHE');
+    const effectiveDir = isDimanche
+      ? (tripDir === 'retour' ? 'dimanche_retour' : 'dimanche_aller')
+      : tripDir;
+
+    if(!dirs.includes(effectiveDir) && dir !== 'tous') return;
+
+    trip.stops.forEach((stop, stopIdx) => {
+      const key = gpsCoordKey(line.num, tripIdx, stopIdx);
+      const sNorm = norm(stop.name);
+
+      // Chercher la meilleure correspondance
+      let bestMatch = null, bestScore = 0;
+      parsed.forEach(p => {
+        const pNorm = norm(p.name);
+        let score = 0;
+        if(sNorm === pNorm) score = 100;
+        else if(sNorm.includes(pNorm) || pNorm.includes(sNorm)) score = Math.min(sNorm.length, pNorm.length);
+        else {
+          // Score par mots communs
+          const sw = sNorm.split(' '), pw = pNorm.split(' ');
+          const common = sw.filter(w => w.length > 2 && pw.includes(w)).length;
+          score = common * 10;
+        }
+        if(score > bestScore) { bestScore = score; bestMatch = p; }
+      });
+
+      if(bestMatch && bestScore > 5) {
+        gpsCoordsDB[key] = { lat: bestMatch.lat, lon: bestMatch.lon, name: stop.name };
+        added++;
+      } else skipped++;
+    });
+  });
+
+  saveGpsCoordsDB();
+
+  const msg = `✅ ${added} arrêt(s) importé(s)${skipped > 0 ? ` · ${skipped} non reconnu(s)` : ''}`;
+  result.textContent = msg;
+  result.style.color = added > 0 ? 'var(--green)' : 'var(--red)';
+
+  if(added > 0) {
+    document.getElementById('gps-import-text').value = '';
+    updateGpsCountInfo();
+    toast(`📍 GPS : ${added} arrêts importés pour ${line.num}`);
+  }
+}
 
 function installPreloadedGPS() {
   loadGpsCoordsDB();
