@@ -182,18 +182,20 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   </div>
 
   <!-- ══ ARRÊT ACTUEL ══ -->
-  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:16px">
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">🔴 ARRÊT ACTUEL</div>
-    <!-- Heure GRANDE + countdown sur la même ligne -->
-    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
-      <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(72px,20vw,110px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--red);flex-shrink:0">--:--</div>
-      <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,7vw,44px);font-weight:700;color:rgba(231,76,60,.65)">--</div>
+  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:14px">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔴 ARRÊT ACTUEL</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <!-- Heure + countdown à gauche -->
+      <div style="flex-shrink:0;text-align:left">
+        <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(72px,20vw,110px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--red)">--:--</div>
+        <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
+      </div>
+      <!-- Nom à droite, 2 lignes si trop long (word-wrap) -->
+      <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
     </div>
-    <!-- Nom de l'arrêt sur 2 lignes si besoin -->
-    <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(24px,6.5vw,38px);font-weight:700;line-height:1.2;color:var(--text);word-break:break-word">—</div>
     <!-- Bouton validation manuelle -->
     <button onclick="validateStopManual()" id="btn-validate-stop"
-      style="display:none;width:100%;margin-top:12px;padding:14px;font-size:15px;font-weight:700;
+      style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
              background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
              border-radius:10px;cursor:pointer">
       ✅ J'ai passé cet arrêt → Suivant
@@ -201,21 +203,23 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   </div>
 
   <!-- ══ PROCHAIN ARRÊT ══ -->
-  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:14px">
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🎯 PROCHAIN ARRÊT</div>
-    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
-      <div id="la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(52px,14vw,80px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--accent);flex-shrink:0">--:--</div>
-      <div id="la-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,5vw,34px);font-weight:700;color:rgba(0,212,255,.55)">--</div>
+  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:12px">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="flex-shrink:0;text-align:left">
+        <div id="la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(52px,14vw,80px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--accent)">--:--</div>
+        <div id="la-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(14px,3vw,20px);font-weight:700;color:rgba(0,212,255,.5)">--</div>
+      </div>
+      <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,28px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
     </div>
-    <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5.5vw,32px);font-weight:700;line-height:1.2;color:var(--text);word-break:break-word">—</div>
   </div>
 
   <!-- ══ ARRÊT +2 ══ -->
   <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
     <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
-    <div style="display:flex;align-items:baseline;gap:10px">
-      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,52px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0">--:--</div>
-      <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4.5vw,26px);font-weight:700;line-height:1.2;color:var(--muted);word-break:break-word">—</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0">--:--</div>
+      <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
     </div>
   </div>
 
