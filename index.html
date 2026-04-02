@@ -82,7 +82,7 @@ nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--
 /* LIVE */
 .live-block { border-radius:10px; padding:12px 14px; }
 .live-name { font-family:'Rajdhani',sans-serif; font-size:clamp(22px,6vw,34px); font-weight:700; line-height:1.1; }
-.live-time { font-family:'Rajdhani',sans-serif; font-size:clamp(48px,13vw,80px); font-weight:700; line-height:1; letter-spacing:2px; }
+.live-time { font-family:'Rajdhani',sans-serif; font-size:clamp(56px,15vw,90px); font-weight:700; line-height:1; letter-spacing:2px; }
 .live-cd { font-family:'Rajdhani',sans-serif; font-size:clamp(36px,10vw,60px); font-weight:700; }
 
 /* STOP TABLE */
@@ -269,16 +269,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div class="card-title" style="color:orange">📍 Importer coordonnées GPS</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
         Collez une liste d'arrêts avec leurs coordonnées (une par ligne) :<br>
-        <code style="color:orange;font-size:10px">Nom Arrêt  49.047, 2.096</code> ou <code style="color:orange;font-size:10px">Nom Arrêt  49.047  2.096</code>
+        <code style="color:orange;font-size:10px">Nom Arrêt  49.047, 2.096</code>
       </div>
       <div style="margin-bottom:8px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Sens du trajet</div>
-        <select id="gps-import-dir" style="width:100%;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
-          <option value="aller">Aller</option>
-          <option value="retour">Retour</option>
-          <option value="dimanche_aller">Dimanche aller</option>
-          <option value="dimanche_retour">Dimanche retour</option>
-          <option value="tous">Tous les sens (même coords)</option>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Choisissez le trajet exact</div>
+        <select id="gps-import-trip" style="width:100%;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+          <option value="-1">— Sélectionnez un trajet —</option>
         </select>
       </div>
       <textarea id="gps-import-text" rows="7"
@@ -1264,45 +1260,33 @@ const PRELOADED_GPS = {
 
 function parseGpsImport() {
   const text = document.getElementById('gps-import-text').value.trim();
-  const dir  = document.getElementById('gps-import-dir').value;
+  const tripIdx = parseInt(document.getElementById('gps-import-trip').value);
   const result = document.getElementById('gps-import-result');
 
   if(!text) { result.textContent = '❌ Collez des coordonnées d\'abord'; result.style.color='var(--red)'; return; }
   if(activeLine === null) { result.textContent = '❌ Sélectionnez une ligne d\'abord'; result.style.color='var(--red)'; return; }
+  if(isNaN(tripIdx) || tripIdx < 0) { result.textContent = '❌ Choisissez un trajet dans la liste'; result.style.color='var(--red)'; return; }
 
   const line = db.lines[activeLine];
+  const trip = line.trips[tripIdx];
+  if(!trip) { result.textContent = '❌ Trajet introuvable'; result.style.color='var(--red)'; return; }
 
   // Parser chaque ligne du texte
   const parsed = [];
   text.split('\n').forEach(l => {
     l = l.trim();
     if(!l) return;
-    // Formats acceptés :
-    // "Nom Arrêt  49.047, 2.096"
-    // "Nom Arrêt  49.047  2.096"
-    // "1. Nom Arrêt  49.047, 2.096"
-    // "*  Nom Arrêt  49.047, 2.096"
-    // Supprimer les préfixes numérotés
     l = l.replace(/^[\d]+[\.\)]\s*/, '').replace(/^\*\s*/, '');
-
-    // Extraire les coordonnées à la fin
     const m = l.match(/^(.+?)\s+([\d]+\.[\d]+)[,\s]+([\d]+\.[\d]+)\s*$/);
-    if(m) {
-      parsed.push({
-        name: m[1].trim(),
-        lat: parseFloat(m[2]),
-        lon: parseFloat(m[3])
-      });
-    }
+    if(m) parsed.push({ name: m[1].trim(), lat: parseFloat(m[2]), lon: parseFloat(m[3]) });
   });
 
   if(!parsed.length) {
-    result.textContent = '❌ Aucune coordonnée reconnue — vérifiez le format';
+    result.textContent = '❌ Aucune coordonnée reconnue — format attendu : Nom  49.047, 2.096';
     result.style.color = 'var(--red)';
     return;
   }
 
-  // Fonction de normalisation pour matching
   function norm(s) {
     return s.toUpperCase()
       .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
@@ -1313,57 +1297,40 @@ function parseGpsImport() {
   loadGpsCoordsDB();
   let added = 0, skipped = 0;
 
-  // Pour chaque trajet de la ligne, associer les coords aux arrêts
-  const dirs = dir === 'tous'
-    ? ['aller','retour','dimanche_aller','dimanche_retour']
-    : [dir];
+  trip.stops.forEach((stop, stopIdx) => {
+    const key = gpsCoordKey(line.num, tripIdx, stopIdx);
+    const sNorm = norm(stop.name);
 
-  line.trips.forEach((trip, tripIdx) => {
-    const tripDir = trip.direction || 'aller';
-    const isDimanche = (trip.label||'').includes('DIMANCHE');
-    const effectiveDir = isDimanche
-      ? (tripDir === 'retour' ? 'dimanche_retour' : 'dimanche_aller')
-      : tripDir;
-
-    if(!dirs.includes(effectiveDir) && dir !== 'tous') return;
-
-    trip.stops.forEach((stop, stopIdx) => {
-      const key = gpsCoordKey(line.num, tripIdx, stopIdx);
-      const sNorm = norm(stop.name);
-
-      // Chercher la meilleure correspondance
-      let bestMatch = null, bestScore = 0;
-      parsed.forEach(p => {
-        const pNorm = norm(p.name);
-        let score = 0;
-        if(sNorm === pNorm) score = 100;
-        else if(sNorm.includes(pNorm) || pNorm.includes(sNorm)) score = Math.min(sNorm.length, pNorm.length);
-        else {
-          // Score par mots communs
-          const sw = sNorm.split(' '), pw = pNorm.split(' ');
-          const common = sw.filter(w => w.length > 2 && pw.includes(w)).length;
-          score = common * 10;
-        }
-        if(score > bestScore) { bestScore = score; bestMatch = p; }
-      });
-
-      if(bestMatch && bestScore > 5) {
-        gpsCoordsDB[key] = { lat: bestMatch.lat, lon: bestMatch.lon, name: stop.name };
-        added++;
-      } else skipped++;
+    let bestMatch = null, bestScore = 0;
+    parsed.forEach(p => {
+      const pNorm = norm(p.name);
+      let score = 0;
+      if(sNorm === pNorm) score = 100;
+      else if(sNorm.includes(pNorm) || pNorm.includes(sNorm)) score = Math.min(sNorm.length, pNorm.length);
+      else {
+        const sw = sNorm.split(' '), pw = pNorm.split(' ');
+        const common = sw.filter(w => w.length > 2 && pw.includes(w)).length;
+        score = common * 10;
+      }
+      if(score > bestScore) { bestScore = score; bestMatch = p; }
     });
+
+    if(bestMatch && bestScore > 5) {
+      gpsCoordsDB[key] = { lat: bestMatch.lat, lon: bestMatch.lon, name: stop.name };
+      added++;
+    } else skipped++;
   });
 
   saveGpsCoordsDB();
 
-  const msg = `✅ ${added} arrêt(s) importé(s)${skipped > 0 ? ` · ${skipped} non reconnu(s)` : ''}`;
-  result.textContent = msg;
+  const pct = Math.round(added / trip.stops.length * 100);
+  result.textContent = `✅ ${added}/${trip.stops.length} arrêts importés (${pct}%)${skipped > 0 ? ` · ${skipped} non reconnu(s)` : ''}`;
   result.style.color = added > 0 ? 'var(--green)' : 'var(--red)';
 
   if(added > 0) {
     document.getElementById('gps-import-text').value = '';
     updateGpsCountInfo();
-    toast(`📍 GPS : ${added} arrêts importés pour ${line.num}`);
+    toast(`📍 GPS trajet ${tripIdx+1} · ${line.num} : ${added} arrêts importés`);
   }
 }
 
@@ -4266,6 +4233,23 @@ function updateLive() {
     }
   }
 
+  // Vérifier si l'arrêt courant a des coords GPS
+  const currentKey = gpsCoordKey(db.lines[lineIdx].num, tripIdx, nextIdx);
+  loadGpsCoordsDB();
+  const hasGps = !!gpsCoordsDB[currentKey];
+  const btnVal = document.getElementById('btn-validate-stop');
+  if(btnVal && gpsMode === 'auto' && !hasGps) {
+    btnVal.style.background = 'rgba(255,193,7,.3)';
+    btnVal.style.borderColor = '#ffc107';
+    btnVal.style.color = '#ffc107';
+    btnVal.innerHTML = '⚠️ Pas de GPS ici → Valider manuellement';
+  } else if(btnVal) {
+    btnVal.style.background = 'rgba(39,174,96,.2)';
+    btnVal.style.borderColor = 'var(--green)';
+    btnVal.style.color = 'var(--green)';
+    btnVal.innerHTML = '✅ J\'ai passé cet arrêt → Suivant';
+  }
+
   function fmt(t) { return t ? t.substring(0,5) : '--:--'; }
   function cd(t) {
     if(!t) return '--';
@@ -4374,15 +4358,31 @@ function renderLineDetail(idx) {
     list.innerHTML = '<div class="empty-state"><span class="ico">🚌</span>Aucun trajet</div>';
     return;
   }
+
+  // Icônes selon direction
+  const dirIcon = d => d === 'retour' ? '🔵' : d === 'aller' ? '🟢' : '☀️';
+
   list.innerHTML = line.trips.map((t,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1">
-        <div style="font-size:14px;font-weight:700">${t.label}</div>
+        <div style="font-size:14px;font-weight:700">${dirIcon(t.direction)} ${t.label}</div>
         <div style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts · ${t.stops[0]?.time||'--:--'} → ${t.stops[t.stops.length-1]?.time||'--:--'}</div>
       </div>
       <button class="btn btn-sm btn-ghost" onclick="openTripEditor(${idx},${i})" style="font-size:12px">✏ Éditer</button>
       <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶</button>
     </div>`).join('');
+
+  // Peupler le sélecteur GPS avec les trajets numérotés et nommés
+  const sel = document.getElementById('gps-import-trip');
+  if(sel) {
+    sel.innerHTML = '<option value="-1">— Choisissez le trajet —</option>' +
+      line.trips.map((t,i) => {
+        const icon = dirIcon(t.direction);
+        const firstStop = t.stops[0]?.name || '';
+        const lastStop = t.stops[t.stops.length-1]?.name || '';
+        return `<option value="${i}">Trajet ${i+1} · ${icon} ${t.direction||'aller'} · ${firstStop} → ${lastStop} (${t.stops.length} arrêts)</option>`;
+      }).join('');
+  }
 }
 
 function activateTrip(lineIdx, tripIdx) {
@@ -6118,7 +6118,14 @@ function checkGpsAutoDetect(coords) {
   const stop = trip.stops[gpsAutoNextIdx];
   const key = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx);
   const savedCoords = gpsCoordsDB[key];
-  if(!savedCoords) { gpsAutoNextIdx++; return; } // pas de coords → passer
+
+  // Si pas de coords GPS pour cet arrêt → ne pas sauter, attendre validation manuelle
+  // Mais afficher un avertissement
+  if(!savedCoords) {
+    const accEl = document.getElementById('gps-auto-acc');
+    if(accEl) accEl.textContent = `⚠️ Pas de GPS`;
+    return;
+  }
 
   const dist = haversine(coords.lat, coords.lon, savedCoords.lat, savedCoords.lon);
 
