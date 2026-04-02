@@ -181,40 +181,41 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
-  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);position:relative;overflow:hidden;padding:14px">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">🔴 ARRÊT ACTUEL</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="flex-shrink:0;text-align:left">
-        <div class="live-time" id="ln-time" style="color:var(--red)">--:--</div>
-        <div class="live-cd" id="ln-countdown" style="color:rgba(231,76,60,.7);font-size:clamp(18px,4vw,26px)">--</div>
-      </div>
-      <div class="live-name" id="ln-name" style="flex:1;font-size:clamp(22px,6vw,34px);line-height:1.1">—</div>
+  <!-- ══ ARRÊT ACTUEL ══ -->
+  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:16px">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">🔴 ARRÊT ACTUEL</div>
+    <!-- Heure GRANDE + countdown sur la même ligne -->
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(72px,20vw,110px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--red);flex-shrink:0">--:--</div>
+      <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,7vw,44px);font-weight:700;color:rgba(231,76,60,.65)">--</div>
     </div>
+    <!-- Nom de l'arrêt sur 2 lignes si besoin -->
+    <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(24px,6.5vw,38px);font-weight:700;line-height:1.2;color:var(--text);word-break:break-word">—</div>
     <!-- Bouton validation manuelle -->
     <button onclick="validateStopManual()" id="btn-validate-stop"
-      style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
+      style="display:none;width:100%;margin-top:12px;padding:14px;font-size:15px;font-weight:700;
              background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
              border-radius:10px;cursor:pointer">
       ✅ J'ai passé cet arrêt → Suivant
     </button>
   </div>
 
-  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);position:relative;overflow:hidden;padding:12px">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">🎯 PROCHAIN ARRÊT</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="flex-shrink:0;text-align:left">
-        <div class="live-time" id="la-time" style="color:var(--accent);font-size:clamp(28px,8vw,44px)">--:--</div>
-        <div class="live-cd" id="la-countdown" style="color:rgba(0,212,255,.5);font-size:clamp(14px,3vw,20px)">--</div>
-      </div>
-      <div class="live-name" id="la-name" style="flex:1;font-size:clamp(18px,5vw,28px);line-height:1.1">—</div>
+  <!-- ══ PROCHAIN ARRÊT ══ -->
+  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:14px">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🎯 PROCHAIN ARRÊT</div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
+      <div id="la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(52px,14vw,80px);font-weight:700;line-height:1;letter-spacing:2px;color:var(--accent);flex-shrink:0">--:--</div>
+      <div id="la-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,5vw,34px);font-weight:700;color:rgba(0,212,255,.55)">--</div>
     </div>
+    <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5.5vw,32px);font-weight:700;line-height:1.2;color:var(--text);word-break:break-word">—</div>
   </div>
 
+  <!-- ══ ARRÊT +2 ══ -->
   <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">👁 ARRÊT +2</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="live-time" id="lb-time" style="color:var(--muted);font-size:clamp(22px,6vw,36px);flex-shrink:0">--:--</div>
-      <div class="live-name" id="lb-name" style="flex:1;font-size:clamp(16px,4vw,24px);color:var(--muted);line-height:1.1">—</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,52px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0">--:--</div>
+      <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4.5vw,26px);font-weight:700;line-height:1.2;color:var(--muted);word-break:break-word">—</div>
     </div>
   </div>
 
@@ -262,6 +263,27 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div class="card">
       <div id="line-detail-title" class="card-title"></div>
       <div id="trip-list"></div>
+    </div>
+
+    <!-- Panneau GPS arrêts enregistrés -->
+    <div id="gps-stops-panel" style="display:none">
+      <div class="card" style="border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin:0">📍 Points GPS enregistrés</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="gpsStopsPanelClose()" class="btn btn-sm btn-ghost" style="font-size:18px;padding:4px 8px">✕</button>
+          </div>
+        </div>
+        <div id="gps-stops-panel-header" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+        <!-- Barre de progression GPS -->
+        <div class="prog-bar" style="margin-bottom:12px"><div class="prog-fill" id="gps-stops-prog" style="width:0%"></div></div>
+        <!-- Actions globales -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button onclick="gpsStopsDeleteAll()" class="btn btn-sm btn-danger" style="flex:1">🗑 Supprimer tous les points</button>
+        </div>
+        <!-- Liste des arrêts -->
+        <div id="gps-stops-list" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
     </div>
 
     <!-- Parseur GPS -->
@@ -2712,15 +2734,31 @@ function renderLineDetail(idx) {
   // Icônes selon direction
   const dirIcon = d => d === 'retour' ? '🔵' : d === 'aller' ? '🟢' : '☀️';
 
-  list.innerHTML = line.trips.map((t,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
+  loadGpsCoordsDB();
+  list.innerHTML = line.trips.map((t,i) => {
+    // Compter les GPS enregistrés pour ce trajet
+    let gpsCount = 0;
+    t.stops.forEach((s,si) => { if(gpsCoordsDB[gpsCoordKey(line.num, i, si)]) gpsCount++; });
+    const total = t.stops.length;
+    const pct = Math.round(gpsCount/total*100);
+    const gpsColor = pct===100 ? 'var(--green)' : pct>0 ? '#ffc107' : 'var(--muted)';
+    const gpsBadge = gpsCount > 0
+      ? `<span style="font-size:10px;color:${gpsColor};font-weight:700">📍 ${gpsCount}/${total}</span>`
+      : `<span style="font-size:10px;color:var(--muted)">📍 —</span>`;
+    return `
+    <div style="display:flex;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">${dirIcon(t.direction)} ${t.label}</div>
-        <div style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts · ${t.stops[0]?.time||'--:--'} → ${t.stops[t.stops.length-1]?.time||'--:--'}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+          <span style="font-size:11px;color:var(--muted)">${t.stops.length} arrêts · ${t.stops[0]?.time||'--:--'} → ${t.stops[t.stops.length-1]?.time||'--:--'}</span>
+          ${gpsBadge}
+        </div>
       </div>
-      <button class="btn btn-sm btn-ghost" onclick="openTripEditor(${idx},${i})" style="font-size:12px">✏ Éditer</button>
+      <button class="btn btn-sm" onclick="openGpsStopsPanel(${idx},${i})" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);padding:6px 8px;font-size:13px" title="Voir points GPS">📍</button>
+      <button class="btn btn-sm btn-ghost" onclick="openTripEditor(${idx},${i})" style="font-size:12px">✏</button>
       <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Peupler le sélecteur GPS avec les trajets numérotés et nommés
   const sel = document.getElementById('gps-import-trip');
@@ -2789,6 +2827,102 @@ function updateGpsCountInfo() {
     el.innerHTML = `📍 GPS : <span style="color:${color};font-weight:700">${count}/${total} arrêts enregistrés (${pct}%)</span>`;
   }
 }
+
+// ══ PANNEAU GPS ARRÊTS ═══════════════════════════════════════
+let gpsPanelLineIdx = -1, gpsPanelTripIdx = -1;
+
+function openGpsStopsPanel(lineIdx, tripIdx) {
+  gpsPanelLineIdx = lineIdx;
+  gpsPanelTripIdx = tripIdx;
+  renderGpsStopsPanel();
+  document.getElementById('gps-stops-panel').style.display = '';
+  // Scroll vers le panneau
+  setTimeout(() => document.getElementById('gps-stops-panel').scrollIntoView({behavior:'smooth', block:'nearest'}), 100);
+}
+
+function gpsStopsPanelClose() {
+  document.getElementById('gps-stops-panel').style.display = 'none';
+  gpsPanelLineIdx = -1;
+  gpsPanelTripIdx = -1;
+}
+
+function renderGpsStopsPanel() {
+  if(gpsPanelLineIdx < 0) return;
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line.trips[gpsPanelTripIdx];
+  const col = line.color || '#00d4ff';
+
+  let recorded = 0;
+  const items = trip.stops.map((s, si) => {
+    const key = gpsCoordKey(line.num, gpsPanelTripIdx, si);
+    const coord = gpsCoordsDB[key];
+    if(coord) recorded++;
+    return { s, si, key, coord };
+  });
+
+  const total = trip.stops.length;
+  const pct = Math.round(recorded / total * 100);
+  const pColor = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : pct > 0 ? 'orange' : 'var(--red)';
+
+  document.getElementById('gps-stops-panel-header').innerHTML =
+    `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px">${line.num}</span>`+
+    `<strong>${trip.label}</strong><br>`+
+    `<span style="color:${pColor};font-weight:700">${recorded}/${total} arrêts avec GPS (${pct}%)</span>`;
+
+  document.getElementById('gps-stops-prog').style.width = pct + '%';
+  document.getElementById('gps-stops-prog').style.background = pColor;
+
+  const listEl = document.getElementById('gps-stops-list');
+  listEl.innerHTML = items.map(({s, si, key, coord}) => {
+    const hasGps = !!coord;
+    const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
+    const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
+    const num = String(si+1).padStart(2,'0');
+    const coordText = hasGps
+      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
+      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
+    const delBtn = hasGps
+      ? `<button onclick="gpsStopsDeleteOne('${key}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${bg};border:${border}">
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+      <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+        ${coordText}
+      </div>
+      ${delBtn}
+    </div>`;
+  }).join('');
+}
+
+function gpsStopsDeleteOne(key) {
+  loadGpsCoordsDB();
+  delete gpsCoordsDB[key];
+  saveGpsCoordsDB();
+  renderGpsStopsPanel();
+  // Rafraîchir le badge dans la liste des trajets
+  renderLineDetail(gpsPanelLineIdx);
+  toast('🗑 Point GPS supprimé');
+}
+
+function gpsStopsDeleteAll() {
+  if(gpsPanelLineIdx < 0) return;
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line.trips[gpsPanelTripIdx];
+  let count = 0;
+  trip.stops.forEach((s, si) => {
+    const key = gpsCoordKey(line.num, gpsPanelTripIdx, si);
+    if(gpsCoordsDB[key]) { delete gpsCoordsDB[key]; count++; }
+  });
+  saveGpsCoordsDB();
+  renderGpsStopsPanel();
+  renderLineDetail(gpsPanelLineIdx);
+  toast(`🗑 ${count} point(s) GPS supprimé(s)`);
+}
+
 
 // ══ TOAST ════════════════════════════════════════════════════
 let toastTimer;
