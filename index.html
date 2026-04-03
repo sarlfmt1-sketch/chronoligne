@@ -193,6 +193,8 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <!-- Nom à droite, 2 lignes si trop long (word-wrap) -->
       <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
     </div>
+    <!-- Retard / Avance -->
+    <div id="ln-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;text-align:center;display:none"></div>
     <!-- Bouton validation manuelle -->
     <button onclick="validateStopManual()" id="btn-validate-stop"
       style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
@@ -726,6 +728,19 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   <div class="card">
     <div class="card-title">⚙ Paramètres</div>
+
+    <!-- Écran allumé -->
+    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:600">☀️ Écran toujours allumé</div>
+        <div style="font-size:11px;color:var(--muted)">Empêche la mise en veille</div>
+      </div>
+      <button id="wakelock-btn" onclick="toggleWakeLock()"
+        style="padding:8px 14px;border-radius:8px;border:1px solid var(--green);background:rgba(39,174,96,.2);color:var(--green);font-weight:700;font-size:13px;cursor:pointer">
+        ON
+      </button>
+    </div>
+
     <div style="margin-bottom:10px">
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Avance tolérée (sec)</div>
       <input type="number" id="set-tolerance-early" value="0" min="0" max="120" style="width:100%;padding:8px;font-size:16px">
@@ -2879,6 +2894,28 @@ function updateLive() {
   document.getElementById('ln-name').textContent = s0?.name || '—';
   document.getElementById('ln-time').textContent = fmt(s0?.time);
   document.getElementById('ln-countdown').textContent = cd(s0?.time);
+
+  // Retard / Avance sur l'arrêt actuel
+  const statusEl = document.getElementById('ln-status');
+  if(statusEl && s0?.time && s0.time !== '00:00') {
+    const [sh,sm] = s0.time.split(':').map(Number);
+    const diff = nowMin - (sh*60+sm);
+    if(diff === 0) {
+      statusEl.textContent = "🟢 À L'HEURE";
+      statusEl.style.color = 'var(--green)';
+      statusEl.style.display = 'block';
+    } else if(diff > 0) {
+      statusEl.textContent = `🔴 +${diff} min RETARD`;
+      statusEl.style.color = 'var(--red)';
+      statusEl.style.display = 'block';
+    } else {
+      statusEl.textContent = `🔵 ${diff} min AVANCE`;
+      statusEl.style.color = 'var(--accent)';
+      statusEl.style.display = 'block';
+    }
+  } else if(statusEl) {
+    statusEl.style.display = 'none';
+  }
   document.getElementById('la-name').textContent = s1?.name || '—';
   document.getElementById('la-time').textContent = fmt(s1?.time);
   document.getElementById('la-countdown').textContent = cd(s1?.time);
@@ -3186,11 +3223,42 @@ function closeConfirm() { document.getElementById('confirm-overlay').classList.r
 function loadSettings() {
   document.getElementById('set-tolerance-early').value = db.settings.toleranceEarly;
   document.getElementById('set-tolerance-late').value = db.settings.toleranceLate;
+  // État wake lock
+  updateWakeLockBtn();
 }
 function saveSettings() {
   db.settings.toleranceEarly = parseInt(document.getElementById('set-tolerance-early').value)||0;
   db.settings.toleranceLate = parseInt(document.getElementById('set-tolerance-late').value)||120;
   saveDB(); toast('✓ Paramètres sauvegardés');
+}
+
+// ── Écran toujours allumé ─────────────────────────
+let wakeLockForced = true;
+function updateWakeLockBtn() {
+  const btn = document.getElementById('wakelock-btn');
+  if(!btn) return;
+  if(wakeLockForced) {
+    btn.textContent = 'ON ✅';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.background = 'rgba(39,174,96,.2)';
+    btn.style.color = 'var(--green)';
+  } else {
+    btn.textContent = 'OFF';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background = 'rgba(255,255,255,.05)';
+    btn.style.color = 'var(--muted)';
+  }
+}
+function toggleWakeLock() {
+  wakeLockForced = !wakeLockForced;
+  if(wakeLockForced) {
+    requestWakeLock();
+    toast('☀️ Écran toujours allumé : ON');
+  } else {
+    if(wakeLock) { wakeLock.release(); wakeLock = null; }
+    toast('Écran toujours allumé : OFF');
+  }
+  updateWakeLockBtn();
 }
 
 // ══ SAUVEGARDE ═══════════════════════════════════════════════
@@ -5277,15 +5345,19 @@ function toggleTheme() {
 // ══ WAKE LOCK ════════════════════════════════════════════════
 let wakeLock = null;
 async function requestWakeLock() {
+  if(!wakeLockForced) return;
   try {
     if('wakeLock' in navigator) {
+      if(wakeLock) { try { wakeLock.release(); } catch(e){} }
       wakeLock = await navigator.wakeLock.request('screen');
     }
   } catch(e) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState==='visible') requestWakeLock();
+  if(document.visibilityState==='visible' && wakeLockForced) requestWakeLock();
 });
+// Réessayer toutes les 30s pour garantir que l'écran reste allumé
+setInterval(() => { if(wakeLockForced && (!wakeLock || wakeLock.released)) requestWakeLock(); }, 30000);
 
 // ══ PWA INSTALL ══════════════════════════════════════════════
 let pwaInstallPrompt = null;
@@ -5479,6 +5551,7 @@ function gdriveInit() {
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
 initDB();
+
 installPreloadedGPS();
 heuresInit();
 updateClock();
