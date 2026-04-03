@@ -2888,17 +2888,16 @@ function updateLive() {
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
   document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
 
-  // Dernier arrêt passé → proposer trajet suivant
+  // Dernier arrêt passé → passer automatiquement au trajet suivant
   const lastStop = trip.stops[trip.stops.length-1];
   if(lastStop?.time) {
     const [lh,lm] = lastStop.time.split(':').map(Number);
     if(nowMin > lh*60+lm + 2 && !activeTrip._nextProposed) {
       activeTrip._nextProposed = true;
       if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
-        const next = currentRoadmap[roadmapCursor + 1];
-        toast(`⏭ Prochain trajet prêt : ${next.label} — tapez TERMINUS`);
-        const btn = document.getElementById('terminus-btn');
-        if(btn) { btn.style.background='#ffc107'; btn.style.color='#000'; btn.textContent='⏭ Trajet suivant'; }
+        // Passage automatique au trajet suivant sans appuyer sur TERMINUS
+        roadmapCursor++;
+        activateRoadmapTrip();
       }
     }
   }
@@ -4705,7 +4704,8 @@ function exportPrimePDF() {
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
-const GPS_DETECT_DIST = 80; // mètres pour détecter un arrêt
+const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
+let gpsAutoMinDist = Infinity; // distance minimale atteinte sur l'arrêt courant
 
 let gpsCoords = null;
 let gpsWatchId = null;
@@ -4925,6 +4925,11 @@ function checkGpsAutoDetect(coords) {
   if(accEl) accEl.textContent = `📍 ${Math.round(dist)}m`;
 
   if(dist <= detectDist) {
+    // On est dans le rayon de l'arrêt — mémoriser la distance minimale atteinte
+    if(dist < gpsAutoMinDist) gpsAutoMinDist = dist;
+  } else if(gpsAutoMinDist < Infinity) {
+    // On s'éloigne après s'être approché → on a PASSÉ l'arrêt
+    // Valider seulement si on s'est vraiment approché (< detectDist) et maintenant on s'éloigne
     const now = new Date();
     const nowMin = now.getHours()*60 + now.getMinutes();
     const [ph, pm] = (stop.time||'00:00').split(':').map(Number);
@@ -4933,6 +4938,7 @@ function checkGpsAutoDetect(coords) {
     const status = diffMin < -1 ? 'avsi' : diffMin <= 0 ? 'avc' : diffMin <= 3 ? 'rc' : diffMin <= 6 ? 'rsc' : diffMin <= 12 ? 'rnc' : 'rsi';
     gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status });
     saveGpsSession();
+    gpsAutoMinDist = Infinity; // reset pour le prochain arrêt
     gpsAutoNextIdx++;
     // Mettre à jour l'index validé pour EN DIRECT
     if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
