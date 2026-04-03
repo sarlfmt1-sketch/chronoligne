@@ -1695,6 +1695,64 @@ const PRELOADED_TRIPS = {
         {name:'Gare de Pontoise', intervalAfter:0},
       ]
     },
+    {
+      direction: 'aller', label: 'Gare de Pontoise → Demi Lieue (22 arrêts)',
+      stops: [
+        {name:'Gare de Pontoise', intervalAfter:2},
+        {name:'Hôtel Dieu', intervalAfter:2},
+        {name:'Quai du Pothuis', intervalAfter:2},
+        {name:'Cité Judiciaire', intervalAfter:2},
+        {name:'Citadelle', intervalAfter:1},
+        {name:'Cimetière de Pontoise', intervalAfter:1},
+        {name:'Lycée Pissarro', intervalAfter:2},
+        {name:'Normandie', intervalAfter:1},
+        {name:'Alsace Bretagne', intervalAfter:2},
+        {name:'Hôpital René Dubos', intervalAfter:1},
+        {name:'Hôpital Administration', intervalAfter:1},
+        {name:'Charles Bouticourt', intervalAfter:1},
+        {name:'Place de la Paix', intervalAfter:1},
+        {name:'Nobel', intervalAfter:1},
+        {name:'Louvrais', intervalAfter:1},
+        {name:'Boblingen', intervalAfter:1},
+        {name:'Croix Saint Siméon', intervalAfter:1},
+        {name:'Maison D\'Arrêt', intervalAfter:1},
+        {name:'Fleurance Muguet', intervalAfter:1},
+        {name:'Jean Jaurès', intervalAfter:1},
+        {name:'Stade Christian Léon', intervalAfter:1},
+        {name:'Lycée - Clinique Sainte Marie', intervalAfter:1},
+        {name:'Oseraie', intervalAfter:1},
+        {name:'Demi Lieue', intervalAfter:0},
+      ]
+    },
+    {
+      direction: 'retour', label: 'Demi Lieue → Gare de Pontoise (22 arrêts)',
+      stops: [
+        {name:'Demi Lieue', intervalAfter:1},
+        {name:'Oseraie', intervalAfter:1},
+        {name:'Lycée - Clinique Sainte Marie', intervalAfter:1},
+        {name:'Stade Christian Léon', intervalAfter:1},
+        {name:'Jean Jaurès', intervalAfter:1},
+        {name:'Fleurance Muguet', intervalAfter:1},
+        {name:'Maison D\'Arrêt', intervalAfter:1},
+        {name:'Croix Saint Siméon', intervalAfter:1},
+        {name:'Boblingen', intervalAfter:1},
+        {name:'Louvrais', intervalAfter:1},
+        {name:'Nobel', intervalAfter:1},
+        {name:'Place de la Paix', intervalAfter:1},
+        {name:'Charles Bouticourt', intervalAfter:1},
+        {name:'Hôpital Administration', intervalAfter:1},
+        {name:'Hôpital René Dubos', intervalAfter:2},
+        {name:'Alsace Bretagne', intervalAfter:1},
+        {name:'Normandie', intervalAfter:2},
+        {name:'Lycée Pissarro', intervalAfter:1},
+        {name:'Cimetière de Pontoise', intervalAfter:2},
+        {name:'Citadelle', intervalAfter:1},
+        {name:'Cité Judiciaire', intervalAfter:1},
+        {name:'Quai du Pothuis', intervalAfter:1},
+        {name:'Hôtel Dieu', intervalAfter:1},
+        {name:'Gare de Pontoise', intervalAfter:0},
+      ]
+    },
   ],
   '1207': [
     {
@@ -2717,7 +2775,7 @@ function initDB() {
   if(!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
 
   // Version de purge : force la réinitialisation des trips au premier chargement
-  const TRIPS_VERSION = 'v6_with_1207_variants';
+  const TRIPS_VERSION = 'v7_with_1206_variants';
   const storedVersion = localStorage.getItem('chronoligne_trips_version');
   const needsPurge = storedVersion !== TRIPS_VERSION;
 
