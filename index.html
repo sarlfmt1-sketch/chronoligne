@@ -1074,7 +1074,8 @@ function parseGpsImport() {
   if(isNaN(tripIdx) || tripIdx < 0) { result.textContent = '❌ Choisissez un trajet dans la liste'; result.style.color='var(--red)'; return; }
 
   const line = db.lines[activeLine];
-  const trip = line.trips[tripIdx];
+  if(!line) { result.textContent = '❌ Ligne introuvable'; result.style.color='var(--red)'; return; }
+  const trip = line.trips?.[tripIdx];
   if(!trip) { result.textContent = '❌ Trajet introuvable'; result.style.color='var(--red)'; return; }
 
   // Parser chaque ligne du texte
@@ -2585,45 +2586,38 @@ function updateClock() {
   updateLive();
 }
 
+// ══ HELPERS ══════════════════════════════════════════════════
+function getActiveLineAndTrip() {
+  if(!activeTrip) return null;
+  const line = db.lines[activeTrip.lineIdx];
+  if(!line) return null;
+  const trip = line.trips?.[activeTrip.tripIdx];
+  if(!trip) return null;
+  return { line, trip };
+}
+
 // ══ LIVE ═════════════════════════════════════════════════════
 function updateLive() {
   if(!activeTrip) return;
   const { lineIdx, tripIdx } = activeTrip;
-  const trip = db.lines[lineIdx]?.trips[tripIdx];
+  const line = db.lines[lineIdx];
+  if(!line) return;
+  const trip = line.trips?.[tripIdx];
   if(!trip) return;
 
   const now = new Date();
   const nowMin = now.getHours()*60 + now.getMinutes();
   const startFrom = activeTrip.startStopIdx || 0;
 
-  // Utiliser l'index validé GPS/manuel si disponible
-  // sinon fallback sur l'heure (mode sans GPS)
-  let nextIdx;
-  if(activeTrip.validatedStopIdx !== undefined) {
-    nextIdx = activeTrip.validatedStopIdx;
-  } else {
-    nextIdx = trip.stops.length - 1;
-    for(let i = startFrom; i < trip.stops.length; i++) {
-      const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
-      if(h*60+m >= nowMin) { nextIdx = i; break; }
-    }
+  let nextIdx = trip.stops.length - 1;
+  for(let i = startFrom; i < trip.stops.length; i++) {
+    const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
+    if(h*60+m >= nowMin) { nextIdx = i; break; }
   }
 
-  // Vérifier si l'arrêt courant a des coords GPS
-  const currentKey = gpsCoordKey(db.lines[lineIdx].num, tripIdx, nextIdx);
-  loadGpsCoordsDB();
-  const hasGps = !!gpsCoordsDB[currentKey];
   const btnVal = document.getElementById('btn-validate-stop');
-  if(btnVal && gpsMode === 'auto' && !hasGps) {
-    btnVal.style.background = 'rgba(255,193,7,.3)';
-    btnVal.style.borderColor = '#ffc107';
-    btnVal.style.color = '#ffc107';
-    btnVal.innerHTML = '⚠️ Pas de GPS ici → Valider manuellement';
-  } else if(btnVal) {
-    btnVal.style.background = 'rgba(39,174,96,.2)';
-    btnVal.style.borderColor = 'var(--green)';
-    btnVal.style.color = 'var(--green)';
-    btnVal.innerHTML = '✅ J\'ai passé cet arrêt → Suivant';
+  if(btnVal && gpsMode !== 'auto') {
+    btnVal.style.display = 'block';
   }
 
   function fmt(t) { return t ? t.substring(0,5) : '--:--'; }
@@ -2652,14 +2646,13 @@ function updateLive() {
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
   document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
 
-  // Dernier arrêt passé → proposer trajet suivant automatiquement
+  // Dernier arrêt passé → proposer trajet suivant
   const lastStop = trip.stops[trip.stops.length-1];
   if(lastStop?.time) {
     const [lh,lm] = lastStop.time.split(':').map(Number);
     if(nowMin > lh*60+lm + 2 && !activeTrip._nextProposed) {
       activeTrip._nextProposed = true;
       if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
-        // Feuille de service : proposer le suivant
         const next = currentRoadmap[roadmapCursor + 1];
         toast(`⏭ Prochain trajet prêt : ${next.label} — tapez TERMINUS`);
         const btn = document.getElementById('terminus-btn');
@@ -2668,7 +2661,6 @@ function updateLive() {
     }
   }
 }
-
 function confirmTerminus() {
   if(gpsMode === 'auto') stopGpsAuto();
   if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
@@ -2778,9 +2770,11 @@ function renderLineDetail(idx) {
 }
 
 function activateTrip(lineIdx, tripIdx) {
-  activeTrip = { lineIdx, tripIdx, validatedStopIdx: 0 };
   const line = db.lines[lineIdx];
-  const trip = line.trips[tripIdx];
+  if(!line) { toast('❌ Ligne introuvable'); return; }
+  const trip = line.trips?.[tripIdx];
+  if(!trip) { toast('❌ Trajet introuvable'); return; }
+  activeTrip = { lineIdx, tripIdx };
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -2794,7 +2788,8 @@ function activateTrip(lineIdx, tripIdx) {
 function showStartFromStop() {
   if(!activeTrip) return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
   const sel = document.getElementById('start-from-stop-sel');
   sel.innerHTML = trip.stops.map((s,i) =>
     `<option value="${i}">${String(i+1).padStart(2,'0')}. ${s.name} ${s.time ? '('+s.time+')' : ''}</option>`
@@ -2817,7 +2812,8 @@ function applyStartFromStop() {
 function updateGpsCountInfo() {
   if(!activeTrip) return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
   loadGpsCoordsDB();
   let count = 0;
   trip.stops.forEach((s,i) => {
@@ -2854,7 +2850,9 @@ function renderGpsStopsPanel() {
   if(gpsPanelLineIdx < 0) return;
   loadGpsCoordsDB();
   const line = db.lines[gpsPanelLineIdx];
-  const trip = line.trips[gpsPanelTripIdx];
+  if(!line) return;
+  const trip = line.trips?.[gpsPanelTripIdx];
+  if(!trip) return;
   const col = line.color || '#00d4ff';
 
   let recorded = 0;
@@ -2915,7 +2913,9 @@ function gpsStopsDeleteAll() {
   if(gpsPanelLineIdx < 0) return;
   loadGpsCoordsDB();
   const line = db.lines[gpsPanelLineIdx];
-  const trip = line.trips[gpsPanelTripIdx];
+  if(!line) return;
+  const trip = line.trips?.[gpsPanelTripIdx];
+  if(!trip) return;
   let count = 0;
   trip.stops.forEach((s, si) => {
     const key = gpsCoordKey(line.num, gpsPanelTripIdx, si);
@@ -3047,7 +3047,9 @@ function openTripEditor(lineIdx, tripIdx) {
   editorLineIdx = lineIdx;
   editorTripIdx = tripIdx;
   const line = db.lines[lineIdx];
-  const trip = line.trips[tripIdx];
+  if(!line) return;
+  const trip = line.trips?.[tripIdx];
+  if(!trip) return;
   document.getElementById('editor-title').innerHTML = `<span style="background:${line.color};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>Éditer trajet`;
   document.getElementById('editor-label').value = trip.label;
   document.getElementById('editor-dir').value = trip.direction||'aller';
@@ -3129,8 +3131,9 @@ function saveEditorTrip() {
   const label = document.getElementById('editor-label').value.trim();
   if(!label) { toast('Entrez un nom de trajet'); return; }
   const line = db.lines[editorLineIdx];
+  if(!line || !line.trips) return;
   const stops = JSON.parse(JSON.stringify(editorStops));
-  db.lines[editorLineIdx].trips[editorTripIdx] = {
+  line.trips[editorTripIdx] = {
     direction: document.getElementById('editor-dir').value,
     label,
     stops
@@ -3408,7 +3411,9 @@ function svcAddTrip() {
   const firstTimeVal = document.getElementById('svc-first-time').value;
   const intervalGlobal = parseInt(document.getElementById('svc-interval').value)||1;
   const line = db.lines[lineIdx];
-  const trip = line.trips[tripIdx];
+  if(!line) { toast('❌ Ligne introuvable'); return; }
+  const trip = line.trips?.[tripIdx];
+  if(!trip) { toast('❌ Trajet introuvable'); return; }
 
   // Charger les intervalles mémorisés par arrêt
   const db_int = loadSavedIntervals();
@@ -3811,7 +3816,7 @@ function saveServiceEditor() {
   let totalMemo = 0;
   svcTrips.forEach(t => {
     const line = db.lines[t.lineIdx];
-    const trip = line?.trips[t.tripIdx];
+    const trip = line?.trips?.[t.tripIdx];
     if(line && trip) {
       saveStopIntervals(line.num, trip.label, t.stops);
       totalMemo += t.stops.length;
@@ -3838,14 +3843,60 @@ function activateRoadmapTrip() {
     return;
   }
   const t = currentRoadmap[roadmapCursor];
-  const prevGpsMode = gpsMode; // sauvegarder mode GPS en cours
-  activateTrip(t.lineIdx, t.tripIdx);
-  // Appliquer les heures de la feuille
-  if(t.stops && t.stops.length) {
-    db.lines[t.lineIdx].trips[t.tripIdx].stops = t.stops;
-    saveDB();
+  const prevGpsMode = gpsMode;
+
+  // Résolution robuste : on essaie plusieurs stratégies dans l'ordre
+  let lineIdx = -1;
+  let tripIdx = -1;
+
+  // Stratégie 1 : par lineNum (numéro de ligne ex: "95")
+  if(t.lineNum) {
+    lineIdx = db.lines.findIndex(l => l.num === t.lineNum);
   }
-  // Si GPS auto était actif sur le trajet précédent → continuer sur le nouveau
+  // Stratégie 2 : par lineIdx direct si lineNum pas dispo
+  if(lineIdx < 0 && t.lineIdx !== undefined) {
+    lineIdx = t.lineIdx;
+  }
+
+  if(lineIdx >= 0 && lineIdx < db.lines.length) {
+    const trips = db.lines[lineIdx].trips;
+
+    // Stratégie A : par label exact (sans préfixe "Ligne XX — ")
+    if(t.label) {
+      const stripped = t.label.replace(/^Ligne \S+ — /, '').trim();
+      tripIdx = trips.findIndex(tr => tr.label === stripped);
+      // Stratégie B : label original exact
+      if(tripIdx < 0) tripIdx = trips.findIndex(tr => tr.label === t.label);
+      // Stratégie C : contient l'un l'autre
+      if(tripIdx < 0) tripIdx = trips.findIndex(tr =>
+        tr.label.includes(stripped) || stripped.includes(tr.label)
+      );
+    }
+    // Stratégie D : tripIdx direct
+    if(tripIdx < 0 && t.tripIdx !== undefined && t.tripIdx < trips.length) {
+      tripIdx = t.tripIdx;
+    }
+    // Stratégie E : premier trajet disponible
+    if(tripIdx < 0 && trips.length > 0) {
+      tripIdx = 0;
+      toast(`⚠️ Trajet approximatif — vérifiez l'arrêt`);
+    }
+  }
+
+  if(lineIdx < 0 || tripIdx < 0) {
+    toast(`❌ Impossible de trouver la ligne "${t.lineNum||t.lineIdx}" — recréez le service`);
+    console.warn('activateRoadmapTrip FAIL', JSON.stringify({lineNum:t.lineNum, label:t.label, lineIdx:t.lineIdx, tripIdx:t.tripIdx, availableLines:db.lines.map(l=>l.num)}));
+    return;
+  }
+
+  // Appliquer les horaires de la feuille dans db AVANT d'activer
+  if(t.stops && t.stops.length) {
+    const _trip = db.lines[lineIdx]?.trips?.[tripIdx];
+    if(_trip) { _trip.stops = t.stops; saveDB(); }
+  }
+
+  activateTrip(lineIdx, tripIdx);
+
   if(prevGpsMode === 'auto') {
     gpsAutoNextIdx = 0;
     gpsSession = [];
@@ -3855,7 +3906,6 @@ function activateRoadmapTrip() {
   }
   renderRoadmapActive();
 }
-
 function roadmapNext() { roadmapCursor++; activateRoadmapTrip(); }
 
 function stopRoadmap() {
@@ -4520,7 +4570,8 @@ function startGpsRecord() {
 
 function updateGpsRecBanner() {
   if(!activeTrip) return;
-  const trip = db.lines[activeTrip.lineIdx].trips[activeTrip.tripIdx];
+  const trip = db.lines[activeTrip.lineIdx]?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
   const stop = trip.stops[gpsRecStopIdx];
   if(!stop) { finishGpsRecord(); return; }
   document.getElementById('gps-rec-stop-name').textContent = stop.name;
@@ -4539,7 +4590,7 @@ function gpsRecordStop() {
   if(!gpsCoords) { toast('GPS pas encore prêt, attendez...'); return; }
   if(!activeTrip) return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
   const stop = trip.stops[gpsRecStopIdx];
   if(!stop) return;
   const key = gpsCoordKey(line.num, activeTrip.tripIdx, gpsRecStopIdx);
@@ -4560,7 +4611,7 @@ function finishGpsRecord() {
   document.getElementById('gps-record-banner').style.display = 'none';
   gpsMode = null;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
   // Compter combien d'arrêts ont des coords
   let count = 0;
   trip.stops.forEach((s,i) => {
@@ -4574,7 +4625,7 @@ function startGpsAuto() {
   if(!activeTrip) { toast('Activez un trajet d\'abord'); return; }
   loadGpsCoordsDB();
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
   // Vérifier qu'on a des coords
   let hasCoords = trip.stops.some((s,i) => gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, i)]);
   if(!hasCoords) {
@@ -4600,7 +4651,7 @@ function startGpsAuto() {
 function checkGpsAutoDetect(coords) {
   if(!activeTrip || gpsMode !== 'auto') return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
   if(gpsAutoNextIdx >= trip.stops.length) return;
 
   const stop = trip.stops[gpsAutoNextIdx];
@@ -4677,7 +4728,7 @@ function autoNextTrip() {
 function gpsForceNext() {
   if(!activeTrip || gpsMode !== 'auto') return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
   if(gpsAutoNextIdx >= trip.stops.length) return;
 
   const stop = trip.stops[gpsAutoNextIdx];
@@ -4729,7 +4780,7 @@ function saveGpsSession() {
     const today = new Date().toISOString().split('T')[0];
     if(!activeTrip) return;
     const line = db.lines[activeTrip.lineIdx];
-    const trip = line.trips[activeTrip.tripIdx];
+    const trip = line?.trips?.[activeTrip.tripIdx];
     // Mettre à jour ou créer session du jour
     const idx = sessions.findIndex(s => s.date===today && s.lineNum===line.num && s.tripIdx===activeTrip.tripIdx);
     const session = { date:today, lineNum:line.num, tripLabel:trip.label, stops:gpsSession };
@@ -4778,14 +4829,20 @@ function showGpsBtns(show) {
 function validateStopManual() {
   if(!activeTrip) return;
   const line = db.lines[activeTrip.lineIdx];
-  const trip = line.trips[activeTrip.tripIdx];
-  const currentIdx = activeTrip.validatedStopIdx || 0;
-  if(currentIdx >= trip.stops.length - 1) {
-    // Dernier arrêt → terminus
-    confirmTerminus();
-    return;
-  }
-  // Avancer d'un arrêt
+  if(!line) return;
+  const trip = line.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+  const currentIdx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : (() => {
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    let idx = trip.stops.length - 1;
+    for(let i = 0; i < trip.stops.length; i++) {
+      const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
+      if(h*60+m >= nowMin) { idx = i; break; }
+    }
+    return idx;
+  })();
+  if(currentIdx >= trip.stops.length - 1) { confirmTerminus(); return; }
   activeTrip.validatedStopIdx = currentIdx + 1;
   gpsAutoNextIdx = activeTrip.validatedStopIdx;
   const passedStop = trip.stops[currentIdx];
