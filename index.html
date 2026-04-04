@@ -220,7 +220,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
     <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
     <div style="display:flex;align-items:center;gap:10px">
-      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0">--:--</div>
+      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
       <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
     </div>
   </div>
@@ -2904,13 +2904,16 @@ function updateLive() {
   const nowTotalSec = nowMin * 60 + nowSec;
 
   // Heure petite, minutes:secondes en grand
-  function fmt(t, colorMins) {
+  function fmt(t, colorMins, showSecs) {
     const c = colorMins || 'inherit';
     if(!t) return `<span style="font-size:.55em;opacity:.75">--:</span><span style="color:${c}">--:--</span>`;
     const hh = t.substring(0,2);
     const mm = t.substring(3,5);
-    const ss = String(now.getSeconds()).padStart(2,'0');
-    return `<span style="font-size:.55em;opacity:.75">${hh}:</span><span style="color:${c}">${mm}:${ss}</span>`;
+    if(showSecs) {
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      return `<span style="font-size:.55em;opacity:.75">${hh}:</span><span style="color:${c}">${mm}:${ss}</span>`;
+    }
+    return `<span style="font-size:.55em;opacity:.75">${hh}:</span><span style="color:${c}">${mm}</span>`;
   }
   // Countdown précis à la seconde
   function cd(t) {
@@ -2928,7 +2931,7 @@ function updateLive() {
   const s2 = trip.stops[nextIdx+2];
 
   document.getElementById('ln-name').textContent = s0?.name || '—';
-  document.getElementById('ln-time').innerHTML = fmt(s0?.time, '#ff9500');
+  document.getElementById('ln-time').innerHTML = fmt(s0?.time, '#ff9500', true);
   document.getElementById('ln-countdown').textContent = cd(s0?.time);
 
   // Retard / Avance sur l'arrêt actuel
@@ -2961,7 +2964,7 @@ function updateLive() {
   document.getElementById('la-time').innerHTML = fmt(s1?.time, 'var(--accent)');
   document.getElementById('la-countdown').textContent = cd(s1?.time);
   document.getElementById('lb-name').textContent = s2?.name || '—';
-  document.getElementById('lb-time').textContent = fmt(s2?.time);
+  document.getElementById('lb-time').innerHTML = fmt(s2?.time, 'var(--muted)');
 
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
   document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
@@ -3043,7 +3046,7 @@ function confirmTerminus() {
   document.getElementById('la-time').innerHTML = '<span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span>';
   document.getElementById('la-countdown').textContent = '--';
   document.getElementById('lb-name').textContent = '—';
-  document.getElementById('lb-time').textContent = '--:--';
+  document.getElementById('lb-time').innerHTML = '<span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span>';
   document.getElementById('terminus-btn').style.display = 'none';
   // Reset style du bouton terminus
   const btn = document.getElementById('terminus-btn');
