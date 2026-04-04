@@ -229,49 +229,39 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   <!-- ══ MODE INEO ══ -->
   <div id="mode-ineo" style="display:none">
-    <div class="card" style="padding:12px">
-      <!-- Track + arrêts -->
-      <div style="display:flex;gap:12px;align-items:stretch">
-        <!-- Ligne verticale avec points -->
-        <div style="display:flex;flex-direction:column;align-items:center;padding:4px 0;flex-shrink:0">
-          <div style="width:11px;height:11px;border-radius:50%;border:2px solid rgba(255,255,255,.2);background:transparent"></div>
-          <div style="flex:1;width:2px;background:rgba(255,255,255,.1);margin:3px 0"></div>
-          <div style="width:11px;height:11px;border-radius:50%;border:2px solid var(--accent);background:transparent"></div>
-          <div style="flex:1;width:2px;background:rgba(0,212,255,.3);margin:3px 0"></div>
-          <div style="width:11px;height:11px;border-radius:50%;background:var(--red);border:2px solid var(--red);box-shadow:0 0 6px rgba(231,76,60,.5)"></div>
+
+    <!-- ARRÊT +2 -->
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.2);flex-shrink:0"></div>
+        <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:rgba(255,255,255,.4)">—</div>
+      </div>
+      <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,36px);font-weight:700;color:rgba(255,255,255,.35)">--</div>
+    </div>
+
+    <!-- PROCHAIN ARRÊT -->
+    <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.25);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);flex-shrink:0"></div>
+        <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--accent)">—</div>
+      </div>
+      <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,46px);font-weight:700;color:var(--accent)">--</div>
+    </div>
+
+    <!-- ARRÊT ACTUEL -->
+    <div style="background:rgba(231,76,60,.1);border:2px solid rgba(231,76,60,.4);border-radius:10px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <svg width="13" height="13" viewBox="0 0 16 16" style="flex-shrink:0"><polygon points="8,0 16,16 0,16" fill="#e74c3c"/></svg>
+          <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
         </div>
-        <!-- Arrêts -->
-        <div style="flex:1;display:flex;flex-direction:column">
-          <!-- +2 -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.4)">—</div>
-            <div id="ineo-lb-time" style="font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;color:rgba(255,255,255,.35)">--</div>
-          </div>
-          <!-- Prochain -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">—</div>
-            <div id="ineo-la-time" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)">--</div>
-          </div>
-          <!-- Actuel -->
-          <div style="padding:8px 0">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-              <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
-                <svg width="12" height="12" viewBox="0 0 16 16" style="flex-shrink:0"><polygon points="8,0 16,16 0,16" fill="#e74c3c"/></svg>
-                <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
-              </div>
-              <div style="text-align:right;flex-shrink:0">
-                <div id="ineo-ln-hh" style="font-family:'Rajdhani',monospace;font-size:11px;opacity:.5;line-height:1">--:</div>
-                <div id="ineo-ln-mm" style="font-family:'Rajdhani',sans-serif;font-size:clamp(44px,12vw,68px);font-weight:700;color:#ff9500;line-height:1;letter-spacing:1px">--:--</div>
-              </div>
-            </div>
-          </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div id="ineo-ln-hh" style="font-family:'Rajdhani',sans-serif;font-size:11px;opacity:.5;line-height:1">--:</div>
+          <div id="ineo-ln-mm" style="font-family:'Rajdhani',sans-serif;font-size:clamp(44px,12vw,68px);font-weight:700;color:#ff9500;line-height:1;letter-spacing:1px">--:--</div>
         </div>
       </div>
-      <!-- Status bar -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">
-        <div id="ineo-prog-label" style="font-size:11px;color:var(--muted)">—</div>
-        <div id="ineo-status" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.3)">—</div>
-      </div>
+      <!-- Status retard/avance -->
+      <div id="ineo-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,22px);font-weight:700;text-align:center;display:none">—</div>
       <!-- Bouton validation manuelle mode INEO -->
       <button onclick="validateStopManual()" id="btn-validate-stop-ineo"
         style="display:none;width:100%;margin-top:8px;padding:10px;font-size:14px;font-weight:700;
@@ -280,6 +270,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         ✅ J'ai passé cet arrêt → Suivant
       </button>
     </div>
+
+    <!-- Barre progression -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:6px 2px">
+      <div id="ineo-prog-label" style="font-size:11px;color:var(--muted)">—</div>
+    </div>
+
   </div>
 
   <div class="card">
@@ -3050,16 +3046,19 @@ function updateLive() {
       const abs = Math.abs(diffSec);
       const mm2 = Math.floor(abs/60), ss2 = abs%60;
       const lbl = mm2 > 0 ? `${mm2}min ${ss2}s` : `${ss2}s`;
+      statusIneo.style.display = 'block';
       if(abs <= 30) {
-        statusIneo.textContent = "À L'HEURE";
-        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(39,174,96,.15);color:#27ae60;border:1px solid rgba(39,174,96,.3)';
+        statusIneo.textContent = "🟢 À L'HEURE";
+        statusIneo.style.color = 'var(--green)';
       } else if(diffSec > 30) {
-        statusIneo.textContent = `+${lbl} RETARD`;
-        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(231,76,60,.1);color:#e74c3c;border:1px solid rgba(231,76,60,.3)';
+        statusIneo.textContent = `🔴 +${lbl} RETARD`;
+        statusIneo.style.color = 'var(--red)';
       } else {
-        statusIneo.textContent = `-${lbl} AVANCE`;
-        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(0,212,255,.1);color:#00d4ff;border:1px solid rgba(0,212,255,.3)';
+        statusIneo.textContent = `🔵 -${lbl} AVANCE`;
+        statusIneo.style.color = 'var(--accent)';
       }
+    } else if(statusIneo) {
+      statusIneo.style.display = 'none';
     }
     // Bouton validation
     const btnIneo = el('btn-validate-stop-ineo');
