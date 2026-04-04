@@ -181,47 +181,104 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
-  <!-- ══ ARRÊT ACTUEL ══ -->
-  <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:14px">
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔴 ARRÊT ACTUEL</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <!-- Heure + countdown à gauche -->
-      <div style="flex-shrink:0;text-align:left">
-        <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--red)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-        <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
-      </div>
-      <!-- Nom à droite, 2 lignes si trop long (word-wrap) -->
-      <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
-    </div>
-    <!-- Retard / Avance -->
-    <div id="ln-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;text-align:center;display:none"></div>
-    <!-- Bouton validation manuelle -->
-    <button onclick="validateStopManual()" id="btn-validate-stop"
-      style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
-             background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
-             border-radius:10px;cursor:pointer">
-      ✅ J'ai passé cet arrêt → Suivant
+  <!-- ══ BOUTON SWITCH MODE ══ -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+    <button onclick="toggleLiveMode()" id="live-mode-btn"
+      style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;letter-spacing:.5px">
+      MODE INEO
     </button>
   </div>
 
-  <!-- ══ PROCHAIN ARRÊT ══ -->
-  <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:12px">
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="flex-shrink:0;text-align:left">
-        <div id="la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(36px,10vw,56px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--accent)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-        <div id="la-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(14px,3vw,20px);font-weight:700;color:rgba(0,212,255,.5)">--</div>
+  <!-- ══ MODE CLASSIQUE ══ -->
+  <div id="mode-classique">
+    <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:14px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔴 ARRÊT ACTUEL</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex-shrink:0;text-align:left">
+          <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--red)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
+          <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
+        </div>
+        <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
       </div>
-      <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,28px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
+      <div id="ln-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;text-align:center;display:none"></div>
+      <button onclick="validateStopManual()" id="btn-validate-stop"
+        style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
+               background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
+               border-radius:10px;cursor:pointer">
+        ✅ J'ai passé cet arrêt → Suivant
+      </button>
+    </div>
+    <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:12px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex-shrink:0;text-align:left">
+          <div id="la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(36px,10vw,56px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--accent)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
+          <div id="la-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(14px,3vw,20px);font-weight:700;color:rgba(0,212,255,.5)">--</div>
+        </div>
+        <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,28px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
+      </div>
+    </div>
+    <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
+        <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
+      </div>
     </div>
   </div>
 
-  <!-- ══ ARRÊT +2 ══ -->
-  <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
-    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-      <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
+  <!-- ══ MODE INEO ══ -->
+  <div id="mode-ineo" style="display:none">
+    <div class="card" style="padding:12px">
+      <!-- Track + arrêts -->
+      <div style="display:flex;gap:12px;align-items:stretch">
+        <!-- Ligne verticale avec points -->
+        <div style="display:flex;flex-direction:column;align-items:center;padding:4px 0;flex-shrink:0">
+          <div style="width:11px;height:11px;border-radius:50%;border:2px solid rgba(255,255,255,.2);background:transparent"></div>
+          <div style="flex:1;width:2px;background:rgba(255,255,255,.1);margin:3px 0"></div>
+          <div style="width:11px;height:11px;border-radius:50%;border:2px solid var(--accent);background:transparent"></div>
+          <div style="flex:1;width:2px;background:rgba(0,212,255,.3);margin:3px 0"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:var(--red);border:2px solid var(--red);box-shadow:0 0 6px rgba(231,76,60,.5)"></div>
+        </div>
+        <!-- Arrêts -->
+        <div style="flex:1;display:flex;flex-direction:column">
+          <!-- +2 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:rgba(255,255,255,.4)">—</div>
+            <div id="ineo-lb-time" style="font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;color:rgba(255,255,255,.35)">--</div>
+          </div>
+          <!-- Prochain -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">—</div>
+            <div id="ineo-la-time" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)">--</div>
+          </div>
+          <!-- Actuel -->
+          <div style="padding:8px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+                <svg width="12" height="12" viewBox="0 0 16 16" style="flex-shrink:0"><polygon points="8,0 16,16 0,16" fill="#e74c3c"/></svg>
+                <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div id="ineo-ln-hh" style="font-family:'Rajdhani',monospace;font-size:11px;opacity:.5;line-height:1">--:</div>
+                <div id="ineo-ln-mm" style="font-family:'Rajdhani',sans-serif;font-size:clamp(44px,12vw,68px);font-weight:700;color:#ff9500;line-height:1;letter-spacing:1px">--:--</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Status bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">
+        <div id="ineo-prog-label" style="font-size:11px;color:var(--muted)">—</div>
+        <div id="ineo-status" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.3)">—</div>
+      </div>
+      <!-- Bouton validation manuelle mode INEO -->
+      <button onclick="validateStopManual()" id="btn-validate-stop-ineo"
+        style="display:none;width:100%;margin-top:8px;padding:10px;font-size:14px;font-weight:700;
+               background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
+               border-radius:10px;cursor:pointer">
+        ✅ J'ai passé cet arrêt → Suivant
+      </button>
     </div>
   </div>
 
@@ -2966,6 +3023,49 @@ function updateLive() {
   document.getElementById('lb-name').textContent = s2?.name || '—';
   document.getElementById('lb-time').innerHTML = fmt(s2?.time, 'var(--muted)');
 
+  // ── Mise à jour MODE INEO ──
+  if(liveMode === 'ineo') {
+    const el = (id) => document.getElementById(id);
+    // Arrêt actuel (bas)
+    if(el('ineo-ln-name')) el('ineo-ln-name').textContent = s0?.name || '—';
+    if(el('ineo-ln-hh') && s0?.time) el('ineo-ln-hh').textContent = s0.time.substring(0,2)+':';
+    if(el('ineo-ln-mm') && s0?.time) {
+      const mm = s0.time.substring(3,5);
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      el('ineo-ln-mm').textContent = mm+':'+ss;
+    }
+    // Prochain (milieu)
+    if(el('ineo-la-name')) el('ineo-la-name').textContent = s1?.name || '—';
+    if(el('ineo-la-time')) el('ineo-la-time').textContent = s1?.time ? s1.time.substring(3,5) : '--';
+    // +2 (haut)
+    if(el('ineo-lb-name')) el('ineo-lb-name').textContent = s2?.name || '—';
+    if(el('ineo-lb-time')) el('ineo-lb-time').textContent = s2?.time ? s2.time.substring(3,5) : '--';
+    // Progression
+    if(el('ineo-prog-label')) el('ineo-prog-label').textContent = `Arrêt ${nextIdx+1} / ${trip.stops.length}`;
+    // Status retard/avance
+    const statusIneo = el('ineo-status');
+    if(statusIneo && s0?.time && s0.time !== '00:00') {
+      const [sh,sm] = s0.time.split(':').map(Number);
+      const diffSec = nowTotalSec - (sh*3600+sm*60);
+      const abs = Math.abs(diffSec);
+      const mm2 = Math.floor(abs/60), ss2 = abs%60;
+      const lbl = mm2 > 0 ? `${mm2}min ${ss2}s` : `${ss2}s`;
+      if(abs <= 30) {
+        statusIneo.textContent = "À L'HEURE";
+        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(39,174,96,.15);color:#27ae60;border:1px solid rgba(39,174,96,.3)';
+      } else if(diffSec > 30) {
+        statusIneo.textContent = `+${lbl} RETARD`;
+        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(231,76,60,.1);color:#e74c3c;border:1px solid rgba(231,76,60,.3)';
+      } else {
+        statusIneo.textContent = `-${lbl} AVANCE`;
+        statusIneo.style.cssText = 'font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:rgba(0,212,255,.1);color:#00d4ff;border:1px solid rgba(0,212,255,.3)';
+      }
+    }
+    // Bouton validation
+    const btnIneo = el('btn-validate-stop-ineo');
+    if(btnIneo) btnIneo.style.display = gpsMode !== 'auto' ? 'block' : 'none';
+  }
+
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
   document.getElementById('live-prog').style.width = Math.min(100,Math.max(0,prog)) + '%';
 
@@ -3020,6 +3120,31 @@ function updateLive() {
     }
   }
 }
+// ── Toggle Mode CLASSIQUE / INEO ─────────────────
+let liveMode = localStorage.getItem('chronoligne_livemode') || 'classique';
+
+function toggleLiveMode() {
+  liveMode = liveMode === 'classique' ? 'ineo' : 'classique';
+  localStorage.setItem('chronoligne_livemode', liveMode);
+  applyLiveMode();
+}
+
+function applyLiveMode() {
+  const btn = document.getElementById('live-mode-btn');
+  const cl = document.getElementById('mode-classique');
+  const in_ = document.getElementById('mode-ineo');
+  if(liveMode === 'ineo') {
+    cl.style.display = 'none';
+    in_.style.display = 'block';
+    if(btn) btn.textContent = 'MODE CLASSIQUE';
+  } else {
+    cl.style.display = 'block';
+    in_.style.display = 'none';
+    if(btn) btn.textContent = 'MODE INEO';
+  }
+}
+
+
 function confirmTerminus() {
   if(gpsMode === 'auto') stopGpsAuto();
   if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
@@ -5669,6 +5794,7 @@ function gdriveInit() {
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
 initDB();
+applyLiveMode();
 
 installPreloadedGPS();
 heuresInit();
