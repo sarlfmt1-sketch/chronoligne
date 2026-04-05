@@ -119,10 +119,14 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 @keyframes gpsPulse { 0%,100%{box-shadow:0 0 0 0 rgba(39,174,96,.6)} 50%{box-shadow:0 0 0 6px rgba(39,174,96,0)} }
 @keyframes gpsRecord { 0%,100%{box-shadow:0 0 0 0 rgba(255,165,0,.6)} 50%{box-shadow:0 0 0 6px rgba(255,165,0,0)} }
+@keyframes gpsLost { 0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.7)} 50%{box-shadow:0 0 0 8px rgba(231,76,60,0)} }
+@keyframes gpsRetry { 0%,100%{box-shadow:0 0 0 0 rgba(255,165,0,.7)} 50%{box-shadow:0 0 0 8px rgba(255,165,0,0)} }
 
 #gps-status-icon.gps-off  { background:rgba(255,255,255,.08); border-color:var(--border); }
 #gps-status-icon.gps-record { background:rgba(255,165,0,.2); border-color:orange; animation:gpsRecord 1.2s infinite; }
 #gps-status-icon.gps-auto  { background:rgba(39,174,96,.2); border-color:var(--green); animation:gpsPulse 1.5s infinite; }
+#gps-status-icon.gps-lost  { background:rgba(231,76,60,.2); border-color:var(--red); animation:gpsLost 0.8s infinite; }
+#gps-status-icon.gps-retry { background:rgba(255,165,0,.2); border-color:orange; animation:gpsRetry 1s infinite; }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 </style>
@@ -181,6 +185,25 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
+  <!-- Bannière GPS signal perdu -->
+  <div id="gps-lost-banner" style="display:none;background:rgba(231,76,60,.15);border:2px solid var(--red);border-radius:12px;padding:12px 14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;animation:pulse 0.6s infinite"></div>
+      <div style="flex:1;font-size:12px;color:var(--red);font-weight:700">⚠️ SIGNAL GPS PERDU</div>
+      <div id="gps-lost-timer" style="font-size:11px;color:var(--muted)"></div>
+    </div>
+    <div id="gps-lost-msg" style="font-size:12px;color:var(--muted);margin-bottom:8px">Tentative de reconnexion automatique...</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="gpsManualRetry()" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(231,76,60,.2);border:2px solid var(--red);color:var(--red);border-radius:10px;cursor:pointer">
+        🔄 Reconnecter maintenant
+      </button>
+      <button onclick="stopGpsAuto()" style="padding:10px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:10px;cursor:pointer">
+        ⏹ Stop
+      </button>
+    </div>
+    <div id="gps-retry-count" style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center"></div>
+  </div>
+
   <!-- ══ BOUTON SWITCH MODE ══ -->
   <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
     <button onclick="toggleLiveMode()" id="live-mode-btn"
@@ -191,22 +214,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   <!-- ══ MODE CLASSIQUE ══ -->
   <div id="mode-classique">
-    <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:14px">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔴 ARRÊT ACTUEL</div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="flex-shrink:0;text-align:left">
-          <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--red)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-          <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
-        </div>
-        <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
+    <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
+        <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
       </div>
-      <div id="ln-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;text-align:center;display:none"></div>
-      <button onclick="validateStopManual()" id="btn-validate-stop"
-        style="display:none;width:100%;margin-top:10px;padding:12px;font-size:15px;font-weight:700;
-               background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
-               border-radius:10px;cursor:pointer">
-        ✅ J'ai passé cet arrêt → Suivant
-      </button>
     </div>
     <div class="card" style="background:rgba(0,212,255,.05);border-color:rgba(0,212,255,.2);padding:12px">
       <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🎯 PROCHAIN ARRÊT</div>
@@ -218,11 +231,57 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div id="la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,28px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
       </div>
     </div>
-    <div class="card" style="background:rgba(255,255,255,.02);padding:10px">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">👁 ARRÊT +2</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div id="lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;color:var(--muted);flex-shrink:0"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-        <div id="lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,24px);font-weight:700;line-height:1.2;color:var(--muted);flex:1;overflow-wrap:break-word;word-break:break-word">—</div>
+
+    <!-- ══ ALERTE INEO PROCHAIN ARRÊT ══ -->
+    <div id="ineo-next-warning" style="display:none;border:2px solid #e74c3c;border-radius:12px;padding:12px 14px;transition:background .3s,border-color .3s">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span id="ineo-warn-feu" style="font-size:22px;flex-shrink:0">🔴</span>
+        <span id="ineo-warn-icon" style="font-size:16px;flex-shrink:0">⛔</span>
+        <span id="ineo-warn-title" style="font-family:'Rajdhani',sans-serif;font-size:clamp(15px,4vw,20px);font-weight:700;line-height:1.1">—</span>
+      </div>
+      <div id="ineo-warn-detail" style="font-size:13px;color:var(--text);line-height:1.6">—</div>
+    </div>
+    <!-- ══ PRÉVISION GPS ══ -->
+    <div id="gps-prediction-card" style="display:none;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔮 PRÉVISION GPS — PROCHAIN ARRÊT</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
+            <div id="gps-pred-dist" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,8vw,40px);font-weight:700;line-height:1;color:var(--text)">—</div>
+            <div style="font-size:11px;color:var(--muted)">restants</div>
+          </div>
+          <div id="gps-pred-speed" style="font-size:11px;color:var(--muted);margin-top:2px">vitesse —</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div id="gps-pred-eta" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,8vw,40px);font-weight:700;line-height:1;color:var(--text)">—</div>
+          <div id="gps-pred-status" style="font-size:12px;font-weight:700;margin-top:3px;padding:3px 10px;border-radius:20px;display:inline-block">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);padding:14px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">🔴 ARRÊT ACTUEL</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex-shrink:0;text-align:left">
+          <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--red)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
+          <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
+        </div>
+        <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
+      </div>
+      <div id="ln-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;text-align:center;display:none"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="goToPrevStop()" id="btn-prev-stop"
+          style="display:none;padding:12px 16px;font-size:22px;
+                 background:rgba(255,193,7,.15);border:2px solid #ffc107;color:#ffc107;
+                 border-radius:10px;cursor:pointer;flex-shrink:0">
+          ⬅️
+        </button>
+        <button onclick="validateStopManual()" id="btn-validate-stop"
+          style="display:none;flex:1;padding:12px;font-size:15px;font-weight:700;
+                 background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
+                 border-radius:10px;cursor:pointer">
+          ✅ J'ai passé cet arrêt → Suivant
+        </button>
       </div>
     </div>
   </div>
@@ -230,60 +289,111 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <!-- ══ MODE INEO ══ -->
   <div id="mode-ineo" style="display:none">
 
-    <!-- ARRÊT +2 -->
-    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.2);flex-shrink:0"></div>
-        <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:rgba(255,255,255,.4)">—</div>
-      </div>
-      <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,36px);font-weight:700;color:rgba(255,255,255,.35)">--</div>
-    </div>
+    <!-- Carte principale style SAE -->
+    <div class="card" style="padding:0;overflow:hidden;border-radius:14px;border:1px solid rgba(255,255,255,.08)">
 
-    <!-- PROCHAIN ARRÊT -->
-    <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.25);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);flex-shrink:0"></div>
-        <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--accent)">—</div>
+      <!-- Statut seul (pas de header ligne/arrêt) -->
+      <div style="background:rgba(255,255,255,.05);padding:4px 14px;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid rgba(255,255,255,.06);min-height:0">
+        <div id="ineo-header-line" style="display:none"></div>
+        <div id="ineo-status" style="display:none;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 12px;border-radius:20px;letter-spacing:.5px"></div>
       </div>
-      <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,46px);font-weight:700;color:var(--accent)">--</div>
-    </div>
 
-    <!-- ARRÊT ACTUEL -->
-    <div style="background:rgba(231,76,60,.1);border:2px solid rgba(231,76,60,.4);border-radius:10px;padding:12px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-          <svg width="13" height="13" viewBox="0 0 16 16" style="flex-shrink:0"><polygon points="8,0 16,16 0,16" fill="#e74c3c"/></svg>
-          <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+      <!-- Corps : barre verticale + arrêts (ordre haut→bas : +2 → prochain → actuel) -->
+      <div style="display:flex;padding:0">
+
+        <!-- Colonne gauche : barre rouge + triangle GPS animé -->
+        <div id="ineo-bar-col" style="width:60px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center;padding:0">
+          <!-- Barre rouge pleine hauteur -->
+          <div style="position:absolute;top:0;bottom:0;left:50%;width:7px;background:#c0392b;transform:translateX(-50%)"></div>
+
+          <!-- Partie "déjà parcourue" : superposition verte qui grandit du bas vers le haut -->
+          <div id="ineo-bar-progress" style="position:absolute;bottom:0;left:50%;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:1"></div>
+
+          <!-- Cercle arrêt +2 (haut) — position absolue -->
+          <div style="position:absolute;top:16px;z-index:2;display:flex;flex-direction:column;align-items:center">
+            <div style="width:16px;height:16px;border-radius:50%;background:#c0392b;border:3px solid rgba(255,255,255,.45)"></div>
+          </div>
+
+          <!-- Cercle prochain arrêt (milieu) — position absolue -->
+          <div style="position:absolute;top:50%;transform:translateY(-50%);z-index:2;">
+            <div style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:3px solid #fff;box-shadow:0 0 0 3px rgba(255,255,255,.2)"></div>
+          </div>
+
+          <!-- Triangle vert — se déplace selon progression GPS -->
+          <div id="ineo-triangle" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:3;transition:bottom .6s ease">
+            <svg width="28" height="28" viewBox="0 0 24 24">
+              <polygon points="12,2 22,22 12,17 2,22" fill="#27ae60" stroke="#0a0e1a" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+          </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div id="ineo-ln-hh" style="font-family:'Rajdhani',sans-serif;font-size:11px;opacity:.5;line-height:1">--:</div>
-          <div id="ineo-ln-mm" style="font-family:'Rajdhani',sans-serif;font-size:clamp(44px,12vw,68px);font-weight:700;color:#ff9500;line-height:1;letter-spacing:1px">--:--</div>
+
+        <!-- Colonne droite : heure à GAUCHE, nom à DROITE -->
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+
+          <!-- ARRÊT +2 -->
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px">
+            <div style="flex-shrink:0;min-width:52px">
+              <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,36px);font-weight:700;color:rgba(255,255,255,.28);line-height:1">--</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:1px">ARRÊT +2</div>
+            </div>
+            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4.5vw,22px);font-weight:700;color:rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right">—</div>
+          </div>
+
+          <!-- PROCHAIN ARRÊT -->
+          <div style="padding:12px 14px;border-bottom:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.05);display:flex;align-items:center;gap:10px">
+            <div style="flex-shrink:0;min-width:62px">
+              <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(42px,12vw,64px);font-weight:700;color:var(--accent);line-height:1">--</div>
+              <div style="font-size:9px;color:rgba(0,212,255,.55);letter-spacing:1px;margin-top:1px">PROCHAIN</div>
+            </div>
+            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5.5vw,30px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right">—</div>
+          </div>
+
+          <!-- ARRÊT ACTUEL -->
+          <div style="padding:12px 14px;background:rgba(231,76,60,.1);display:flex;align-items:center;gap:10px">
+            <!-- Zone heure : largeur fixe + font mono pour éviter tout décalage aux secondes -->
+            <div style="flex-shrink:0;width:76px">
+              <div style="line-height:1">
+                <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:13px;opacity:.45;color:#ff9500">--:</span>
+                <div id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(38px,10vw,54px);font-weight:700;color:#ff9500;letter-spacing:0;line-height:1;width:76px">--:--</div>
+              </div>
+              <div style="font-size:9px;color:rgba(231,76,60,.7);letter-spacing:1px;margin-top:1px">ACTUEL</div>
+            </div>
+            <!-- Nom centré horizontalement dans l'espace restant -->
+            <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;margin-left:20px">—</div>
+            <!-- Bouton précédent -->
+            <button onclick="goToPrevStop()" id="btn-prev-stop-ineo"
+              style="display:none;flex-shrink:0;width:50px;height:100px;padding:0;font-size:22px;
+                     background:rgba(255,193,7,.15);border:3px solid #ffc107;color:#ffc107;
+                     border-radius:14px;cursor:pointer;line-height:1">
+              ⬅️
+            </button>
+            <!-- Bouton suivant -->
+            <button onclick="validateStopManual()" id="btn-validate-stop-ineo"
+              style="display:none;flex-shrink:0;width:100px;height:100px;padding:0;font-size:42px;
+                     background:rgba(39,174,96,.25);border:3px solid var(--green);color:var(--green);
+                     border-radius:14px;cursor:pointer;line-height:1">
+              ✅
+            </button>
+          </div>
+
         </div>
       </div>
-      <!-- Status retard/avance -->
-      <div id="ineo-status" style="margin-top:6px;font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,22px);font-weight:700;text-align:center;display:none">—</div>
-      <!-- Bouton validation manuelle mode INEO -->
-      <button onclick="validateStopManual()" id="btn-validate-stop-ineo"
-        style="display:none;width:100%;margin-top:8px;padding:10px;font-size:14px;font-weight:700;
-               background:rgba(39,174,96,.2);border:2px solid var(--green);color:var(--green);
-               border-radius:10px;cursor:pointer">
-        ✅ J'ai passé cet arrêt → Suivant
-      </button>
-    </div>
 
-    <!-- Barre progression -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:6px 2px">
-      <div id="ineo-prog-label" style="font-size:11px;color:var(--muted)">—</div>
+      <!-- Footer pastilles supprimé — éléments masqués pour compatibilité JS -->
+      <div style="display:none">
+        <div id="ineo-prog-label"></div>
+        <div id="ineo-prog-track"><div id="ineo-prog-line"></div><div id="ineo-prog-dots"></div></div>
+      </div>
+
     </div>
 
   </div>
 
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div id="live-trip-label" style="font-size:13px;color:var(--muted)">Aucun trajet sélectionné</div>
-      <button class="btn btn-sm btn-ghost" onclick="showView('view-lines')">Changer</button>
-    </div>
-    <div class="prog-bar"><div class="prog-fill" id="live-prog" style="width:0%"></div></div>
+  <!-- live-trip-label et barre de progression supprimés pour gagner de la place -->
+  <div id="live-trip-label" style="display:none"></div>
+  <div id="live-prog" style="display:none"></div>
+
+  <div class="card" style="padding:10px 14px">
 
     <!-- Démarrer depuis un arrêt précis -->
     <div id="start-from-stop-bar" style="display:none;margin-top:8px">
@@ -468,7 +578,20 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <button class="btn btn-sm" onclick="openSvcEditor(-1)" style="background:var(--green);color:#000;font-weight:700">+ Nouvelle feuille</button>
     </div>
 
-    <div id="svc-list-container"></div>
+    <!-- Liste réduite à ~2 services visibles -->
+    <div id="svc-list-container" style="max-height:138px;overflow-y:auto;border-radius:12px;"></div>
+
+    <!-- ══ PLANNING SEMAINE ══ -->
+    <div class="card" style="padding:12px 14px;margin-top:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--accent)" id="plan-week-label">Semaine</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-ghost" onclick="planWeekPrev()">◀</button>
+          <button class="btn btn-sm btn-ghost" onclick="planWeekNext()">▶</button>
+        </div>
+      </div>
+      <div id="plan-week-grid" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
   </div>
 
   <!-- Page éditeur -->
@@ -548,8 +671,8 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 </div>
 
-<!-- ══ VIEW: HEURES ══ -->
-<div class="view" id="view-heures">
+<!-- VIEW HEURES SUPPRIMÉE -->
+<div class="view" id="view-heures" style="display:none!important">
 
   <!-- Mois navigation -->
   <div class="card" style="padding:10px 14px">
@@ -883,9 +1006,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <button class="nav-btn" data-view="view-roadmap" onclick="showView('view-roadmap')">
     <span class="ico">🗺</span>SERVICE
   </button>
-  <button class="nav-btn" data-view="view-heures" onclick="showView('view-heures')">
-    <span class="ico">⏰</span>HEURES
-  </button>
+
   <button class="nav-btn" data-view="view-prime" onclick="showView('view-prime')">
     <span class="ico">📊</span>PRIME
   </button>
@@ -2895,7 +3016,7 @@ function showView(id) {
   const v = document.getElementById(id);
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
-  if(id === 'view-roadmap') renderRoadmapView();
+  if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
   if(id === 'view-settings') loadSettings();
   if(id === 'view-heures') heuresRender();
   if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
@@ -2935,12 +3056,16 @@ function updateLive() {
   const startFrom = activeTrip.startStopIdx || 0;
 
   // Trouver l'arrêt actuel :
-  // 1. Premier arrêt dont l'heure >= maintenant (on n'est pas encore passé)
-  // 2. Si tous les arrêts sont dans le passé → le dernier arrêt
-  // 3. Si tous les arrêts sont à 00:00 (pas configurés) → premier arrêt
+  // 1. Si validatedStopIdx est défini (bouton manuel ou GPS), on l'utilise en priorité
+  // 2. Sinon : premier arrêt dont l'heure >= maintenant
+  // 3. Si tous les arrêts sont dans le passé → le dernier arrêt
   let nextIdx = startFrom;
   const hasRealTimes = trip.stops.some(s => s.time && s.time !== '00:00');
-  if(hasRealTimes) {
+
+  if(activeTrip.validatedStopIdx !== undefined) {
+    // Priorité absolue au validatedStopIdx (bouton manuel ou GPS auto)
+    nextIdx = Math.min(activeTrip.validatedStopIdx, trip.stops.length - 1);
+  } else if(hasRealTimes) {
     nextIdx = trip.stops.length - 1; // défaut : dernier arrêt
     for(let i = startFrom; i < trip.stops.length; i++) {
       const [h,m] = (trip.stops[i].time||'00:00').split(':').map(Number);
@@ -2968,15 +3093,27 @@ function updateLive() {
     }
     return `<span style="font-size:.55em;opacity:.75">${hh}:</span><span style="color:${c}">${mm}</span>`;
   }
-  // Countdown précis à la seconde
+  // Countdown simple (arrêts +2)
   function cd(t) {
     if(!t) return '--';
     const [h,m] = t.split(':').map(Number);
     const diffSec = (h*3600 + m*60) - nowTotalSec;
     if(diffSec < -60) return 'Passé';
-    if(diffSec <= 60 && diffSec >= -60) return '⚡ Maintenant';
+    if(Math.abs(diffSec) <= 60) return '⚡ Maintenant';
     const diffMin = Math.ceil(diffSec / 60);
     return diffMin + ' min';
+  }
+
+  // ── Compte à rebours INEO précis à la seconde pour PROCHAIN arrêt ──
+  // Règle INEO : arrivée < -60s avant horaire = pénalité avance
+  //              arrivée entre -60s et +180s  = conforme
+  //              arrivée > +180s              = pénalité retard
+  function cdIneo(t) {
+    if(!t || t === '00:00') return null;
+    const [h,m] = t.split(':').map(Number);
+    const stopSec = h*3600 + m*60;
+    const diffSec = stopSec - nowTotalSec; // positif = il reste du temps
+    return diffSec;
   }
 
   const s0 = trip.stops[nextIdx];
@@ -2997,32 +3134,120 @@ function updateLive() {
     const mm = Math.floor(absSec / 60);
     const ss = absSec % 60;
     const label = mm > 0 ? `${mm}min ${ss}s` : `${ss}s`;
+    statusEl.style.display = 'block';
     if(absSec <= 30) {
-      statusEl.textContent = "🟢 À L'HEURE";
+      statusEl.textContent = "À L'HEURE";
+      statusEl.style.background = 'rgba(39,174,96,.3)';
       statusEl.style.color = 'var(--green)';
-      statusEl.style.display = 'block';
     } else if(diffSec > 30) {
-      statusEl.textContent = `🔴 +${label} RETARD`;
-      statusEl.style.color = 'var(--red)';
-      statusEl.style.display = 'block';
+      statusEl.textContent = `+${label} RETARD`;
+      statusEl.style.background = 'rgba(231,76,60,.3)';
+      statusEl.style.color = '#ff6b6b';
     } else {
-      statusEl.textContent = `🔵 -${label} AVANCE`;
+      statusEl.textContent = `-${label} AVANCE`;
+      statusEl.style.background = 'rgba(0,212,255,.2)';
       statusEl.style.color = 'var(--accent)';
-      statusEl.style.display = 'block';
     }
   } else if(statusEl) {
     statusEl.style.display = 'none';
   }
+
+  // ── Prochain arrêt avec compte à rebours INEO ──
   document.getElementById('la-name').textContent = s1?.name || '—';
   document.getElementById('la-time').innerHTML = fmt(s1?.time, 'var(--accent)');
-  document.getElementById('la-countdown').textContent = cd(s1?.time);
+
+  const ineoCard = document.getElementById('ineo-next-warning');
+  const laCountdown = document.getElementById('la-countdown');
+  const secsToNext = cdIneo(s1?.time);
+
+  if(secsToNext !== null) {
+    const absS = Math.abs(secsToNext);
+    const minPart = Math.floor(absS / 60);
+    const secPart = absS % 60;
+    const secStr = String(secPart).padStart(2,'0');
+
+    if(secsToNext > 0) {
+      // Il reste du temps avant l'arrêt
+      laCountdown.textContent = `${minPart}min ${secStr}s`;
+
+      if(secsToNext <= 60) {
+        // ZONE DANGER : entre 0 et 60s → si on arrive maintenant = pénalité avance
+        laCountdown.style.color = '#e74c3c';
+        if(ineoCard) {
+          ineoCard.style.display = 'block';
+          ineoCard.style.background = 'rgba(231,76,60,.18)';
+          ineoCard.style.borderColor = '#e74c3c';
+          document.getElementById('ineo-warn-icon').textContent = '⛔';
+          document.getElementById('ineo-warn-title').textContent = 'TROP EN AVANCE — ATTENDS !';
+          document.getElementById('ineo-warn-title').style.color = '#e74c3c';
+          document.getElementById('ineo-warn-detail').innerHTML =
+            `Si tu passes <b>maintenant</b> → <span style="color:#e74c3c;font-weight:700">pénalité AVANCE</span><br>
+             Attends encore <b style="color:#ffc107;font-size:16px">${minPart}min ${secStr}s</b> avant de passer l'arrêt`;
+          document.getElementById('ineo-warn-feu').textContent = '🔴';
+        }
+      } else if(secsToNext <= 120) {
+        // ZONE ATTENTION : 60–120s → fenêtre approche, se préparer
+        laCountdown.style.color = '#ffc107';
+        if(ineoCard) {
+          ineoCard.style.display = 'block';
+          ineoCard.style.background = 'rgba(255,193,7,.12)';
+          ineoCard.style.borderColor = '#ffc107';
+          document.getElementById('ineo-warn-icon').textContent = '⚠️';
+          document.getElementById('ineo-warn-title').textContent = 'APPROCHE — SURVEILLE LA VITESSE';
+          document.getElementById('ineo-warn-title').style.color = '#ffc107';
+          document.getElementById('ineo-warn-detail').innerHTML =
+            `Fenêtre conforme dans <b style="color:#ffc107;font-size:16px">${minPart}min ${secStr}s</b><br>
+             Ralentis si tu es trop proche — tu peux passer entre <b>0s et +3min</b> après l'horaire`;
+          document.getElementById('ineo-warn-feu').textContent = '🟡';
+        }
+      } else {
+        // Loin → OK, pas d'alerte
+        laCountdown.style.color = 'rgba(0,212,255,.5)';
+        if(ineoCard) ineoCard.style.display = 'none';
+      }
+    } else {
+      // On est APRÈS l'heure prévue
+      const retardSec = absS; // secondes de retard
+      laCountdown.style.color = retardSec <= 180 ? 'var(--green)' : '#ffc107';
+      laCountdown.textContent = `+${minPart}min ${secStr}s`;
+      if(ineoCard) {
+        if(retardSec <= 180) {
+          ineoCard.style.display = 'block';
+          ineoCard.style.background = 'rgba(39,174,96,.12)';
+          ineoCard.style.borderColor = 'var(--green)';
+          document.getElementById('ineo-warn-icon').textContent = '✅';
+          document.getElementById('ineo-warn-title').textContent = 'ZONE CONFORME — PASSE !';
+          document.getElementById('ineo-warn-title').style.color = 'var(--green)';
+          document.getElementById('ineo-warn-detail').innerHTML =
+            `Tu es dans la fenêtre INEO (+${minPart}min ${secStr}s / max +3min)<br>
+             <b>Tu peux passer l'arrêt maintenant sans pénalité</b>`;
+          document.getElementById('ineo-warn-feu').textContent = '🟢';
+        } else {
+          ineoCard.style.display = 'block';
+          ineoCard.style.background = 'rgba(255,165,0,.12)';
+          ineoCard.style.borderColor = 'orange';
+          document.getElementById('ineo-warn-icon').textContent = '❌';
+          document.getElementById('ineo-warn-title').textContent = `RETARD +${minPart}min ${secStr}s`;
+          document.getElementById('ineo-warn-title').style.color = 'orange';
+          document.getElementById('ineo-warn-detail').innerHTML =
+            `Déjà <b>+${minPart}min ${secStr}s</b> après l'horaire prévu (max autorisé : +3min)<br>
+             Rattrape si possible, le prochain arrêt est pénalisé`;
+          document.getElementById('ineo-warn-feu').textContent = '🔴';
+        }
+      }
+    }
+  } else {
+    laCountdown.textContent = cd(s1?.time);
+    laCountdown.style.color = 'rgba(0,212,255,.5)';
+    if(ineoCard) ineoCard.style.display = 'none';
+  }
   document.getElementById('lb-name').textContent = s2?.name || '—';
   document.getElementById('lb-time').innerHTML = fmt(s2?.time, 'var(--muted)');
 
   // ── Mise à jour MODE INEO ──
   if(liveMode === 'ineo') {
     const el = (id) => document.getElementById(id);
-    // Arrêt actuel (bas)
+    // Arrêt actuel
     if(el('ineo-ln-name')) el('ineo-ln-name').textContent = s0?.name || '—';
     if(el('ineo-ln-hh') && s0?.time) el('ineo-ln-hh').textContent = s0.time.substring(0,2)+':';
     if(el('ineo-ln-mm') && s0?.time) {
@@ -3030,15 +3255,46 @@ function updateLive() {
       const ss = String(now.getSeconds()).padStart(2,'0');
       el('ineo-ln-mm').textContent = mm+':'+ss;
     }
-    // Prochain (milieu)
+    // Prochain arrêt
     if(el('ineo-la-name')) el('ineo-la-name').textContent = s1?.name || '—';
     if(el('ineo-la-time')) el('ineo-la-time').textContent = s1?.time ? s1.time.substring(3,5) : '--';
-    // +2 (haut)
+    // +2
     if(el('ineo-lb-name')) el('ineo-lb-name').textContent = s2?.name || '—';
     if(el('ineo-lb-time')) el('ineo-lb-time').textContent = s2?.time ? s2.time.substring(3,5) : '--';
-    // Progression
+    // Header ligne
+    const line2 = db.lines[activeTrip.lineIdx];
+    if(el('ineo-header-line') && line2) {
+      el('ineo-header-line').textContent = `Ligne ${line2.num} — Arrêt ${nextIdx+1} / ${trip.stops.length}`;
+    }
+    // Progression footer label
     if(el('ineo-prog-label')) el('ineo-prog-label').textContent = `Arrêt ${nextIdx+1} / ${trip.stops.length}`;
-    // Status retard/avance
+    // Pastilles footer INEO
+    const ineoDotsEl = el('ineo-prog-dots');
+    const ineoLineEl = el('ineo-prog-line');
+    if(ineoDotsEl && ineoLineEl) {
+      const MAX_D = 12;
+      const tot = trip.stops.length;
+      let idxArr = [];
+      if(tot <= MAX_D) { for(let i=0;i<tot;i++) idxArr.push(i); }
+      else {
+        idxArr.push(0);
+        const step=(tot-2)/(MAX_D-2);
+        for(let k=1;k<MAX_D-1;k++) idxArr.push(Math.round(k*step));
+        idxArr.push(tot-1);
+      }
+      let activeDot=0;
+      for(let k=0;k<idxArr.length;k++){ if(idxArr[k]<=nextIdx) activeDot=k; }
+      const pct2 = idxArr.length>1 ? Math.min(100,(activeDot/(idxArr.length-1))*100) : 0;
+      ineoLineEl.style.width = pct2+'%';
+      ineoDotsEl.innerHTML = idxArr.map((si,k)=>{
+        const isPast=si<nextIdx, isCur=(si===nextIdx)||(si<=nextIdx&&(idxArr[k+1]===undefined||idxArr[k+1]>nextIdx));
+        const bg=isPast?'#c0392b':isCur?'#ff9500':'rgba(255,255,255,.15)';
+        const border=isCur?'2px solid #ff9500':isPast?'2px solid #c0392b':'2px solid rgba(255,255,255,.2)';
+        const sz=isCur?'14px':'8px';
+        return `<div style="width:${sz};height:${sz};border-radius:50%;background:${bg};border:${border};flex-shrink:0;transition:all .3s;box-shadow:${isCur?'0 0 6px rgba(255,149,0,.5)':'none'}"></div>`;
+      }).join('');
+    }
+    // Status retard/avance — badge pill dans le header
     const statusIneo = el('ineo-status');
     if(statusIneo && s0?.time && s0.time !== '00:00') {
       const [sh,sm] = s0.time.split(':').map(Number);
@@ -3048,21 +3304,24 @@ function updateLive() {
       const lbl = mm2 > 0 ? `${mm2}min ${ss2}s` : `${ss2}s`;
       statusIneo.style.display = 'block';
       if(abs <= 30) {
-        statusIneo.textContent = "🟢 À L'HEURE";
+        statusIneo.textContent = "À L'HEURE";
+        statusIneo.style.background = 'rgba(39,174,96,.3)';
         statusIneo.style.color = 'var(--green)';
       } else if(diffSec > 30) {
-        statusIneo.textContent = `🔴 +${lbl} RETARD`;
-        statusIneo.style.color = 'var(--red)';
+        statusIneo.textContent = `+${lbl} RETARD`;
+        statusIneo.style.background = 'rgba(231,76,60,.3)';
+        statusIneo.style.color = '#ff6b6b';
       } else {
-        statusIneo.textContent = `🔵 -${lbl} AVANCE`;
+        statusIneo.textContent = `-${lbl} AVANCE`;
+        statusIneo.style.background = 'rgba(0,212,255,.2)';
         statusIneo.style.color = 'var(--accent)';
       }
     } else if(statusIneo) {
       statusIneo.style.display = 'none';
     }
-    // Bouton validation
+    // Bouton validation — géré par showGpsBtns, on masque seulement en mode auto GPS
     const btnIneo = el('btn-validate-stop-ineo');
-    if(btnIneo) btnIneo.style.display = gpsMode !== 'auto' ? 'block' : 'none';
+    if(btnIneo && gpsMode === 'auto') btnIneo.style.display = 'none';
   }
 
   const prog = Math.round((nextIdx - startFrom) / Math.max(trip.stops.length-1-startFrom,1) * 100);
@@ -3257,7 +3516,7 @@ function activateTrip(lineIdx, tripIdx) {
   if(!line) { toast('❌ Ligne introuvable'); return; }
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
-  activeTrip = { lineIdx, tripIdx };
+  activeTrip = { lineIdx, tripIdx, validatedStopIdx: undefined };
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -3265,6 +3524,7 @@ function activateTrip(lineIdx, tripIdx) {
   updateLive();
   showView('view-live');
   updateGpsCountInfo();
+  scheduleAutoAdvance();
   toast('▶ Trajet activé !');
 }
 
@@ -4988,6 +5248,307 @@ let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
 let gpsAutoNextIdx = 0;
 let gpsSession = []; // [{stopName, planned, actual, diff}]
 
+// ── WATCHDOG GPS ─────────────────────────────────────────────
+const GPS_WATCHDOG_TIMEOUT = 15000; // ms sans signal → alerte
+const GPS_RETRY_INTERVAL   = 10000; // ms entre tentatives de reconnexion
+const GPS_MAX_RETRIES      = 8;     // tentatives max avant abandon
+
+let gpsLastSignalTime  = null;  // timestamp dernière position valide reçue
+let gpsWatchdogTimer   = null;  // setInterval du watchdog
+let gpsRetryTimer      = null;  // setInterval des tentatives de reconnexion
+let gpsRetryCount      = 0;     // nombre de tentatives effectuées
+let gpsSignalLost      = false; // état courant : signal perdu ?
+let gpsWatchCallbacks  = { onSuccess: null, onError: null }; // pour la reconnexion
+
+function gpsWatchdogStart() {
+  gpsWatchdogStop();
+  gpsLastSignalTime = Date.now();
+  gpsSignalLost = false;
+  gpsWatchdogTimer = setInterval(() => {
+    if(!gpsMode) { gpsWatchdogStop(); return; }
+    const elapsed = Date.now() - (gpsLastSignalTime || 0);
+    if(elapsed > GPS_WATCHDOG_TIMEOUT && !gpsSignalLost) {
+      gpsSignalLost = true;
+      gpsRetryCount = 0;
+      gpsOnSignalLost();
+    }
+  }, 3000);
+}
+
+function gpsWatchdogStop() {
+  if(gpsWatchdogTimer) { clearInterval(gpsWatchdogTimer); gpsWatchdogTimer = null; }
+  gpsRetryStop();
+  gpsSignalLost = false;
+}
+
+function gpsWatchdogSignalOk() {
+  gpsLastSignalTime = Date.now();
+  if(gpsSignalLost) {
+    gpsSignalLost = false;
+    gpsRetryStop();
+    gpsOnSignalRestored();
+  }
+}
+
+function gpsOnSignalLost() {
+  const lostBanner = document.getElementById('gps-lost-banner');
+  const autoBanner = document.getElementById('gps-auto-banner');
+  if(lostBanner) lostBanner.style.display = 'block';
+  if(autoBanner) autoBanner.style.display = 'none';
+  updateGpsIcon('lost');
+  // Mise à jour du timer d'affichage
+  gpsUpdateLostTimer();
+  // Lancer les tentatives automatiques
+  gpsRetryCount = 0;
+  gpsRetryTimer = setInterval(() => {
+    gpsRetryCount++;
+    const retryEl = document.getElementById('gps-retry-count');
+    if(retryEl) retryEl.textContent = `Tentative ${gpsRetryCount} / ${GPS_MAX_RETRIES}`;
+    const msgEl = document.getElementById('gps-lost-msg');
+    if(msgEl) msgEl.textContent = `Reconnexion en cours... (tentative ${gpsRetryCount})`;
+    if(gpsRetryCount >= GPS_MAX_RETRIES) {
+      gpsRetryStop();
+      if(retryEl) retryEl.textContent = `⛔ Reconnexion impossible — appuyez sur "Reconnecter"`;
+      if(msgEl) msgEl.textContent = 'Signal GPS introuvable. Vérifiez que le GPS est activé.';
+      return;
+    }
+    gpsDoReconnect();
+  }, GPS_RETRY_INTERVAL);
+}
+
+function gpsUpdateLostTimer() {
+  if(!gpsSignalLost) return;
+  const el = document.getElementById('gps-lost-timer');
+  if(el && gpsLastSignalTime) {
+    const sec = Math.round((Date.now() - gpsLastSignalTime) / 1000);
+    el.textContent = `Perdu depuis ${sec}s`;
+  }
+  if(gpsSignalLost) setTimeout(gpsUpdateLostTimer, 1000);
+}
+
+function gpsDoReconnect() {
+  if(!gpsMode || !navigator.geolocation) return;
+  if(gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      if(pos.coords.accuracy <= 50) {
+        gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy), heading: pos.coords.heading };
+        gpsWatchdogSignalOk();
+        if(gpsWatchCallbacks.onSuccess) gpsWatchCallbacks.onSuccess(gpsCoords);
+      }
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+  gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const acc = pos.coords.accuracy;
+      if(acc > 50) return;
+      gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(acc), heading: pos.coords.heading };
+      gpsWatchdogSignalOk();
+      if(gpsWatchCallbacks.onSuccess) gpsWatchCallbacks.onSuccess(gpsCoords);
+    },
+    err => { /* silencieux en retry */ },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+}
+
+function gpsOnSignalRestored() {
+  const lostBanner = document.getElementById('gps-lost-banner');
+  const autoBanner = document.getElementById('gps-auto-banner');
+  if(lostBanner) lostBanner.style.display = 'none';
+  if(autoBanner) { autoBanner.style.display = 'block'; }
+  updateGpsIcon(gpsMode);
+  toast('✅ Signal GPS retrouvé !');
+}
+
+function gpsRetryStop() {
+  if(gpsRetryTimer) { clearInterval(gpsRetryTimer); gpsRetryTimer = null; }
+}
+
+function gpsManualRetry() {
+  const msgEl = document.getElementById('gps-lost-msg');
+  const retryEl = document.getElementById('gps-retry-count');
+  if(msgEl) msgEl.textContent = 'Reconnexion manuelle en cours...';
+  if(retryEl) retryEl.textContent = '';
+  gpsRetryCount = 0;
+  gpsDoReconnect();
+}
+
+// ── BARRE INEO : triangle GPS animé ──────────────────────────
+// La barre a 3 niveaux fixes :
+//   bottom = arrêt actuel (triangle au repos = 16px du bas)
+//   milieu = prochain arrêt (50% de la hauteur)
+//   haut   = arrêt +2 (16px du haut)
+// Le triangle monte de "bas" vers "milieu" selon la progression
+// GPS entre l'arrêt courant et le prochain arrêt (0% → 100%)
+function updateIneoBarGps(coords) {
+  const triangle  = document.getElementById('ineo-triangle');
+  const barProg   = document.getElementById('ineo-bar-progress');
+  const barCol    = document.getElementById('ineo-bar-col');
+  if(!triangle || !barProg || !barCol) return;
+  if(!activeTrip || gpsMode !== 'auto') return;
+
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  // Arrêt précédent (celui qu'on vient de quitter) et prochain arrêt (celui qu'on vise)
+  const prevIdx = Math.max(0, gpsAutoNextIdx - 1);
+  const nextIdx = gpsAutoNextIdx;
+
+  const prevKey  = gpsCoordKey(line.num, activeTrip.tripIdx, prevIdx);
+  const nextKey  = gpsCoordKey(line.num, activeTrip.tripIdx, nextIdx);
+  const prevCoord = gpsCoordsDB[prevKey];
+  const nextCoord = gpsCoordsDB[nextKey];
+
+  if(!prevCoord || !nextCoord) return;
+
+  // Distance totale du segment arrêt précédent → prochain arrêt
+  const totalDist = haversine(prevCoord.lat, prevCoord.lon, nextCoord.lat, nextCoord.lon);
+  // Distance restante bus → prochain arrêt
+  const remainDist = haversine(coords.lat, coords.lon, nextCoord.lat, nextCoord.lon);
+  // Progression 0 (départ arrêt précédent) → 1 (arrivée prochain arrêt)
+  let pct = totalDist > 0 ? 1 - (remainDist / totalDist) : 0;
+  pct = Math.max(0, Math.min(1, pct));
+
+  // Hauteur de la barre en pixels
+  const barH = barCol.offsetHeight || 180;
+
+  // Positions fixes des 3 niveaux sur la barre (en px depuis le bas)
+  const posBasPx    = 16 + 14;  // triangle au repos (bottom 16px + demi-hauteur svg)
+  const posMilieuPx = barH / 2; // prochain arrêt = milieu exact
+  const posProg     = posBasPx + (posMilieuPx - posBasPx) * pct;
+
+  // Déplacer le triangle (bottom en px)
+  triangle.style.bottom = Math.round(posProg - 14) + 'px'; // -14 = demi hauteur svg
+
+  // Barre verte qui monte (hauteur proportionnelle)
+  const hauteurVerte = (posProg / barH) * 100;
+  barProg.style.height = hauteurVerte.toFixed(1) + '%';
+}
+
+// ── PRÉVISION GPS (vitesse + ETA prochain arrêt) ─────────────
+const GPS_SPEED_HISTORY = 5;   // nb de points pour lisser la vitesse
+let gpsPrevCoords   = null;    // dernière position pour calculer delta
+let gpsPrevTime     = null;    // timestamp de la dernière position
+let gpsSpeedHistory = [];      // historique des vitesses (m/s) pour lissage
+
+function gpsUpdatePrediction(coords) {
+  const now = Date.now();
+
+  // ── 1. Calculer vitesse instantanée ──────────────────────────
+  if(gpsPrevCoords && gpsPrevTime) {
+    const dt = (now - gpsPrevTime) / 1000; // secondes
+    if(dt > 0.5 && dt < 30) {             // ignorer les deltas aberrants
+      const dm = haversine(gpsPrevCoords.lat, gpsPrevCoords.lon, coords.lat, coords.lon);
+      const spd = dm / dt; // m/s
+      if(spd < 30) {       // < 108 km/h, cohérent pour un bus
+        gpsSpeedHistory.push(spd);
+        if(gpsSpeedHistory.length > GPS_SPEED_HISTORY) gpsSpeedHistory.shift();
+      }
+    }
+  }
+  gpsPrevCoords = coords;
+  gpsPrevTime   = now;
+
+  // ── 2. Vitesse lissée ────────────────────────────────────────
+  const card = document.getElementById('gps-prediction-card');
+  if(!activeTrip || gpsMode !== 'auto' || !card) {
+    if(card) card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+
+  const line  = db.lines[activeTrip.lineIdx];
+  const trip  = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  // Prochain arrêt = gpsAutoNextIdx (celui qu'on vise)
+  const nextStop = trip.stops[gpsAutoNextIdx];
+  if(!nextStop) return;
+
+  const nextKey    = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx);
+  const nextCoords = gpsCoordsDB[nextKey];
+
+  const distEl   = document.getElementById('gps-pred-dist');
+  const speedEl  = document.getElementById('gps-pred-speed');
+  const etaEl    = document.getElementById('gps-pred-eta');
+  const statusEl = document.getElementById('gps-pred-status');
+
+  // Distance restante jusqu'au prochain arrêt GPS
+  if(nextCoords) {
+    const distM = Math.round(haversine(coords.lat, coords.lon, nextCoords.lat, nextCoords.lon));
+    distEl.textContent = distM >= 1000
+      ? (distM / 1000).toFixed(1) + ' km'
+      : distM + ' m';
+  } else {
+    distEl.textContent = '?';
+  }
+
+  // Vitesse moyenne lissée
+  if(gpsSpeedHistory.length === 0) {
+    speedEl.textContent = 'vitesse —';
+    etaEl.textContent   = '—';
+    if(statusEl) { statusEl.textContent = 'GPS en attente'; statusEl.style.background = 'rgba(255,255,255,.08)'; statusEl.style.color = 'var(--muted)'; }
+    return;
+  }
+
+  const avgSpd = gpsSpeedHistory.reduce((a,b) => a+b, 0) / gpsSpeedHistory.length;
+  const kmh    = avgSpd * 3.6;
+  speedEl.textContent = `${kmh.toFixed(0)} km/h`;
+
+  // ── 3. ETA (Estimated Time of Arrival) ───────────────────────
+  if(!nextCoords || avgSpd < 0.5) {
+    // Bus quasi à l'arrêt
+    etaEl.textContent = '—';
+    if(statusEl) { statusEl.textContent = 'Bus à l\'arrêt'; statusEl.style.background = 'rgba(255,255,255,.08)'; statusEl.style.color = 'var(--muted)'; }
+    return;
+  }
+
+  const distToNext = haversine(coords.lat, coords.lon, nextCoords.lat, nextCoords.lon);
+  const etaSec     = distToNext / avgSpd;  // secondes pour atteindre l'arrêt
+  const etaDate    = new Date(now + etaSec * 1000);
+  const etaHH      = String(etaDate.getHours()).padStart(2, '0');
+  const etaMM      = String(etaDate.getMinutes()).padStart(2, '0');
+  etaEl.textContent = `${etaHH}:${etaMM}`;
+
+  // ── 4. Comparer ETA avec horaire prévu ───────────────────────
+  if(nextStop.time && nextStop.time !== '00:00') {
+    const [ph, pm] = nextStop.time.split(':').map(Number);
+    const plannedSec = ph * 3600 + pm * 60;
+    const etaTotalSec = etaDate.getHours() * 3600 + etaDate.getMinutes() * 60 + etaDate.getSeconds();
+    const diffSec = etaTotalSec - plannedSec; // positif = retard prévu
+    const absSec  = Math.abs(diffSec);
+    const diffMin = Math.floor(absSec / 60);
+    const diffS   = absSec % 60;
+    const diffStr = diffMin > 0 ? `~${diffMin}min ${diffS}s` : `~${diffS}s`;
+
+    if(absSec <= 30) {
+      statusEl.textContent   = '✅ À l\'heure';
+      statusEl.style.background = 'rgba(39,174,96,.25)';
+      statusEl.style.color      = 'var(--green)';
+    } else if(diffSec > 0) {
+      statusEl.textContent   = `⚠️ +${diffStr} prévu`;
+      statusEl.style.background = diffSec < 180
+        ? 'rgba(255,165,0,.2)'
+        : 'rgba(231,76,60,.25)';
+      statusEl.style.color = diffSec < 180 ? 'orange' : '#ff6b6b';
+    } else {
+      statusEl.textContent   = `⚡ -${diffStr} d'avance`;
+      statusEl.style.background = 'rgba(0,212,255,.15)';
+      statusEl.style.color      = 'var(--accent)';
+    }
+  } else {
+    if(statusEl) {
+      const minLeft = Math.round(etaSec / 60);
+      statusEl.textContent   = minLeft <= 1 ? '⚡ Imminent' : `≈ ${minLeft} min`;
+      statusEl.style.background = 'rgba(255,255,255,.08)';
+      statusEl.style.color      = 'var(--muted)';
+    }
+  }
+}
+
 function loadGpsCoordsDB() {
   try { gpsCoordsDB = JSON.parse(localStorage.getItem(GPS_COORDS_KEY)||'{}'); } catch(e) { gpsCoordsDB = {}; }
 }
@@ -5015,6 +5576,14 @@ function updateGpsIcon(mode) {
     el.classList.add('gps-auto');
     el.textContent = '🟢';
     el.title = 'GPS Conduite auto actif';
+  } else if(mode === 'lost') {
+    el.classList.add('gps-lost');
+    el.textContent = '🔴';
+    el.title = 'GPS — Signal perdu !';
+  } else if(mode === 'retry') {
+    el.classList.add('gps-retry');
+    el.textContent = '🟡';
+    el.title = 'GPS — Reconnexion en cours...';
   } else {
     el.classList.add('gps-off');
     el.textContent = '📍';
@@ -5026,11 +5595,15 @@ function startGpsWatch(onSuccess, onError) {
   if(!navigator.geolocation) { toast('GPS non supporté'); return false; }
   if(gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
 
+  // Mémoriser les callbacks pour la reconnexion automatique
+  gpsWatchCallbacks = { onSuccess, onError };
+
   // Forcer une première position immédiate avant watchPosition
   navigator.geolocation.getCurrentPosition(
     pos => {
       if(pos.coords.accuracy <= 50) {
         gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
+        gpsWatchdogSignalOk();
         if(onSuccess) onSuccess(gpsCoords);
       }
     },
@@ -5049,6 +5622,7 @@ function startGpsWatch(onSuccess, onError) {
         acc: Math.round(acc),
         heading: pos.coords.heading  // cap de déplacement en degrés (0=Nord, 90=Est...)
       };
+      gpsWatchdogSignalOk();
       if(onSuccess) onSuccess(gpsCoords);
     },
     err => { if(onError) onError(err); else toast('Erreur GPS'); },
@@ -5058,6 +5632,10 @@ function startGpsWatch(onSuccess, onError) {
       timeout: 5000         // Réponse en max 5 secondes
     }
   );
+
+  // Démarrer le watchdog (surveille les pertes de signal)
+  gpsWatchdogStart();
+
   return true;
 }
 
@@ -5065,6 +5643,9 @@ function stopGpsWatch() {
   if(gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
   gpsCoords = null;
   gpsMode = null;
+  gpsWatchdogStop();
+  const lostBanner = document.getElementById('gps-lost-banner');
+  if(lostBanner) lostBanner.style.display = 'none';
   updateGpsIcon(null);
 }
 
@@ -5155,6 +5736,8 @@ function startGpsAuto() {
   gpsMode = 'auto';
   gpsAutoNextIdx = 0;
   gpsSession = [];
+  gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+  cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
   updateGpsIcon('auto');
   document.getElementById('gps-auto-banner').style.display = 'block';
   document.getElementById('gps-record-banner').style.display = 'none';
@@ -5162,6 +5745,8 @@ function startGpsAuto() {
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
       checkGpsAutoDetect(coords);
+      gpsUpdatePrediction(coords);
+      updateIneoBarGps(coords);
     },
     () => toast('Erreur GPS')
   );
@@ -5353,6 +5938,14 @@ function saveGpsSession() {
 function stopGpsAuto() {
   stopGpsWatch();
   document.getElementById('gps-auto-banner').style.display = 'none';
+  const predCard = document.getElementById('gps-prediction-card');
+  if(predCard) predCard.style.display = 'none';
+  gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+  // Remettre le triangle en bas
+  const tri = document.getElementById('ineo-triangle');
+  const bar = document.getElementById('ineo-bar-progress');
+  if(tri) tri.style.bottom = '16px';
+  if(bar) bar.style.height = '0%';
   saveGpsSession();
   // Calculer stats de la session
   if(gpsSession.length) {
@@ -5361,9 +5954,10 @@ function stopGpsAuto() {
     const total = gpsSession.length;
     const score = (counts.avc+counts.rc+counts.rsc*0.5)/total*100;
     toast(`🏁 Trajet terminé — Régularité: ${score.toFixed(1)}% sur ${total} arrêts`);
-    // Sauvegarder dans PRIME pour calcul mensuel
     savePrimeSession(counts, total);
   }
+  // GPS arrêté → reprendre le timer auto
+  scheduleAutoAdvance();
 }
 
 function savePrimeSession(counts, total) {
@@ -5382,6 +5976,28 @@ function showGpsBtns(show) {
   if(el) el.style.display = show ? 'flex' : 'none';
   const btnVal = document.getElementById('btn-validate-stop');
   if(btnVal) btnVal.style.display = show ? 'block' : 'none';
+  const btnPrev = document.getElementById('btn-prev-stop');
+  if(btnPrev) btnPrev.style.display = show ? 'block' : 'none';
+  const btnIneo = document.getElementById('btn-validate-stop-ineo');
+  if(btnIneo) btnIneo.style.display = show ? 'block' : 'none';
+  const btnPrevIneo = document.getElementById('btn-prev-stop-ineo');
+  if(btnPrevIneo) btnPrevIneo.style.display = show ? 'block' : 'none';
+}
+
+function goToPrevStop() {
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  if(!line) return;
+  const trip = line.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+  const currentIdx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : 0;
+  if(currentIdx <= 0) { toast('⚠️ Déjà au premier arrêt'); return; }
+  activeTrip.validatedStopIdx = currentIdx - 1;
+  gpsAutoNextIdx = activeTrip.validatedStopIdx;
+  const prevStop = trip.stops[activeTrip.validatedStopIdx];
+  toast(`⬅️ Retour à : ${prevStop.name}`);
+  updateLive();
+  scheduleAutoAdvance();
 }
 
 function validateStopManual() {
@@ -5407,6 +6023,35 @@ function validateStopManual() {
   const nextStop = trip.stops[activeTrip.validatedStopIdx];
   toast(`✅ ${passedStop.name} → ${nextStop.name}`);
   updateLive();
+  // Relancer le timer auto pour le nouvel arrêt
+  scheduleAutoAdvance();
+}
+
+// ── Timer auto sans GPS ──────────────────────────────────────
+let autoAdvanceTimer = null;
+
+function scheduleAutoAdvance() {
+  // Annuler le timer précédent
+  if(autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
+  // Seulement si GPS auto inactif et trajet actif
+  if(gpsMode === 'auto' || !activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+  const idx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : 0;
+  const stop = trip.stops[idx];
+  if(!stop || idx >= trip.stops.length - 1) return;
+  const interval = (stop.intervalAfter || 1) * 60 * 1000; // en ms
+  autoAdvanceTimer = setTimeout(() => {
+    // Vérifier que GPS est toujours inactif avant d'avancer
+    if(gpsMode !== 'auto' && activeTrip) {
+      validateStopManual();
+    }
+  }, interval);
+}
+
+function cancelAutoAdvance() {
+  if(autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
 }
 
 // ══ CALCULATEUR PRIME MÉTIER ══════════════════════════════════
@@ -5782,11 +6427,95 @@ function gdriveSignOut() {
 }
 
 function gdriveInit() {
-  // Initialiser l'UI
   const notConn = document.getElementById('gdrive-not-connected');
   const conn    = document.getElementById('gdrive-connected');
   if(notConn) notConn.style.display = 'block';
   if(conn)    conn.style.display    = 'none';
+}
+
+// ══ PLANNING SEMAINE ═════════════════════════════════════════
+const PLAN_KEY = 'chronoligne_planning';
+const JOURS_SEMAINE = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const JOUR_TYPE = ['semaine','semaine','semaine','semaine','semaine','samedi','dimanche'];
+let planWeekOffset = 0; // 0 = semaine courante, -1 = semaine précédente, etc.
+
+function getPlanData() {
+  try { return JSON.parse(localStorage.getItem(PLAN_KEY)||'{}'); } catch(e) { return {}; }
+}
+function savePlanData(d) { localStorage.setItem(PLAN_KEY, JSON.stringify(d)); }
+
+// Retourne le lundi de la semaine avec offset
+function getMondayOfWeek(offset) {
+  const d = new Date();
+  const day = d.getDay() === 0 ? 6 : d.getDay() - 1; // 0=lundi
+  d.setDate(d.getDate() - day + offset * 7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function planDateKey(date) {
+  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function planWeekPrev() { planWeekOffset--; renderPlanWeek(); }
+function planWeekNext() { planWeekOffset++; renderPlanWeek(); }
+
+function renderPlanWeek() {
+  const monday = getMondayOfWeek(planWeekOffset);
+  const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
+  const lbl = document.getElementById('plan-week-label');
+  if(lbl) {
+    const opts = {day:'numeric',month:'short'};
+    lbl.textContent = `${monday.toLocaleDateString('fr-FR',opts)} — ${friday.toLocaleDateString('fr-FR',opts)}`;
+  }
+
+  const planData = getPlanData();
+  const grid = document.getElementById('plan-week-grid');
+  if(!grid) return;
+
+  const today = planDateKey(new Date());
+  grid.innerHTML = JOURS_SEMAINE.map((nom, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    const key = planDateKey(d);
+    const isToday = key === today;
+    const svcNum = planData[key] || '';
+    const jourType = JOUR_TYPE[i];
+
+    // Trouver le service correspondant dans roadmapServices
+    const svc = svcNum ? roadmapServices.find(s => s.num === svcNum && s.jour === jourType) : null;
+    const tripBadges = svc ? svc.trips.slice(0,3).map(t => {
+      const num = t.lineNum || (t.label||'').match(/Ligne (\S+)/)?.[1] || '';
+      const col = t.lineColor || '#888';
+      return `<span style="background:${col};color:#fff;padding:0 5px;border-radius:3px;font-size:10px;font-weight:700">${num}</span>`;
+    }).join(' ') : '';
+
+    const todayStyle = isToday
+      ? 'background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.4);'
+      : 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);';
+
+    return `<div style="${todayStyle}border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+      <div style="width:32px;flex-shrink:0;text-align:center">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:${isToday?'var(--accent)':'var(--muted)'}">${nom.substring(0,3).toUpperCase()}</div>
+        <div style="font-size:11px;color:var(--muted)">${d.getDate()}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <input type="text" value="${svcNum}" placeholder="N° service"
+          oninput="planSetDay('${key}',this.value)"
+          style="width:100%;padding:4px 8px;font-size:14px;font-weight:700;font-family:'Rajdhani',sans-serif;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.15);color:var(--text);outline:none">
+        <div style="font-size:11px;margin-top:3px;min-height:14px">${tripBadges}</div>
+      </div>
+      ${svc ? `<button onclick="startServiceDirect('${svcNum}','${jourType}')" style="padding:8px 10px;background:rgba(39,174,96,.2);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0">▶</button>` : `<div style="width:34px"></div>`}
+    </div>`;
+  }).join('');
+}
+
+function planSetDay(dateKey, num) {
+  const d = getPlanData();
+  if(num.trim()) d[dateKey] = num.trim();
+  else delete d[dateKey];
+  savePlanData(d);
+  // Rafraîchir les badges sans perdre le focus
+  setTimeout(() => renderPlanWeek(), 300);
 }
 
 
