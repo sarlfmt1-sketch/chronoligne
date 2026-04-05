@@ -302,7 +302,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div style="display:flex;padding:0">
 
         <!-- Colonne gauche : barre rouge + triangle GPS animé -->
-        <div id="ineo-bar-col" style="width:60px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center;padding:0">
+        <div id="ineo-bar-col" style="width:60px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center;padding:0;min-height:260px">
           <!-- Barre rouge pleine hauteur -->
           <div style="position:absolute;top:0;bottom:0;left:50%;width:7px;background:#c0392b;transform:translateX(-50%)"></div>
 
@@ -331,7 +331,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div style="flex:1;display:flex;flex-direction:column;min-width:0">
 
           <!-- ARRÊT +2 -->
-          <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px">
+          <div style="padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px">
             <div style="flex-shrink:0;min-width:52px">
               <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,36px);font-weight:700;color:rgba(255,255,255,.28);line-height:1">--</div>
               <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:1px">ARRÊT +2</div>
@@ -340,7 +340,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
           </div>
 
           <!-- PROCHAIN ARRÊT -->
-          <div style="padding:12px 14px;border-bottom:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.05);display:flex;align-items:center;gap:10px">
+          <div style="padding:18px 14px;border-bottom:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.06);display:flex;align-items:center;gap:10px">
             <div style="flex-shrink:0;min-width:62px">
               <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(42px,12vw,64px);font-weight:700;color:var(--accent);line-height:1">--</div>
               <div style="font-size:9px;color:rgba(0,212,255,.55);letter-spacing:1px;margin-top:1px">PROCHAIN</div>
@@ -349,7 +349,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
           </div>
 
           <!-- ARRÊT ACTUEL -->
-          <div style="padding:12px 14px;background:rgba(231,76,60,.1);display:flex;align-items:center;gap:10px">
+          <div style="padding:18px 14px;background:rgba(231,76,60,.1);display:flex;align-items:center;gap:10px">
             <!-- Zone heure : largeur fixe + font mono pour éviter tout décalage aux secondes -->
             <div style="flex-shrink:0;width:76px">
               <div style="line-height:1">
@@ -393,33 +393,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <div id="live-trip-label" style="display:none"></div>
   <div id="live-prog" style="display:none"></div>
 
-  <div class="card" style="padding:10px 14px">
-
-    <!-- Démarrer depuis un arrêt précis -->
-    <div id="start-from-stop-bar" style="display:none;margin-top:8px">
-      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Démarrer depuis quel arrêt ?</div>
-      <div style="display:flex;gap:6px">
-        <select id="start-from-stop-sel" style="flex:1;padding:6px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px"></select>
-        <button onclick="applyStartFromStop()" style="padding:6px 12px;background:var(--green);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer">▶ Go</button>
-        <button onclick="document.getElementById('start-from-stop-bar').style.display='none'" style="padding:6px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer">✕</button>
-      </div>
-    </div>
-
-    <!-- Boutons GPS -->
-    <div id="gps-btns" style="display:none;margin-top:10px;flex-wrap:wrap;gap:8px">
-      <button onclick="startGpsRecord()" id="btn-gps-record" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(255,165,0,.15);border:1px solid orange;color:orange;border-radius:8px;cursor:pointer">
-        📍 Enregistrer GPS
-      </button>
-      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer">
-        🚗 Conduite auto
-      </button>
-      <button onclick="showStartFromStop()" style="width:100%;padding:8px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer">
-        ✂️ Démarrer depuis un arrêt précis
-      </button>
-      <div id="gps-count-info" style="width:100%;font-size:11px;color:var(--muted);text-align:center;padding-top:2px"></div>
-    </div>
-  </div>
-
   <!-- ══ BANNIÈRE PAUSE / PROCHAIN TRAJET ══ -->
   <div id="pause-banner" style="display:none;background:rgba(255,193,7,.08);border:2px solid #ffc107;border-radius:12px;padding:14px">
     <div style="font-size:11px;color:#ffc107;font-weight:700;letter-spacing:1px;margin-bottom:6px">☕ PAUSE — PROCHAIN TRAJET</div>
@@ -432,6 +405,34 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div style="font-size:11px;color:var(--muted)">PAUSE</div>
         <div id="pause-duration" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,8vw,42px);font-weight:700;color:#ffc107;line-height:1">--</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ BOUTONS GPS — tout en bas ══ -->
+  <div class="card" style="padding:10px 14px">
+
+    <!-- Démarrer depuis un arrêt précis -->
+    <div id="start-from-stop-bar" style="display:none;margin-bottom:8px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Démarrer depuis quel arrêt ?</div>
+      <div style="display:flex;gap:6px">
+        <select id="start-from-stop-sel" style="flex:1;padding:6px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px"></select>
+        <button onclick="applyStartFromStop()" style="padding:6px 12px;background:var(--green);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer">▶ Go</button>
+        <button onclick="document.getElementById('start-from-stop-bar').style.display='none'" style="padding:6px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer">✕</button>
+      </div>
+    </div>
+
+    <!-- Boutons GPS -->
+    <div id="gps-btns" style="display:none;flex-wrap:wrap;gap:8px">
+      <button onclick="startGpsRecord()" id="btn-gps-record" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(255,165,0,.15);border:1px solid orange;color:orange;border-radius:8px;cursor:pointer">
+        📍 Enregistrer GPS
+      </button>
+      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer">
+        🚗 Conduite auto
+      </button>
+      <button onclick="showStartFromStop()" style="width:100%;padding:8px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer">
+        ✂️ Démarrer depuis un arrêt précis
+      </button>
+      <div id="gps-count-info" style="width:100%;font-size:11px;color:var(--muted);text-align:center;padding-top:2px"></div>
     </div>
   </div>
 
