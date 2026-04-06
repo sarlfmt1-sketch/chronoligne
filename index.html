@@ -6284,7 +6284,9 @@ const GDRIVE_FILE = 'chronoligne_sync.json';
 const GDRIVE_KEYS = [
   'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
   'chronoligne_gps_coords','chronoligne_gps_sessions',
-  'chronoligne_prime_sessions','chronoligne_settings'
+  'chronoligne_prime_sessions','chronoligne_prime_historique',
+  'chronoligne_settings','chronoligne_planning',
+  'chronoligne_intervals','chronoligne_service','chronoligne_services'
 ];
 
 let gdriveToken = null;
@@ -6395,6 +6397,7 @@ async function gdriveLoad() {
       if(typeof heuresRender==='function') heuresRender();
       if(typeof renderLineGrid==='function') renderLineGrid();
       if(typeof renderRoadmapView==='function') renderRoadmapView();
+      if(typeof renderPlanWeek==='function') renderPlanWeek();
     }, 300);
   } catch(e) {
     toast('❌ Erreur Drive : ' + e.message);
