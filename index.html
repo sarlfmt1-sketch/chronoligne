@@ -256,7 +256,15 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div style="display:flex;align-items:center;gap:12px">
         <div style="flex-shrink:0;text-align:left">
           <div id="ln-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,50px);font-weight:700;line-height:1;letter-spacing:1px;color:var(--red)"><span style="font-size:.55em;opacity:.75">--:</span><span>--:--</span></div>
-          <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="ln-countdown" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,4vw,26px);font-weight:700;color:rgba(231,76,60,.7)">--</div>
+            <button onclick="toggleLiveMode()" id="live-mode-btn"
+              style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
+                     border:1px solid var(--border);background:rgba(255,255,255,.06);
+                     color:var(--muted);cursor:pointer;letter-spacing:.5px;flex-shrink:0">
+              MODE INEO
+            </button>
+          </div>
         </div>
         <div id="ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;line-height:1.2;flex:1;overflow-wrap:break-word;word-break:break-word;hyphens:auto">—</div>
       </div>
@@ -285,74 +293,113 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div class="card" style="padding:0;overflow:hidden;border-radius:14px;border:1px solid rgba(255,255,255,.08)">
 
       <!-- Statut seul (pas de header ligne/arrêt) -->
-      <div style="background:rgba(255,255,255,.05);padding:4px 14px;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid rgba(255,255,255,.06);min-height:0">
+      <div style="background:rgba(255,255,255,.05);padding:4px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);min-height:0">
+        <button onclick="toggleLiveMode()" id="live-mode-btn-ineo"
+          style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
+                 border:1px solid var(--border);background:rgba(255,255,255,.06);
+                 color:var(--text);cursor:pointer;letter-spacing:.5px">
+          MODE CLASSIQUE
+        </button>
         <div id="ineo-header-line" style="display:none"></div>
         <div id="ineo-status" style="display:none;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 12px;border-radius:20px;letter-spacing:.5px"></div>
       </div>
 
-      <!-- Corps : barre verticale + arrêts (ordre haut→bas : +2 → prochain → actuel) -->
-      <div style="display:flex;padding:0">
+      <!-- Corps : 3 colonnes — heures | barre | noms -->
+      <div style="display:flex;min-height:360px">
 
-        <!-- Colonne gauche : barre rouge + triangle GPS animé -->
-        <div id="ineo-bar-col" style="width:60px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center;padding:0;min-height:420px">
-          <!-- Barre rouge pleine hauteur -->
+        <!-- COLONNE GAUCHE : heures (180px) -->
+        <div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-between;padding:20px 0">
+          <!-- heure +2 -->
+          <div style="text-align:center">
+            <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,30px);font-weight:700;color:rgba(255,255,255,.25);line-height:1">--</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:2px">+2</div>
+          </div>
+          <!-- heure prochain -->
+          <div style="text-align:center">
+            <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(40px,11vw,56px);font-weight:700;color:var(--accent);line-height:1">--</div>
+            <div style="font-size:9px;color:rgba(0,212,255,.7);letter-spacing:1px;margin-top:2px;font-weight:700">PROCHAIN</div>
+          </div>
+          <!-- heure actuel -->
+          <div style="text-align:center">
+            <div style="line-height:1">
+              <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:14px;opacity:.5;color:#ff9500">--:</span>
+              <div id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(32px,9vw,44px);font-weight:700;color:#ff9500;line-height:1">--:--</div>
+            </div>
+            <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:2px;font-weight:700">ACTUEL</div>
+          </div>
+        </div>
+
+        <!-- COLONNE CENTRE : barre rouge (40px) -->
+        <div id="ineo-bar-col" style="width:40px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center">
+          <!-- Barre rouge -->
           <div style="position:absolute;top:0;bottom:0;left:50%;width:7px;background:#c0392b;transform:translateX(-50%)"></div>
-
-          <!-- Partie "déjà parcourue" : superposition verte qui grandit du bas vers le haut -->
+          <!-- Progression verte -->
           <div id="ineo-bar-progress" style="position:absolute;bottom:0;left:50%;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:1"></div>
-
-          <!-- Cercle arrêt +2 (haut) — position absolue -->
-          <div style="position:absolute;top:16px;z-index:2;display:flex;flex-direction:column;align-items:center">
-            <div style="width:16px;height:16px;border-radius:50%;background:#c0392b;border:3px solid rgba(255,255,255,.45)"></div>
+          <!-- Pastille +2 -->
+          <div style="position:absolute;top:36px;z-index:2">
+            <div style="width:14px;height:14px;border-radius:50%;background:#c0392b;border:2px solid rgba(255,255,255,.4)"></div>
           </div>
-
-          <!-- Cercle prochain arrêt (milieu) — position absolue -->
-          <div style="position:absolute;top:50%;transform:translateY(-50%);z-index:2;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:3px solid #fff;box-shadow:0 0 0 3px rgba(255,255,255,.2)"></div>
+          <!-- Pastille prochain — cliquable -->
+          <div style="position:absolute;top:50%;transform:translateY(-50%);z-index:2">
+            <button id="btn-validate-stop-ineo" onclick="validateStopManual()"
+              style="width:32px;height:32px;border-radius:50%;background:#c0392b;border:3px solid #fff;
+                     box-shadow:0 0 0 3px rgba(255,255,255,.2);cursor:pointer;padding:0;">
+            </button>
           </div>
-
-          <!-- Triangle vert — se déplace selon progression GPS -->
-          <div id="ineo-triangle" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:3;transition:bottom .6s ease">
-            <svg width="28" height="28" viewBox="0 0 24 24">
-              <polygon points="12,2 22,22 12,17 2,22" fill="#27ae60" stroke="#0a0e1a" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
+          <!-- Triangle vert — menu -->
+          <div id="ineo-triangle" style="position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:3;transition:bottom .6s ease">
+            <div style="position:relative">
+              <button onclick="toggleIneoMenu()" id="ineo-menu-btn"
+                style="background:none;border:none;padding:0;cursor:pointer;display:block">
+                <svg width="30" height="30" viewBox="0 0 24 24">
+                  <polygon points="12,2 22,22 12,17 2,22" fill="#27ae60" stroke="#0a0e1a" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <!-- Menu déroulant -->
+              <div id="ineo-menu" style="display:none;position:absolute;bottom:38px;left:0;
+                   background:var(--card);border:1px solid var(--border);border-radius:14px;
+                   padding:8px;z-index:300;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+                   flex-direction:column;gap:6px">
+                <button onclick="goToPrevStop();closeIneoMenu()" id="btn-prev-stop-ineo"
+                  style="width:100%;padding:12px 14px;font-size:14px;font-weight:700;
+                         background:rgba(255,193,7,.15);border:2px solid #ffc107;color:#ffc107;
+                         border-radius:10px;cursor:pointer;text-align:left">
+                  ⬅️ Arrêt précédent
+                </button>
+                <button onclick="startGpsRecord();closeIneoMenu()" id="btn-gps-record"
+                  style="width:100%;padding:12px 14px;font-size:14px;font-weight:700;
+                         background:rgba(255,165,0,.15);border:1px solid orange;color:orange;
+                         border-radius:10px;cursor:pointer;text-align:left">
+                  📍 Enregistrer GPS
+                </button>
+                <button onclick="startGpsAuto();closeIneoMenu()" id="btn-gps-auto"
+                  style="width:100%;padding:12px 14px;font-size:14px;font-weight:700;
+                         background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);
+                         border-radius:10px;cursor:pointer;text-align:left">
+                  🚗 Conduite auto
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Colonne droite : heure à GAUCHE, nom à DROITE -->
-        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
-
-          <!-- ARRÊT +2 -->
-          <div style="padding:30px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px">
-            <div style="flex-shrink:0;min-width:52px">
-              <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,36px);font-weight:700;color:rgba(255,255,255,.28);line-height:1">--</div>
-              <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:1px">ARRÊT +2</div>
-            </div>
-            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4.5vw,22px);font-weight:700;color:rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right">—</div>
+        <!-- COLONNE DROITE : noms des arrêts -->
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:20px 14px;min-width:0">
+          <!-- nom +2 -->
+          <div>
+            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,20px);font-weight:700;color:rgba(255,255,255,.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
           </div>
-
-          <!-- PROCHAIN ARRÊT -->
-          <div style="padding:34px 14px;border-bottom:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.06);display:flex;align-items:center;gap:10px">
-            <div style="flex-shrink:0;min-width:62px">
-              <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(42px,12vw,64px);font-weight:700;color:var(--accent);line-height:1">--</div>
-              <div style="font-size:11px;color:rgba(0,212,255,.7);letter-spacing:1px;margin-top:2px;font-weight:700">PROCHAIN</div>
-            </div>
-            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(28px,7.5vw,42px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right">—</div>
+          <!-- nom prochain -->
+          <div>
+            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,32px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
           </div>
-
-          <!-- ARRÊT ACTUEL -->
-          <div style="padding:20px 14px;background:rgba(231,76,60,.1);display:flex;flex-direction:column;gap:6px">
-            <!-- Nom en haut -->
-            <div style="font-size:11px;color:rgba(231,76,60,.9);letter-spacing:1px;font-weight:700">ACTUEL</div>
-            <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5.5vw,30px);font-weight:700;color:#fff;word-break:break-word;line-height:1.2">—</div>
-            <!-- Heure en dessous -->
-            <div style="line-height:1;margin-top:4px">
-              <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:20px;opacity:.55;color:#ff9500">--:</span>
-              <div id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(58px,16vw,80px);font-weight:700;color:#ff9500;letter-spacing:0;line-height:1">--:--</div>
-            </div>
+          <!-- nom actuel -->
+          <div>
+            <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:#fff;word-break:break-word;line-height:1.2">—</div>
+            <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:4px;font-weight:700">ACTUEL</div>
           </div>
-
         </div>
+
       </div>
 
       <!-- Footer pastilles supprimé — éléments masqués pour compatibilité JS -->
@@ -363,30 +410,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
     </div>
 
-  </div>
-
-  <!-- ══ BOUTON SWITCH MODE + BOUTONS VALIDATION ══ -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:8px">
-    <div style="display:flex;gap:8px">
-      <!-- Bouton précédent -->
-      <button onclick="goToPrevStop()" id="btn-prev-stop-ineo"
-        style="display:none;padding:10px 18px;font-size:22px;
-               background:rgba(255,193,7,.15);border:3px solid #ffc107;color:#ffc107;
-               border-radius:14px;cursor:pointer;line-height:1">
-        ⬅️
-      </button>
-      <!-- Bouton suivant -->
-      <button onclick="validateStopManual()" id="btn-validate-stop-ineo"
-        style="display:none;padding:10px 24px;font-size:32px;
-               background:rgba(39,174,96,.25);border:3px solid var(--green);color:var(--green);
-               border-radius:14px;cursor:pointer;line-height:1">
-        ✅
-      </button>
-    </div>
-    <button onclick="toggleLiveMode()" id="live-mode-btn"
-      style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;letter-spacing:.5px">
-      MODE INEO
-    </button>
   </div>
 
   <!-- live-trip-label et barre de progression supprimés pour gagner de la place -->
@@ -408,31 +431,10 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
-  <!-- ══ BOUTONS GPS — tout en bas ══ -->
-  <div class="card" style="padding:10px 14px">
-
-    <!-- Démarrer depuis un arrêt précis -->
-    <div id="start-from-stop-bar" style="display:none;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Démarrer depuis quel arrêt ?</div>
-      <div style="display:flex;gap:6px">
-        <select id="start-from-stop-sel" style="flex:1;padding:6px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px"></select>
-        <button onclick="applyStartFromStop()" style="padding:6px 12px;background:var(--green);color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer">▶ Go</button>
-        <button onclick="document.getElementById('start-from-stop-bar').style.display='none'" style="padding:6px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer">✕</button>
-      </div>
-    </div>
-
-    <!-- Boutons GPS -->
-    <div id="gps-btns" style="display:none;flex-wrap:wrap;gap:8px">
-      <button onclick="startGpsRecord()" id="btn-gps-record" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(255,165,0,.15);border:1px solid orange;color:orange;border-radius:8px;cursor:pointer">
-        📍 Enregistrer GPS
-      </button>
-      <button onclick="startGpsAuto()" id="btn-gps-auto" style="flex:1;padding:10px;font-size:12px;font-weight:700;background:rgba(39,174,96,.1);border:1px solid var(--green);color:var(--green);border-radius:8px;cursor:pointer">
-        🚗 Conduite auto
-      </button>
-      <button onclick="showStartFromStop()" style="width:100%;padding:8px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer">
-        ✂️ Démarrer depuis un arrêt précis
-      </button>
-      <div id="gps-count-info" style="width:100%;font-size:11px;color:var(--muted);text-align:center;padding-top:2px"></div>
+  <!-- Éléments GPS cachés — nécessaires pour le JS -->
+  <div style="display:none">
+    <div id="gps-btns">
+      <div id="gps-count-info"></div>
     </div>
   </div>
 
@@ -3390,16 +3392,19 @@ function toggleLiveMode() {
 
 function applyLiveMode() {
   const btn = document.getElementById('live-mode-btn');
+  const btn2 = document.getElementById('live-mode-btn-ineo');
   const cl = document.getElementById('mode-classique');
   const in_ = document.getElementById('mode-ineo');
   if(liveMode === 'ineo') {
     cl.style.display = 'none';
     in_.style.display = 'block';
-    if(btn) btn.textContent = 'MODE CLASSIQUE';
+    if(btn) btn.textContent = 'MODE INEO';
+    if(btn2) btn2.textContent = 'MODE CLASSIQUE';
   } else {
     cl.style.display = 'block';
     in_.style.display = 'none';
     if(btn) btn.textContent = 'MODE INEO';
+    if(btn2) btn2.textContent = 'MODE INEO';
   }
 }
 
@@ -6519,6 +6524,24 @@ function planSetDay(dateKey, num) {
   setTimeout(() => renderPlanWeek(), 300);
 }
 
+
+// ══ MENU TRIANGLE VERT ═══════════════════════════════════════
+function toggleIneoMenu() {
+  const m = document.getElementById('ineo-menu');
+  if(!m) return;
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+function closeIneoMenu() {
+  const m = document.getElementById('ineo-menu');
+  if(m) m.style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('ineo-menu-btn');
+  const menu = document.getElementById('ineo-menu');
+  if(menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
