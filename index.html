@@ -3507,6 +3507,8 @@ function activateTrip(lineIdx, tripIdx) {
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: undefined };
+  // Reconstruire la table des PK si le mode auto est déjà actif
+  if(gpsMode === 'auto') odoReset();
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -5259,6 +5261,32 @@ function exportPrimePDF() {
 
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
+// ══ PK OFFICIELS PAR LIGNE ═══════════════════════════════════════════════════
+// Format : { 'lineNum': { 'tripLabel_substring_ou_direction': { 'NomArrêt': pkMetres } } }
+// La clé de trajet est comparée via includes() sur le label ou la direction.
+// Mettre 'aller' pour tous les trajets aller d'une ligne, ou un label exact.
+// Si un arrêt n'est pas dans la table, buildPkTable() interpolera depuis ses voisins.
+const OFFICIAL_PK = {
+  '1202': {
+    // Sens Cergy Préfecture → Les Beurriers (aller)
+    aller: {
+      'Gare de Cergy Préfecture - Quai K': 0,
+      'Les Marjoberts':                     821,
+      'Marcouville':                        2100,
+      'Croix Saint Siméon':                 4040,
+      'Normandie':                          4330,
+      'Place de la Paix':                   4720,
+      'Boblingen':                          5100,
+      'Alsace Bretagne':                    5360,
+      'Hôpital René Dubos':                 5720,
+      'Hôpital Administration':             6180,
+      'Maison de Retraite':                 6400,
+      'Paul Cézanne':                       6580,
+      'Les Beurriers':                      6800,
+    },
+  },
+};
+
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
 const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
@@ -5271,6 +5299,17 @@ let gpsRecStopIdx = 0;
 let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
 let gpsAutoNextIdx = 0;
 let gpsSession = []; // [{stopName, planned, actual, diff}]
+
+// ── ODOMÉTRIE ────────────────────────────────────────────────────────────────
+// pkStops[]  : tableau des PK (mètres depuis départ) de chaque arrêt du trajet actif
+// pkBus      : position kilométrique courante du bus sur l'itinéraire théorique (m)
+// pkPrevCoords: dernière position GPS connue pour le calcul du delta
+// pkRecaled  : true si un recalage vient d'avoir lieu (pour log/debug)
+let pkStops     = [];       // PK de chaque arrêt (index = stopIdx)
+let pkBus       = 0;        // PK courant du bus (mètres depuis 1er arrêt)
+let pkPrevCoords = null;    // dernière position GPS pour calculer le delta odo
+let pkRecaled   = false;    // indicateur de recalage
+const PK_SNAP_DIST = 30;    // mètres — seuil de recalage automatique sur un arrêt
 
 // ── WATCHDOG GPS ─────────────────────────────────────────────
 const GPS_WATCHDOG_TIMEOUT = 15000; // ms sans signal → alerte
@@ -5761,6 +5800,7 @@ function startGpsAuto() {
   gpsAutoNextIdx = 0;
   gpsSession = [];
   gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+  odoReset();           // ← réinitialiser l'odométrie
   cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
   updateGpsIcon('auto');
   document.getElementById('gps-auto-banner').style.display = 'block';
@@ -5768,16 +5808,10 @@ function startGpsAuto() {
   startGpsWatch(
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
-      checkGpsAutoDetect(coords);
+      odoStep(coords);              // ← odométrie + recalage PK en 1er
+      checkGpsAutoDetect(coords);  // ← détection d'arrêt
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
-      // Mettre à jour la carte si on est sur l'onglet OPTIONS
-      const settingsView = document.getElementById('view-settings');
-      if(settingsView && settingsView.classList.contains('active')) {
-        if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
-        mapSetupEvents();
-        mapDraw();
-      }
     },
     () => toast('Erreur GPS')
   );
@@ -5798,6 +5832,198 @@ function bearingTo(lat1, lon1, lat2, lon2) {
 function angleDiff(a, b) {
   let d = ((b - a) + 540) % 360 - 180;
   return d;
+}
+
+// ── ODOMÉTRIE : Construction de la table des PK ─────────────────────────────
+// Calcule la distance cumulée de chaque arrêt depuis le 1er arrêt du trajet.
+// On utilise les coordonnées GPS réelles enregistrées dans gpsCoordsDB.
+// Si un arrêt n'a pas de coords, on interpole linéairement depuis les voisins.
+function buildPkTable() {
+  pkStops = [];
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+  const n = trip.stops.length;
+  pkStops = new Array(n).fill(null);
+
+  // ── PRIORITÉ 1 : PK officiels définis dans OFFICIAL_PK ─────────────────
+  const officialLine = OFFICIAL_PK[line.num];
+  if(officialLine) {
+    // Trouver la bonne entrée : chercher par direction d'abord, puis par label
+    let officialMap = null;
+    const dir = trip.direction || 'aller';
+    if(officialLine[dir]) {
+      officialMap = officialLine[dir];
+    } else {
+      // Chercher par substring du label
+      for(const key of Object.keys(officialLine)) {
+        if(trip.label && trip.label.toLowerCase().includes(key.toLowerCase())) {
+          officialMap = officialLine[key];
+          break;
+        }
+      }
+    }
+
+    if(officialMap) {
+      let officialCount = 0;
+      trip.stops.forEach((s, i) => {
+        // Cherche le nom exact, puis insensible à la casse, puis normalisé
+        let pk = officialMap[s.name];
+        if(pk === undefined) {
+          // Recherche souple (sans accents ni casse)
+          const normalize = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const norm = normalize(s.name);
+          for(const [k, v] of Object.entries(officialMap)) {
+            if(normalize(k) === norm) { pk = v; break; }
+          }
+        }
+        if(pk !== undefined) { pkStops[i] = pk; officialCount++; }
+      });
+
+      // Si tous les arrêts sont couverts par les PK officiels → terminé
+      if(officialCount === n) {
+        console.log(`[ODO] PK officiels 100% — ligne ${line.num} ${dir} (${n} arrêts)`);
+        return;
+      }
+      console.log(`[ODO] PK officiels partiels — ${officialCount}/${n} arrêts, interpolation pour le reste`);
+    }
+  }
+
+  // ── PRIORITÉ 2 : PK calculés depuis les coords GPS enregistrées ─────────
+  const known = [];
+  trip.stops.forEach((s, i) => {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
+    const c = gpsCoordsDB[key];
+    // N'utiliser les coords GPS que si ce PK n'est pas déjà fixé par les officiels
+    if(c && pkStops[i] === null) known.push({ idx: i, lat: c.lat, lon: c.lon });
+    else if(c) known.push({ idx: i, lat: c.lat, lon: c.lon, locked: true });
+  });
+
+  if(known.length >= 2) {
+    // Calculer cumul haversine pour les arrêts sans PK officiel
+    // Ancre de départ : premier PK officiel connu, ou 0
+    let anchorIdx  = 0, anchorPk = 0;
+    for(let i = 0; i < n; i++) {
+      if(pkStops[i] !== null) { anchorIdx = i; anchorPk = pkStops[i]; break; }
+    }
+
+    // Calculer les distances entre arrêts GPS consécutifs connus
+    let cumul = anchorPk;
+    let prevGps = null;
+    for(const kp of known) {
+      if(kp.idx < anchorIdx) continue; // ignorer avant l'ancre
+      if(prevGps !== null) {
+        cumul += haversine(prevGps.lat, prevGps.lon, kp.lat, kp.lon);
+      }
+      // Ne pas écraser un PK officiel déjà fixé
+      if(pkStops[kp.idx] === null) pkStops[kp.idx] = cumul;
+      else cumul = pkStops[kp.idx]; // se recaler sur le PK officiel
+      prevGps = kp;
+    }
+  }
+
+  // ── PRIORITÉ 3 : Interpolation linéaire pour les trous restants ─────────
+  for(let i = 0; i < n; i++) {
+    if(pkStops[i] !== null) continue;
+    let prevK = null, nextK = null;
+    for(let k = i-1; k >= 0; k--) { if(pkStops[k] !== null) { prevK = k; break; } }
+    for(let k = i+1; k < n; k++) { if(pkStops[k] !== null) { nextK = k; break; } }
+    if(prevK !== null && nextK !== null) {
+      const frac = (i - prevK) / (nextK - prevK);
+      pkStops[i] = pkStops[prevK] + frac * (pkStops[nextK] - pkStops[prevK]);
+    } else if(prevK !== null) {
+      pkStops[i] = pkStops[prevK] + (i - prevK) * 300;
+    } else if(nextK !== null) {
+      pkStops[i] = pkStops[nextK] - (nextK - i) * 300;
+      if(pkStops[i] < 0) pkStops[i] = 0;
+    } else {
+      pkStops[i] = i * 300; // aucune info : espacement uniforme
+    }
+  }
+
+  // Garantir PK strictement croissants
+  for(let i = 1; i < n; i++) {
+    if(pkStops[i] <= pkStops[i-1]) pkStops[i] = pkStops[i-1] + 1;
+  }
+
+  if(console) console.log('[ODO] PK table built:', pkStops.map((v,i) => `${trip.stops[i]?.name}: ${Math.round(v)}m`));
+}
+
+// ── ODOMÉTRIE : Mise à jour à chaque position GPS ───────────────────────────
+// Appelée à chaque tick GPS. Avance pkBus du delta haversine, puis
+// vérifie si on est à ≤ PK_SNAP_DIST d'un arrêt pour se recaler.
+function odoStep(coords) {
+  if(!activeTrip || gpsMode !== 'auto') return;
+  if(pkStops.length === 0) buildPkTable();
+
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  // ── 1. Delta odométrique ─────────────────────────────────────────────────
+  if(pkPrevCoords) {
+    const delta = haversine(pkPrevCoords.lat, pkPrevCoords.lon, coords.lat, coords.lon);
+    // Filtrer les sauts aberrants (> 150m entre deux positions = erreur GPS)
+    if(delta < 150) {
+      pkBus += delta;
+    }
+  }
+  pkPrevCoords = coords;
+
+  // ── 2. Recalage automatique sur un arrêt réel ────────────────────────────
+  // Vérifier TOUS les arrêts du trajet (pas seulement le suivant)
+  // pour caler le bus exactement sur son PK si on passe à ≤ 30m
+  let snapDone = false;
+  for(let i = gpsAutoNextIdx; i < Math.min(gpsAutoNextIdx + 8, trip.stops.length); i++) {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
+    const c = gpsCoordsDB[key];
+    if(!c) continue;
+    const distToStop = haversine(coords.lat, coords.lon, c.lat, c.lon);
+    if(distToStop <= PK_SNAP_DIST && pkStops[i] !== null) {
+      // Recalage : aligner pkBus exactement sur le PK de cet arrêt
+      pkBus = pkStops[i];
+      pkRecaled = true;
+      snapDone = true;
+      break; // un seul recalage par tick
+    }
+  }
+
+  // ── 3. Mise à jour de l'index d'arrêt basé sur le PK ────────────────────
+  // Trouver quel est le prochain arrêt dont le PK est > pkBus
+  // (on ne change gpsAutoNextIdx que si l'avance est cohérente)
+  if(!snapDone) {
+    for(let i = gpsAutoNextIdx; i < trip.stops.length; i++) {
+      if(pkStops[i] !== null && pkStops[i] > pkBus) {
+        // gpsAutoNextIdx pointe vers le prochain arrêt à venir
+        if(i > gpsAutoNextIdx) {
+          // Le PK indique qu'on a dépassé gpsAutoNextIdx → avancer
+          // (uniquement si la détection principale ne l'a pas déjà fait)
+          // On ne saute qu'un arrêt à la fois pour éviter les faux positifs
+          gpsAutoNextIdx = Math.min(i, gpsAutoNextIdx + 1);
+          if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
+          updateLive();
+        }
+        break;
+      }
+    }
+  }
+
+  // ── 4. Rafraîchir la carte si ouverte ───────────────────────────────────
+  const overlay = document.getElementById('map-overlay');
+  if(overlay && overlay.classList.contains('open')) {
+    if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
+    mapDraw();
+  }
+}
+
+// Réinitialiser l'odométrie (appelé au démarrage d'un nouveau trajet)
+function odoReset() {
+  pkBus       = 0;
+  pkPrevCoords = null;
+  pkStops     = [];
+  pkRecaled   = false;
+  buildPkTable();
 }
 
 function checkGpsAutoDetect(coords) {
@@ -6770,7 +6996,9 @@ function mapDraw() {
     const line = db.lines[activeTrip.lineIdx];
     const trip = line?.trips?.[activeTrip.tripIdx];
     const stop = trip?.stops?.[gpsAutoNextIdx];
-    mapInfoEl.textContent = stop ? `→ ${stop.name}` : 'GPS actif';
+    const pkStr = pkBus > 0 ? ` · PK ${pkBus >= 1000 ? (pkBus/1000).toFixed(2)+'km' : Math.round(pkBus)+'m'}${pkRecaled ? ' 📌' : ''}` : '';
+    mapInfoEl.textContent = stop ? `→ ${stop.name}${pkStr}` : `GPS actif${pkStr}`;
+    pkRecaled = false; // reset indicateur recalage après affichage
   }
 }
 
