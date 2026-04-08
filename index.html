@@ -2942,7 +2942,7 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') loadSettings();
+  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
   if(id === 'view-heures') heuresRender();
   if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
 }
@@ -5709,6 +5709,13 @@ function startGpsAuto() {
       checkGpsAutoDetect(coords);
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
+      // Mettre à jour la carte si on est sur l'onglet OPTIONS
+      const settingsView = document.getElementById('view-settings');
+      if(settingsView && settingsView.classList.contains('active')) {
+        if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
+        mapSetupEvents();
+        mapDraw();
+      }
     },
     () => toast('Erreur GPS')
   );
@@ -6535,6 +6542,231 @@ document.addEventListener('click', function(e) {
     menu.style.display = 'none';
   }
 });
+
+// ══ CARTE GPS EN TEMPS RÉEL ════════════════════════════════════
+let mapShowStops = true;
+let mapCentered = true;
+let mapZoom = 16; // zoom initial
+let mapOffsetX = 0, mapOffsetY = 0; // offset pan
+let mapIsDragging = false, mapDragStart = null;
+
+function mapToggleStops() {
+  mapShowStops = !mapShowStops;
+  const btn = document.getElementById('map-stops-btn');
+  if(btn) btn.textContent = mapShowStops ? '🔴 Arrêts ON' : '🔴 Arrêts OFF';
+  mapDraw();
+}
+
+function mapCenterOnBus() {
+  mapCentered = true;
+  mapOffsetX = 0; mapOffsetY = 0;
+  mapDraw();
+}
+
+// Convertir lat/lon en pixels sur le canvas
+function mapLatLonToXY(lat, lon, centerLat, centerLon, zoom, w, h) {
+  const scale = Math.pow(2, zoom) * 256 / (2 * Math.PI);
+  function latToY(la) { return scale * (Math.PI - Math.log(Math.tan(Math.PI/4 + la*Math.PI/360))); }
+  function lonToX(lo) { return scale * (lo * Math.PI / 180 + Math.PI); }
+  const cx = lonToX(centerLon), cy = latToY(centerLat);
+  const x = w/2 + (lonToX(lon) - cx) + mapOffsetX;
+  const y = h/2 + (latToY(lat) - cy) + mapOffsetY;
+  return {x, y};
+}
+
+function mapDraw() {
+  const canvas = document.getElementById('map-canvas');
+  if(!canvas) return;
+  const container = document.getElementById('map-container');
+  canvas.width  = container.offsetWidth  || 340;
+  canvas.height = container.offsetHeight || 320;
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+
+  // Fond sombre
+  ctx.fillStyle = '#1a2035';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grille légère
+  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  ctx.lineWidth = 1;
+  for(let gx=0; gx<w; gx+=40) { ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,h); ctx.stroke(); }
+  for(let gy=0; gy<h; gy+=40) { ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke(); }
+
+  if(!gpsCoords) {
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('En attente du signal GPS...', w/2, h/2);
+    return;
+  }
+
+  const centerLat = gpsCoords.lat;
+  const centerLon = gpsCoords.lon;
+
+  // Dessiner les arrêts du trajet actif
+  if(mapShowStops && activeTrip) {
+    const line = db.lines[activeTrip.lineIdx];
+    const trip = line?.trips?.[activeTrip.tripIdx];
+    if(trip) {
+      // Tracer la ligne du trajet
+      ctx.strokeStyle = 'rgba(192,57,43,.5)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      let firstPoint = true;
+      trip.stops.forEach((stop, idx) => {
+        const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
+        const c = gpsCoordsDB[key];
+        if(!c) return;
+        const p = mapLatLonToXY(c.lat, c.lon, centerLat, centerLon, mapZoom, w, h);
+        if(firstPoint) { ctx.moveTo(p.x, p.y); firstPoint = false; }
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+
+      // Dessiner les pastilles arrêts
+      trip.stops.forEach((stop, idx) => {
+        const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
+        const c = gpsCoordsDB[key];
+        if(!c) return;
+        const p = mapLatLonToXY(c.lat, c.lon, centerLat, centerLon, mapZoom, w, h);
+        const isCurrent = idx === gpsAutoNextIdx;
+        const isPassed  = idx < gpsAutoNextIdx;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isCurrent ? 8 : 5, 0, 2*Math.PI);
+        ctx.fillStyle = isCurrent ? '#c0392b' : isPassed ? 'rgba(39,174,96,.6)' : 'rgba(255,255,255,.35)';
+        ctx.fill();
+        if(isCurrent) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Nom de l'arrêt courant et suivant
+        if(isCurrent || idx === gpsAutoNextIdx + 1) {
+          ctx.fillStyle = isCurrent ? '#ff9500' : 'rgba(0,212,255,.8)';
+          ctx.font = `bold ${isCurrent ? 12 : 10}px sans-serif`;
+          ctx.textAlign = 'left';
+          const label = stop.name.length > 18 ? stop.name.substring(0,18)+'…' : stop.name;
+          ctx.fillText(label, p.x + 10, p.y + 4);
+        }
+      });
+    }
+  }
+
+  // Position du bus (point bleu avec cercle de précision)
+  const busP = mapLatLonToXY(centerLat, centerLon, centerLat, centerLon, mapZoom, w, h);
+
+  // Cercle de précision
+  if(gpsCoords.accuracy) {
+    const mPerPx = 156543.03392 * Math.cos(centerLat * Math.PI/180) / Math.pow(2, mapZoom);
+    const accPx = gpsCoords.accuracy / mPerPx;
+    ctx.beginPath();
+    ctx.arc(busP.x, busP.y, Math.min(accPx, 80), 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(0,212,255,.08)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,212,255,.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Direction (flèche si heading dispo)
+  if(gpsCoords.heading !== null && gpsCoords.heading !== undefined && !isNaN(gpsCoords.heading)) {
+    const angle = gpsCoords.heading * Math.PI / 180;
+    ctx.save();
+    ctx.translate(busP.x, busP.y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(6, 4);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(-6, 4);
+    ctx.closePath();
+    ctx.fillStyle = '#00d4ff';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Point bus
+  ctx.beginPath();
+  ctx.arc(busP.x, busP.y, 7, 0, 2*Math.PI);
+  ctx.fillStyle = '#00d4ff';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Mise à jour coords
+  const infoEl = document.getElementById('map-coords');
+  if(infoEl) {
+    const acc = gpsCoords.accuracy ? `±${Math.round(gpsCoords.accuracy)}m` : '—';
+    infoEl.textContent = `Lat: ${gpsCoords.lat.toFixed(5)} | Lon: ${gpsCoords.lon.toFixed(5)} | Précision: ${acc}`;
+  }
+  const mapInfoEl = document.getElementById('map-info');
+  if(mapInfoEl && activeTrip) {
+    const line = db.lines[activeTrip.lineIdx];
+    const trip = line?.trips?.[activeTrip.tripIdx];
+    const stop = trip?.stops?.[gpsAutoNextIdx];
+    mapInfoEl.textContent = stop ? `→ ${stop.name}` : 'GPS actif';
+  }
+}
+
+// Zoom carte avec pinch/scroll
+function mapSetupEvents() {
+  const canvas = document.getElementById('map-canvas');
+  if(!canvas || canvas._mapSetup) return;
+  canvas._mapSetup = true;
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    mapZoom = Math.max(13, Math.min(19, mapZoom - Math.sign(e.deltaY)));
+    mapDraw();
+  }, {passive: false});
+
+  // Pan
+  canvas.addEventListener('mousedown', e => { mapIsDragging = true; mapDragStart = {x: e.clientX, y: e.clientY}; mapCentered = false; });
+  canvas.addEventListener('mousemove', e => {
+    if(!mapIsDragging) return;
+    mapOffsetX += e.clientX - mapDragStart.x;
+    mapOffsetY += e.clientY - mapDragStart.y;
+    mapDragStart = {x: e.clientX, y: e.clientY};
+    mapDraw();
+  });
+  canvas.addEventListener('mouseup', () => mapIsDragging = false);
+
+  // Touch
+  let lastTouch = null, lastPinchDist = null;
+  canvas.addEventListener('touchstart', e => {
+    if(e.touches.length === 1) { lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; mapCentered = false; }
+    if(e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastPinchDist = Math.sqrt(dx*dx+dy*dy);
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    if(e.touches.length === 1 && lastTouch) {
+      mapOffsetX += e.touches[0].clientX - lastTouch.x;
+      mapOffsetY += e.touches[0].clientY - lastTouch.y;
+      lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      mapDraw();
+    }
+    if(e.touches.length === 2 && lastPinchDist) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const newDist = Math.sqrt(dx*dx+dy*dy);
+      if(newDist > lastPinchDist + 5) mapZoom = Math.min(19, mapZoom + 1);
+      if(newDist < lastPinchDist - 5) mapZoom = Math.max(13, mapZoom - 1);
+      lastPinchDist = newDist;
+      mapDraw();
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchend', () => { lastTouch = null; lastPinchDist = null; });
+}
+
+// Rafraîchir la carte quand on arrive sur l'onglet OPTIONS
+const _origShowView = typeof showView === 'function' ? showView : null;
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
