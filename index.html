@@ -129,6 +129,55 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 #gps-status-icon.gps-retry { background:rgba(255,165,0,.2); border-color:orange; animation:gpsRetry 1s infinite; }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
+
+/* ══ PANNEAU CARTE FLOTTANT ══ */
+#map-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 70px; /* au-dessus de la nav */
+  z-index: 150;
+  pointer-events: none;
+}
+#map-overlay.open {
+  display: block;
+}
+#map-panel {
+  position: absolute;
+  bottom: 12px; left: 12px; right: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  pointer-events: all;
+  animation: mapSlideUp .25s ease;
+}
+@keyframes mapSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+#map-toggle-btn {
+  position: fixed;
+  bottom: 82px; /* juste au-dessus de la nav */
+  right: 14px;
+  z-index: 160;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: none; /* affiché seulement sur view-live */
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  transition: background .2s, border-color .2s;
+}
+#map-toggle-btn.active {
+  background: rgba(0,212,255,.2);
+  border-color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -142,6 +191,37 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
       style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
     <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
+  </div>
+</div>
+
+<!-- Bouton toggle carte — fixe, visible seulement sur EN DIRECT -->
+<button id="map-toggle-btn" onclick="mapTogglePanel()" title="Carte GPS">🗺</button>
+
+<!-- Overlay panneau carte flottant -->
+<div id="map-overlay">
+  <div id="map-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px">📍</button>
+        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:11px;padding:4px 8px">🔴 Arrêts</button>
+        <button onclick="mapTogglePanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
+      </div>
+    </div>
+    <div id="map-container" style="width:100%;height:260px;background:#1a2035;position:relative;overflow:hidden">
+      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
+      <div id="map-info" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
+        En attente GPS...
+      </div>
+      <div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:5px 7px;font-size:9px;color:#fff">
+        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div> Position</div>
+        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#c0392b;flex-shrink:0"></div> Arrêt courant</div>
+        <div style="display:flex;align-items:center;gap:3px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0"></div> Autres arrêts</div>
+      </div>
+    </div>
+    <div id="map-coords" style="padding:5px 14px;font-size:10px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
+      Lat: — | Lon: — | Précision: —
+    </div>
   </div>
 </div>
 
@@ -783,34 +863,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
-
-  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
-      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
-        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
-      </div>
-    </div>
-    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
-      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
-      <!-- Info position -->
-      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
-        En attente GPS...
-      </div>
-      <!-- Légende -->
-      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
-      </div>
-    </div>
-    <!-- Coords détaillées -->
-    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
-      Lat: — | Lon: — | Précision: —
-    </div>
-  </div>
 
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
@@ -2942,7 +2994,17 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
+  if(id === 'view-settings') { loadSettings(); }
+  // Bouton carte visible seulement sur EN DIRECT
+  const mapBtn = document.getElementById('map-toggle-btn');
+  if(mapBtn) mapBtn.style.display = (id === 'view-live') ? 'flex' : 'none';
+  // Fermer le panneau carte si on quitte EN DIRECT
+  if(id !== 'view-live') {
+    const ov = document.getElementById('map-overlay');
+    if(ov) ov.classList.remove('open');
+    const btn = document.getElementById('map-toggle-btn');
+    if(btn) btn.classList.remove('active');
+  }
   if(id === 'view-heures') heuresRender();
   if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
 }
@@ -6765,8 +6827,19 @@ function mapSetupEvents() {
   canvas.addEventListener('touchend', () => { lastTouch = null; lastPinchDist = null; });
 }
 
-// Rafraîchir la carte quand on arrive sur l'onglet OPTIONS
-const _origShowView = typeof showView === 'function' ? showView : null;
+// (carte déplacée dans le panneau flottant EN DIRECT)
+
+function mapTogglePanel() {
+  const overlay = document.getElementById('map-overlay');
+  const btn     = document.getElementById('map-toggle-btn');
+  if(!overlay) return;
+  const isOpen = overlay.classList.toggle('open');
+  if(btn) btn.classList.toggle('active', isOpen);
+  if(isOpen) {
+    // Init canvas une seule fois
+    setTimeout(() => { mapSetupEvents(); mapDraw(); }, 80);
+  }
+}
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
