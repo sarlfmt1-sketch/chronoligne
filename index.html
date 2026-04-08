@@ -304,59 +304,61 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div id="ineo-status" style="display:none;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 12px;border-radius:20px;letter-spacing:.5px"></div>
       </div>
 
-      <!-- Corps : 3 colonnes — heures | barre | noms -->
-      <div style="display:flex;min-height:640px">
+      <!-- Corps nouveau layout : chaque arrêt sur une ligne horizontale -->
+      <div style="position:relative;padding:0">
 
-        <!-- COLONNE GAUCHE : heures (180px) -->
-        <div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-between;padding:20px 0">
-          <!-- heure +2 -->
-          <div style="text-align:center">
-            <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,30px);font-weight:700;color:rgba(255,255,255,.25);line-height:1">--</div>
+        <!-- Barre rouge verticale pleine hauteur -->
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:7px;background:#c0392b;transform:translateX(-50%);z-index:1"></div>
+        <!-- Progression verte -->
+        <div id="ineo-bar-progress" style="position:absolute;left:50%;bottom:0;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:2"></div>
+
+        <!-- LIGNE +2 -->
+        <div style="position:relative;display:flex;align-items:center;padding:28px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <div style="flex:1;text-align:right;padding-right:20px">
+            <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;color:rgba(255,255,255,.25);line-height:1">--</div>
             <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:2px">+2</div>
           </div>
-          <!-- heure prochain -->
-          <div style="text-align:center">
-            <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(40px,11vw,56px);font-weight:700;color:var(--accent);line-height:1">--</div>
-            <div style="font-size:9px;color:rgba(0,212,255,.7);letter-spacing:1px;margin-top:2px;font-weight:700">PROCHAIN</div>
-          </div>
-          <!-- heure actuel -->
-          <div style="text-align:center">
-            <div style="line-height:1">
-              <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:clamp(52px,14vw,72px);font-weight:700;opacity:.7;color:#ff9500">--:</span>
-              <div id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(52px,14vw,72px);font-weight:700;color:#ff9500;line-height:1">--:--</div>
-            </div>
-            <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:2px;font-weight:700">ACTUEL</div>
+          <div style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:2px solid rgba(255,255,255,.4);flex-shrink:0;z-index:3;position:relative"></div>
+          <div style="flex:1;padding-left:20px">
+            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:rgba(255,255,255,.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
           </div>
         </div>
 
-        <!-- COLONNE CENTRE : barre rouge (40px) -->
-        <div id="ineo-bar-col" style="width:40px;flex-shrink:0;position:relative;display:flex;flex-direction:column;align-items:center">
-          <!-- Barre rouge -->
-          <div style="position:absolute;top:0;bottom:0;left:50%;width:7px;background:#c0392b;transform:translateX(-50%)"></div>
-          <!-- Progression verte -->
-          <div id="ineo-bar-progress" style="position:absolute;bottom:0;left:50%;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:1"></div>
-          <!-- Pastille +2 -->
-          <div style="position:absolute;top:36px;z-index:2">
-            <div style="width:14px;height:14px;border-radius:50%;background:#c0392b;border:2px solid rgba(255,255,255,.4)"></div>
+        <!-- LIGNE PROCHAIN -->
+        <div style="position:relative;display:flex;align-items:center;padding:36px 16px;border-bottom:1px solid rgba(0,212,255,.15);background:rgba(0,212,255,.04)">
+          <div style="flex:1;text-align:right;padding-right:16px">
+            <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(36px,10vw,52px);font-weight:700;color:var(--accent);line-height:1">--</div>
+            <div style="font-size:9px;color:rgba(0,212,255,.7);letter-spacing:1px;margin-top:2px;font-weight:700">PROCHAIN</div>
           </div>
-          <!-- Pastille prochain — cliquable -->
-          <div style="position:absolute;top:50%;transform:translateY(-50%);z-index:2">
-            <button id="btn-validate-stop-ineo" onclick="validateStopManual()"
-              style="width:32px;height:32px;border-radius:50%;background:#c0392b;border:3px solid #fff;
-                     box-shadow:0 0 0 3px rgba(255,255,255,.2);cursor:pointer;padding:0;">
-            </button>
+          <button id="btn-validate-stop-ineo" onclick="validateStopManual()"
+            style="width:30px;height:30px;border-radius:50%;background:#c0392b;border:3px solid #fff;
+                   box-shadow:0 0 0 3px rgba(255,255,255,.2);cursor:pointer;padding:0;flex-shrink:0;z-index:3;position:relative">
+          </button>
+          <div style="flex:1;padding-left:16px">
+            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
           </div>
+        </div>
+
+        <!-- BLOC ACTUEL — heure + nom centré + triangle -->
+        <div style="position:relative;padding:30px 16px 20px 16px;text-align:center;background:rgba(231,76,60,.06)">
+          <!-- heure -->
+          <div style="line-height:1;margin-bottom:10px">
+            <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:clamp(48px,13vw,68px);font-weight:700;opacity:.7;color:#ff9500">--:</span><span id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(48px,13vw,68px);font-weight:700;color:#ff9500;line-height:1">--:--</span>
+          </div>
+          <!-- nom -->
+          <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,40px);font-weight:700;color:#fff;word-break:break-word;line-height:1.1">—</div>
+          <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:4px;font-weight:700">ACTUEL</div>
           <!-- Triangle vert — menu -->
-          <div id="ineo-triangle" style="position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:3;transition:bottom .6s ease">
+          <div id="ineo-triangle" style="display:flex;justify-content:center;margin-top:16px;position:relative;z-index:3;transition:margin .6s ease">
             <div style="position:relative">
               <button onclick="toggleIneoMenu()" id="ineo-menu-btn"
                 style="background:none;border:none;padding:0;cursor:pointer;display:block">
-                <svg width="30" height="30" viewBox="0 0 24 24">
+                <svg width="34" height="34" viewBox="0 0 24 24">
                   <polygon points="12,2 22,22 12,17 2,22" fill="#27ae60" stroke="#0a0e1a" stroke-width="1.5" stroke-linejoin="round"/>
                 </svg>
               </button>
               <!-- Menu déroulant -->
-              <div id="ineo-menu" style="display:none;position:absolute;bottom:38px;left:0;
+              <div id="ineo-menu" style="display:none;position:absolute;bottom:42px;left:50%;transform:translateX(-50%);
                    background:var(--card);border:1px solid var(--border);border-radius:14px;
                    padding:8px;z-index:300;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);
                    flex-direction:column;gap:6px">
@@ -383,26 +385,12 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
           </div>
         </div>
 
-        <!-- COLONNE DROITE : noms des arrêts -->
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:20px 14px;min-width:0">
-          <!-- nom +2 -->
-          <div>
-            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(16px,4vw,20px);font-weight:700;color:rgba(255,255,255,.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
-          </div>
-          <!-- nom prochain -->
-          <div>
-            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,32px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
-          </div>
-          <!-- nom actuel -->
-          <div>
-            <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:#fff;word-break:break-word;line-height:1.2">—</div>
-            <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:4px;font-weight:700">ACTUEL</div>
-          </div>
-        </div>
+        <!-- Colonne barre cachée pour compatibilité JS -->
+        <div id="ineo-bar-col" style="display:none"></div>
 
       </div>
 
-      <!-- Footer pastilles supprimé — éléments masqués pour compatibilité JS -->
+      <!-- Footer éléments masqués pour compatibilité JS -->
       <div style="display:none">
         <div id="ineo-prog-label"></div>
         <div id="ineo-prog-track"><div id="ineo-prog-line"></div><div id="ineo-prog-dots"></div></div>
@@ -793,127 +781,36 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 </div>
 
-<!-- ══ VIEW: PRIME ══ -->
-<div class="view" id="view-prime">
-
-  <!-- Objectif annuel -->
-  <div class="card" style="background:rgba(0,212,255,.05);border:2px solid rgba(0,212,255,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div>
-        <div style="font-size:12px;color:var(--muted)">OBJECTIF RÉGULARITÉ 2025</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:40px;font-weight:700;color:var(--accent);line-height:1">90,0%</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:12px;color:var(--muted)">PRIME ANNUELLE</div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:var(--green)">800€</div>
-        <div style="font-size:10px;color:var(--muted)">200€ / trimestre</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Calculateur mensuel -->
-  <div class="card">
-    <div class="card-title">🧮 Calculateur de régularité</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Entrez vos mesures SAE du mois pour calculer votre % de régularité</div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">⛔ Avance SI <span style="opacity:.7">(>1min) ×0</span></div>
-        <input type="number" id="p-avsi" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-      <div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:var(--green);margin-bottom:4px">✅ Avance conforme <span style="opacity:.7">(0-1min) ×1</span></div>
-        <input type="number" id="p-avc" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-      <div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:var(--green);margin-bottom:4px">✅ Retard conforme <span style="opacity:.7">(0-3min) ×1</span></div>
-        <input type="number" id="p-rc" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-      <div style="background:rgba(255,165,0,.1);border:1px solid rgba(255,165,0,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:orange;margin-bottom:4px">⚠️ Retard semi-conforme <span style="opacity:.7">(3-6min) ×0.5</span></div>
-        <input type="number" id="p-rsc" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">❌ Retard non-conforme <span style="opacity:.7">(6-12min) ×0</span></div>
-        <input type="number" id="p-rnc" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-      <div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:#e74c3c;margin-bottom:4px">⛔ Retard SI <span style="opacity:.7">(>12min) ×0</span></div>
-        <input type="number" id="p-rsi" value="0" min="0" oninput="calcRegularite()"
-          style="width:100%;padding:6px;font-size:20px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace;background:transparent;border:none;color:var(--text)">
-      </div>
-    </div>
-
-    <!-- Résultat -->
-    <div id="prime-resultat" style="border-radius:10px;padding:14px;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--border)">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Entrez vos mesures pour calculer</div>
-    </div>
-  </div>
-
-  <!-- Non-ouverture SAE -->
-  <div class="card">
-    <div class="card-title">📱 Non-ouvertures SAE</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Chaque non-ouverture = -50€ sur la prime trimestrielle</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="btn btn-sm btn-danger" onclick="saeChange(-1)">−</button>
-      <div style="flex:1;text-align:center">
-        <div id="sae-count" style="font-family:'Share Tech Mono',monospace;font-size:40px;font-weight:700;color:var(--red)">0</div>
-        <div style="font-size:11px;color:var(--muted)">non-ouverture(s)</div>
-      </div>
-      <button class="btn btn-sm" onclick="saeChange(1)" style="background:rgba(231,76,60,.2);border-color:var(--red);color:var(--red)">+</button>
-      <div style="text-align:right;min-width:70px">
-        <div id="sae-deduct" style="font-size:22px;font-weight:700;color:var(--red)">−0€</div>
-        <div style="font-size:10px;color:var(--muted)">déduction</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stats GPS du mois -->
-  <div class="card" id="prime-gps-card">
-    <div class="card-title">📍 Statistiques GPS du mois</div>
-    <div id="prime-gps-content">
-      <div style="font-size:12px;color:var(--muted)">Faites des trajets en mode 🚗 Conduite auto pour accumuler des statistiques</div>
-    </div>
-  </div>
-
-  <!-- Rappel formule -->
-  <div class="card" style="background:rgba(255,255,255,.02)">
-    <div class="card-title">📐 Formule de calcul</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.8">
-      <code style="color:var(--accent);font-size:11px">% = (Av.conforme×1 + Ret.conforme×1 + Ret.semi×0.5) / Total mesures × 100</code>
-      <br><br>
-      Avance &gt;1min → <span style="color:#e74c3c">×0 (inacceptable)</span><br>
-      Retard 0-3min → <span style="color:var(--green)">×1 (conforme)</span><br>
-      Retard 3-6min → <span style="color:orange">×0.5 (semi-conforme)</span><br>
-      Retard &gt;6min → <span style="color:#e74c3c">×0 (non-conforme)</span>
-    </div>
-  </div>
-
-  <!-- Historique trimestriel permanent -->
-  <div class="card" style="border:1px solid rgba(255,193,7,.3);background:rgba(255,193,7,.05)">
-    <div class="card-title" style="color:#ffc107">📒 Historique trimestriel (permanent)</div>
-    <div id="prime-historique-content" style="font-size:12px;color:var(--muted);margin-bottom:10px">
-      Aucun enregistrement
-    </div>
-    <button onclick="savePrimeHistorique()" class="btn" style="width:100%;background:rgba(255,193,7,.2);border:1px solid #ffc107;color:#ffc107;font-weight:700">
-      💾 Enregistrer le résultat actuel
-    </button>
-  </div>
-
-  <!-- Export PDF prime -->
-  <button onclick="exportPrimePDF()" class="btn" style="width:100%;background:rgba(0,212,255,.12);border:1px solid var(--accent);color:var(--accent);font-weight:700;font-size:14px">
-    📄 Exporter bilan régularité PDF
-  </button>
-
-</div>
-
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
+
+  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
+      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
+      </div>
+    </div>
+    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
+      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
+      <!-- Info position -->
+      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
+        En attente GPS...
+      </div>
+      <!-- Légende -->
+      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
+      </div>
+    </div>
+    <!-- Coords détaillées -->
+    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
+      Lat: — | Lon: — | Précision: —
+    </div>
+  </div>
 
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
@@ -1010,9 +907,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <span class="ico">🗺</span>SERVICE
   </button>
 
-  <button class="nav-btn" data-view="view-prime" onclick="showView('view-prime')">
-    <span class="ico">📊</span>PRIME
-  </button>
   <button class="nav-btn" data-view="view-settings" onclick="showView('view-settings')">
     <span class="ico">⚙</span>OPTIONS
   </button>
@@ -2719,6 +2613,34 @@ const PRELOADED_TRIPS = {
   ],
   '1238': [
     {
+      direction: 'aller', label: 'Lozier → Gare de Cergy Préfecture (9 arrêts)',
+      stops: [
+        {name:'Lozier', intervalAfter:2},
+        {name:'Le Grand Hunier', intervalAfter:2},
+        {name:'Le Port', intervalAfter:2},
+        {name:'Paradis', intervalAfter:2},
+        {name:'Les Grouettes', intervalAfter:2},
+        {name:'Conseil Départemental', intervalAfter:1},
+        {name:'Conseil Général', intervalAfter:1},
+        {name:'Les Plants', intervalAfter:2},
+        {name:'Gare de Cergy Préfecture - Quai L', intervalAfter:0},
+      ]
+    },
+    {
+      direction: 'retour', label: 'Gare de Cergy Préfecture → Lozier (9 arrêts)',
+      stops: [
+        {name:'Gare de Cergy Préfecture - Quai L', intervalAfter:2},
+        {name:'Les Plants', intervalAfter:1},
+        {name:'Conseil Général', intervalAfter:1},
+        {name:'Conseil Départemental', intervalAfter:2},
+        {name:'Les Grouettes', intervalAfter:2},
+        {name:'Paradis', intervalAfter:2},
+        {name:'Le Port', intervalAfter:2},
+        {name:'Le Grand Hunier', intervalAfter:2},
+        {name:'Lozier', intervalAfter:0},
+      ]
+    },
+    {
       direction: 'aller', label: 'La Taillette → Gare Cergy-Préfecture (20 arrêts, 39 min)',
       stops: [
         {name:'La Taillette', intervalAfter:1},
@@ -4403,16 +4325,30 @@ function parseIneoFeuille() {
 
     // ITINERAIRE → collecter arrêts de référence
     if(line.startsWith('ITINERAIRE') || (line.match(/^\d{2}:\d{2}\s*-->/) && currentLineNum)) {
-      const firstM = line.match(/(\d{2}:\d{2})\s*-->\s*(.+?)(?:\s*-\s*\d+\s*)?$/);
-      if(firstM) currentRefStops.push({ time: firstM[1], name: firstM[2].replace(/\s*-\s*\d+\s*$/,'').trim() });
+      // Séparer les arrêts collés sur la même ligne ex: "...821 05:57 --> GARE..."
+      const splitLines = line.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+      splitLines.forEach(sl => {
+        const m = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+        if(m) {
+          const name = m[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
+          if(name) currentRefStops.push({ time: m[1], name });
+        }
+      });
       i++;
       while(i < lines.length) {
         const al = lines[i];
-        const am = al.match(/^(\d{2}:\d{2})\s*-->\s*(.+?)(?:\s*-\s*\d+\s*)?$/);
-        if(am) {
-          currentRefStops.push({ time: am[1], name: am[2].replace(/\s*-\s*\d+\s*$/,'').trim() });
-          i++;
-        } else break;
+        // Gérer arrêts collés
+        const splitAl = al.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+        let pushed = false;
+        splitAl.forEach(sl => {
+          const am = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+          if(am) {
+            const name = am[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
+            if(name) { currentRefStops.push({ time: am[1], name }); pushed = true; }
+          }
+        });
+        if(pushed) i++;
+        else break;
       }
       continue;
     }
@@ -4444,20 +4380,6 @@ function parseIneoFeuille() {
 }
 
 function buildTripFromRef(lineNum, refStops, direction) {
-  // Trouver la ligne dans db
-  const dbLine = db.lines.find(l => l.num === lineNum);
-  if(!dbLine) {
-    // Ligne inconnue : créer avec juste les arrêts de référence
-    return {
-      lineNum, lineColor: '#888',
-      label: `Ligne ${lineNum}`,
-      stops: refStops.map((s,i) => ({
-        name: s.name, time: s.time,
-        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
-        isRef: true
-      }))
-    };
-  }
 
   function normalize(s) {
     return s.toUpperCase()
@@ -4468,26 +4390,65 @@ function buildTripFromRef(lineNum, refStops, direction) {
   function toMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
   function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
 
-  const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
-  const firstRef = refNorm[0];
-  const lastRef = refNorm[refNorm.length-1];
+  // Trouver la ligne dans db
+  const dbLine = db.lines.find(l => l.num === lineNum);
+  if(!dbLine) {
+    // Ligne inconnue : créer avec juste les arrêts de référence
+    return {
+      lineNum, lineColor: '#888',
+      label: `Ligne ${lineNum}`,
+      direction: direction || 'aller',
+      stops: refStops.map((s,i) => ({
+        name: s.name, time: s.time,
+        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
+        isRef: true
+      }))
+    };
+  }
 
-  // Trouver le bon trajet dans la ligne (celui qui correspond au sens)
+  const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
+
+  // Détection automatique de la direction si non fournie
+  // On regarde si le 1er arrêt INEO correspond plutôt à un arrêt de début aller ou retour
+  let autoDirection = direction || 'aller';
+  if(dbLine.trips.length >= 2) {
+    const firstRefNorm = refNorm[0].norm;
+    const lastRefNorm  = refNorm[refNorm.length-1].norm;
+    let scoreAller = 0, scoreRetour = 0;
+    dbLine.trips.forEach(trip => {
+      const tripNorms = trip.stops.map(s => normalize(s.name));
+      // Chercher la position du 1er et dernier arrêt INEO dans ce trajet
+      const posFirst = tripNorms.findIndex(n => n.includes(firstRefNorm) || firstRefNorm.includes(n));
+      const posLast  = tripNorms.findIndex(n => n.includes(lastRefNorm)  || lastRefNorm.includes(n));
+      if(posFirst >= 0 && posLast >= 0 && posFirst < posLast) {
+        // L'ordre est cohérent avec ce trajet
+        if(trip.direction === 'aller') scoreAller += 10;
+        else scoreRetour += 10;
+      }
+      let matches = 0;
+      refNorm.forEach(ref => {
+        if(tripNorms.some(n => n.includes(ref.norm) || ref.norm.includes(n))) matches++;
+      });
+      if(trip.direction === 'aller') scoreAller += matches;
+      else scoreRetour += matches;
+    });
+    autoDirection = scoreRetour > scoreAller ? 'retour' : 'aller';
+  }
+
+  // Trouver le bon trajet dans la ligne
   let bestTrip = null, bestScore = -1;
   dbLine.trips.forEach(trip => {
     let matches = 0;
     refNorm.forEach(ref => {
       if(trip.stops.some(s => normalize(s.name).includes(ref.norm) || ref.norm.includes(normalize(s.name)))) matches++;
     });
+    if(trip.direction === autoDirection) matches += 100;
     if(matches > bestScore) { bestScore = matches; bestTrip = trip; }
   });
 
-  // Si pas de trajet trouvé, prendre le premier
   const sourceTrip = bestTrip || dbLine.trips[0];
   if(!sourceTrip) return null;
 
-  // Construire la liste complète des arrêts depuis le trajet de référence
-  // Marquer les arrêts INEO comme isRef
   const allStops = sourceTrip.stops.map(s => ({
     name: s.name,
     time: '',
@@ -4496,7 +4457,7 @@ function buildTripFromRef(lineNum, refStops, direction) {
     refTime: null
   }));
 
-  // Associer chaque arrêt de référence INEO au meilleur arrêt de la liste
+  // Associer chaque arrêt INEO au meilleur arrêt de la liste (seuil abaissé à 2)
   refNorm.forEach(ref => {
     let bestIdx = -1, bestMatch = 0;
     allStops.forEach((s, idx) => {
@@ -4504,35 +4465,30 @@ function buildTripFromRef(lineNum, refStops, direction) {
       const score = sn.includes(ref.norm) || ref.norm.includes(sn) ? Math.min(sn.length, ref.norm.length) : 0;
       if(score > bestMatch) { bestMatch = score; bestIdx = idx; }
     });
-    if(bestIdx >= 0 && bestMatch > 3) {
+    if(bestIdx >= 0 && bestMatch > 2) {
       allStops[bestIdx].isRef = true;
       allStops[bestIdx].refTime = ref.time;
       allStops[bestIdx].time = ref.time;
     }
   });
 
-  // ── CORRECTION : tronquer entre le 1er et le dernier arrêt de référence ──
   const refIndices = allStops.map((s,i) => s.isRef ? i : -1).filter(i => i >= 0);
   if(refIndices.length === 0) return null;
 
   const firstRefIdx = refIndices[0];
   const lastRefIdx  = refIndices[refIndices.length - 1];
 
-  // Garder uniquement les arrêts entre le premier et le dernier arrêt INEO (inclus)
+  // Tronquer exactement entre le premier et dernier arrêt INEO reconnus
   const trimmedStops = allStops.slice(firstRefIdx, lastRefIdx + 1);
-
-  // Recalculer refIndices sur le tableau tronqué
   const trimmedRefIndices = trimmedStops.map((s,i) => s.isRef ? i : -1).filter(i => i >= 0);
 
   // Interpoler les heures entre les arrêts de référence
-  // Entre chaque paire de références : interpoler linéairement
   for(let r=0; r<trimmedRefIndices.length-1; r++) {
     const idxA = trimmedRefIndices[r], idxB = trimmedRefIndices[r+1];
     const tA = toMin(trimmedStops[idxA].refTime);
     const tB = toMin(trimmedStops[idxB].refTime);
     const totalInterval = trimmedStops.slice(idxA, idxB).reduce((acc,s) => acc+(s.intervalAfter||1), 0);
     const scale = totalInterval > 0 ? (tB - tA) / totalInterval : 1;
-
     let cumul = 0;
     for(let k=idxA+1; k<idxB; k++) {
       cumul += (trimmedStops[k-1].intervalAfter||1);
@@ -5809,25 +5765,27 @@ function checkGpsAutoDetect(coords) {
   // Mémoriser distance minimale
   if(dist < gpsAutoMinDist) gpsAutoMinDist = dist;
 
-  // ── MÉTHODE 1 : Dépassement par cap (comme l'INEO) ──────────────────
-  // Si on a le heading du téléphone, on calcule si l'arrêt est DERRIÈRE nous
-  // L'arrêt est "dépassé" si l'angle entre notre cap et la direction vers l'arrêt > 90°
+  // ── MÉTHODE 1 : Dépassement par cap ─────────────────────────────────
   let passedByHeading = false;
-  if(coords.heading !== null && coords.heading !== undefined && !isNaN(coords.heading) && dist < 200) {
+  if(coords.heading !== null && coords.heading !== undefined && !isNaN(coords.heading) && dist < 100) {
     const bearingToStop = bearingTo(coords.lat, coords.lon, savedCoords.lat, savedCoords.lon);
     const diff = Math.abs(angleDiff(coords.heading, bearingToStop));
-    // Si l'arrêt est à plus de 100° derrière notre direction → on l'a dépassé
-    passedByHeading = diff > 100 && gpsAutoMinDist < 150;
+    // Arrêt derrière nous ET on était passé à moins de 60m
+    passedByHeading = diff > 110 && gpsAutoMinDist < 60;
   }
 
   // ── MÉTHODE 2 : Proximité puis éloignement ───────────────────────────
-  const passedByProximity = gpsAutoMinDist <= GPS_DETECT_DIST && dist > GPS_DETECT_DIST + 15;
+  // On est passé à moins de GPS_DETECT_DIST ET on s'éloigne maintenant
+  const passedByProximity = gpsAutoMinDist <= GPS_DETECT_DIST && dist > GPS_DETECT_DIST + 20;
 
   // ── MÉTHODE 3 : On se rapproche du suivant (fallback sans heading) ───
+  // BEAUCOUP plus stricte : on doit être à moins de 50m ET le suivant doit être plus près
+  // ET on doit avoir déjà été à moins de 80m du courant
   const passedByDirection = nextCoords
-    && gpsAutoMinDist <= 150
-    && distNext < dist
-    && distNext < gpsAutoMinDist * 1.5;
+    && gpsAutoMinDist <= 80
+    && dist > gpsAutoMinDist + 20
+    && distNext < dist * 0.7
+    && distNext < 300;
 
   if(passedByHeading || passedByProximity || passedByDirection) {
     const now = new Date();
@@ -5845,11 +5803,43 @@ function checkGpsAutoDetect(coords) {
     gpsAutoMinDist = Infinity;
     gpsAutoNextIdx++;
     if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
+
+    // ── RECALAGE AUTOMATIQUE ─────────────────────────────────────
+    // Après validation, chercher l'arrêt le plus proche parmi les suivants
+    // Si un arrêt suivant est beaucoup plus proche que le prochain prévu → se recaler
+    gpsAutoRecaler(coords, trip, line);
+
     updateLive();
     flashAutoDetect(stop.name, diffMin, status);
     if(gpsAutoNextIdx >= trip.stops.length) {
       setTimeout(() => autoNextTrip(), 2000);
     }
+  }
+}
+
+// ── RECALAGE GPS sur l'arrêt le plus proche ──────────────────────────
+function gpsAutoRecaler(coords, trip, line) {
+  if(!trip || gpsAutoNextIdx >= trip.stops.length) return;
+
+  let bestIdx = gpsAutoNextIdx;
+  let bestDist = Infinity;
+
+  // Chercher parmi les 5 prochains arrêts lequel est le plus proche
+  for(let k = gpsAutoNextIdx; k < Math.min(gpsAutoNextIdx + 6, trip.stops.length); k++) {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, k);
+    const c = gpsCoordsDB[key];
+    if(!c) continue;
+    const d = haversine(coords.lat, coords.lon, c.lat, c.lon);
+    if(d < bestDist) { bestDist = d; bestIdx = k; }
+  }
+
+  // Se recaler uniquement si on est manifestement plus près d'un arrêt plus loin
+  // et que la distance est raisonnable (< 200m)
+  if(bestIdx > gpsAutoNextIdx && bestDist < 200) {
+    const skipped = bestIdx - gpsAutoNextIdx;
+    toast(`📍 Recalage GPS : +${skipped} arrêt(s) sauté(s)`);
+    gpsAutoNextIdx = bestIdx;
+    if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
   }
 }
 
