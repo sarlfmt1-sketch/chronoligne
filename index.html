@@ -16,8 +16,6 @@
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -131,6 +129,202 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 #gps-status-icon.gps-retry { background:rgba(255,165,0,.2); border-color:orange; animation:gpsRetry 1s infinite; }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
+
+/* ══ PANNEAU CARTE FLOTTANT ══ */
+#map-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 70px; /* au-dessus de la nav */
+  z-index: 150;
+  pointer-events: none;
+}
+#map-overlay.open {
+  display: block;
+}
+#map-panel {
+  position: absolute;
+  bottom: 12px; left: 12px; right: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  pointer-events: all;
+  animation: mapSlideUp .25s ease;
+}
+@keyframes mapSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+#map-toggle-btn {
+  position: fixed;
+  bottom: 82px; /* juste au-dessus de la nav */
+  right: 14px;
+  z-index: 160;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: none; /* affiché seulement sur view-live */
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  transition: background .2s, border-color .2s;
+}
+#map-toggle-btn.active {
+  background: rgba(0,212,255,.2);
+  border-color: var(--accent);
+}
+
+/* ══ MULTI-LIGNES & VARIANTES ══ */
+#ligne-selector { display:flex; flex-direction:column; gap:10px; }
+#ligne-badge {
+  display:none; align-items:center; gap:8px;
+  padding:8px 14px; background:var(--card); border-bottom:1px solid var(--border);
+  font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700;
+}
+#ligne-badge .badge-num {
+  padding:3px 10px; border-radius:6px; color:#fff; font-size:18px; font-weight:700;
+}
+#ligne-badge .badge-dest { color:var(--accent); flex:1; }
+
+/* Sélecteur 2 niveaux */
+.sel-ligne-wrap { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+.sel-ligne-row { display:flex; gap:8px; }
+.sel-ligne-row select { flex:1; padding:9px 10px; font-size:15px; font-weight:600; }
+
+/* Variante chips */
+#variant-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.variant-chip {
+  padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700;
+  border:1px solid var(--border); background:rgba(255,255,255,.05);
+  color:var(--muted); cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.variant-chip.active { background:var(--accent); color:#000; border-color:var(--accent); }
+.variant-chip.aller  { border-color:rgba(0,212,255,.4); }
+.variant-chip.retour { border-color:rgba(39,174,96,.4); }
+
+/* ══ SPLIT-SCREEN HORIZONTAL ══ */
+@media (orientation: landscape) and (max-height: 600px) {
+  body { overflow: hidden; }
+  #app { padding-bottom: 0 !important; }
+  nav { display:none !important; }
+  #header { padding:4px 10px; }
+  #clock-header { font-size:clamp(28px,6vh,44px) !important; }
+
+  #view-live {
+    flex-direction:row !important;
+    padding:6px !important;
+    gap:6px !important;
+    height: calc(100vh - 48px);
+    overflow: hidden;
+  }
+
+  /* Panneau gauche INEO */
+  #ineo-panel-left {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    overflow-y:auto;
+    min-width:0;
+  }
+
+  /* Panneau droit Carte */
+  #ineo-panel-right {
+    width:45%;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+  }
+  #ineo-panel-right.hidden { display:none !important; }
+  #ineo-panel-left.full-width { flex:1 !important; width:100% !important; }
+
+  /* Carte intégrée en paysage */
+  #map-inline {
+    flex:1;
+    background:#1a2035;
+    border-radius:10px;
+    overflow:hidden;
+    position:relative;
+    min-height:0;
+  }
+  #map-canvas-inline { width:100%; height:100%; display:block; }
+
+  /* Réduire les paddings en paysage */
+  #mode-ineo .card, #mode-classique .card { padding:6px 10px !important; }
+  #mode-ineo [style*="padding:28px"] { padding:10px 12px !important; }
+  #mode-ineo [style*="padding:36px"] { padding:12px 12px !important; }
+  #mode-ineo [style*="padding:30px"] { padding:10px 12px !important; }
+  #mode-ineo [style*="font-size:clamp(20px"] { font-size:clamp(14px,2.5vw,20px) !important; }
+  #mode-ineo [style*="font-size:clamp(36px"] { font-size:clamp(22px,3.5vw,32px) !important; }
+  #mode-ineo [style*="font-size:clamp(48px"] { font-size:clamp(28px,4vw,36px) !important; }
+  #mode-ineo [style*="font-size:clamp(26px"] { font-size:clamp(18px,3vw,24px) !important; }
+  .live-block { padding:6px 10px !important; }
+
+  /* Nav horizontale mini en bas */
+  #landscape-nav {
+    display:flex !important;
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--card); border-top:1px solid var(--border);
+    height:36px; z-index:200; gap:0;
+  }
+  #landscape-nav button {
+    flex:1; background:none; border:none; border-right:1px solid var(--border);
+    color:var(--muted); font-size:10px; font-weight:700; cursor:pointer; padding:0 4px;
+  }
+  #landscape-nav button.active { color:var(--accent); background:rgba(0,212,255,.05); }
+  #app { padding-bottom:36px; }
+
+  /* Cacher le map overlay flottant en paysage (on utilise le inline) */
+  #map-overlay { display:none !important; }
+  #map-toggle-btn { display:none !important; }
+}
+
+@media (orientation: portrait) {
+  #ineo-panel-left, #ineo-panel-right { display:contents; }
+  #landscape-nav { display:none !important; }
+  #map-inline { display:none !important; }
+}
+
+/* ══ BOUTON CARTE FANTÔME ══ */
+#ghost-map-btn {
+  position:fixed;
+  bottom:82px; right:14px;
+  z-index:160;
+  width:44px; height:44px;
+  border-radius:50%;
+  background:var(--card);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-size:20px;
+  cursor:pointer;
+  display:none; /* affiché seulement sur view-live portrait */
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+  transition:background .2s, border-color .2s;
+}
+#ghost-map-btn.active {
+  background:rgba(0,212,255,.2);
+  border-color:var(--accent);
+}
+
+/* ══ SILLON — SÉLECTEUR LIGNE + VARIANTE ══ */
+#sillon-variant-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.sillon-variant-btn {
+  flex:1; min-width:120px; padding:10px 12px; font-size:13px; font-weight:700;
+  border-radius:10px; cursor:pointer; transition:.2s; text-align:center;
+}
+#sillon-start-btn:disabled {
+  opacity:.4; cursor:not-allowed;
+  background:rgba(255,255,255,.1) !important;
+  color:var(--muted) !important;
+}
+
 </style>
 </head>
 <body>
@@ -147,10 +341,50 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   </div>
 </div>
 
+
+<!-- Badge Ligne > Destination (affiché quand trajet actif) -->
+<div id="ligne-badge">
+  <div class="badge-num" id="badge-num-text" style="background:#888">—</div>
+  <div class="badge-dest" id="badge-dest-text">Aucun trajet</div>
+  <button onclick="showView('view-lines')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px">✎</button>
+</div>
+
+<!-- Bouton toggle carte — fixe, visible seulement sur EN DIRECT -->
+<button id="map-toggle-btn" onclick="mapTogglePanel()" title="Carte GPS">🗺</button>
+
+<!-- Overlay panneau carte flottant -->
+<div id="map-overlay">
+  <div id="map-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px">📍</button>
+        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:11px;padding:4px 8px">🔴 Arrêts</button>
+        <button onclick="mapTogglePanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
+      </div>
+    </div>
+    <div id="map-container" style="width:100%;height:260px;background:#1a2035;position:relative;overflow:hidden">
+      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
+      <div id="map-info" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
+        En attente GPS...
+      </div>
+      <div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:5px 7px;font-size:9px;color:#fff">
+        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div> Position</div>
+        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#c0392b;flex-shrink:0"></div> Arrêt courant</div>
+        <div style="display:flex;align-items:center;gap:3px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0"></div> Autres arrêts</div>
+      </div>
+    </div>
+    <div id="map-coords" style="padding:5px 14px;font-size:10px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
+      Lat: — | Lon: — | Précision: —
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
 <!-- ══ VIEW: EN DIRECT ══ -->
 <div class="view active" id="view-live">
+<div id="ineo-panel-left">
 
   <!-- Bannière GPS mode enregistrement -->
   <div id="gps-record-banner" style="display:none;background:rgba(255,165,0,.15);border:2px solid orange;border-radius:12px;padding:12px 14px">
@@ -428,17 +662,22 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     </div>
   </div>
 
-  <!-- ══ CARTE LEAFLET EN DIRECT ══ -->
-  <div class="card" style="padding:0;overflow:hidden" id="live-map-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px">
-      <div class="card-title" style="margin:0">🗺 Carte du trajet</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="liveMapCenter()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
-        <button onclick="liveMapToggle()" id="live-map-toggle-btn" class="btn btn-sm btn-ghost" style="font-size:12px">▼ Réduire</button>
-      </div>
+</div><!-- #ineo-panel-left -->
+<div id="ineo-panel-right" class="hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--card);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
+    <div style="display:flex;gap:4px">
+      <button onclick="mapInlineCenterBus()" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer">📍</button>
+      <button onclick="toggleInlineMap()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">✕</button>
     </div>
-    <div id="live-map" style="height:300px;width:100%;z-index:10"></div>
   </div>
+  <div id="map-inline" style="flex:1;background:#1a2035;border-radius:0 0 10px 10px;border:1px solid var(--border);overflow:hidden;position:relative">
+    <canvas id="map-canvas-inline"></canvas>
+    <div id="map-info-inline" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
+      En attente GPS...
+    </div>
+  </div>
+</div><!-- #ineo-panel-right -->
 
 </div>
 
@@ -798,34 +1037,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
 
-  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
-      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
-        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
-      </div>
-    </div>
-    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
-      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
-      <!-- Info position -->
-      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
-        En attente GPS...
-      </div>
-      <!-- Légende -->
-      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
-      </div>
-    </div>
-    <!-- Coords détaillées -->
-    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
-      Lat: — | Lon: — | Précision: —
-    </div>
-  </div>
-
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
     📱 Installer ChronoLigne sur ce téléphone
@@ -910,6 +1121,116 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 </div><!-- #app -->
 
 <!-- NAV -->
+<!-- ══ VIEW: SILLON — MODULE D'APPRENTISSAGE ══ -->
+<div class="view" id="view-sillon">
+
+  <!-- En-tête statut -->
+  <div id="sillon-status-bar" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px">
+    <div id="sillon-rec-dot" style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0"></div>
+    <div style="flex:1">
+      <div id="sillon-status-label" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--muted)">EN ATTENTE</div>
+      <div id="sillon-status-sub" style="font-size:11px;color:var(--muted)">Configurez et démarrez l'apprentissage</div>
+    </div>
+    <div id="sillon-rec-badge" style="display:none;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:1px">REC</div>
+    <div id="sillon-pt-counter" style="display:none;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted)">0 pts</div>
+  </div>
+
+  <!-- Configuration -->
+  <div class="card" id="sillon-config-card">
+    <div class="card-title">⚙ Configuration Apprentissage</div>
+
+    <!-- Niveau 1 : Sélecteur ligne -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">① LIGNE</div>
+      <select id="sillon-line-sel" onchange="sillonLineChanged()" style="width:100%;padding:9px 10px;font-size:15px;font-weight:700;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+        <option value="">— Choisir une ligne —</option>
+      </select>
+    </div>
+
+    <!-- Niveau 2 : Variantes (chips) — affiché après sélection ligne -->
+    <div id="sillon-variant-section" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">② DESTINATION / VARIANTE</div>
+      <div id="sillon-variant-row"></div>
+    </div>
+
+    <!-- Résumé sélection -->
+    <div id="sillon-selection-summary" style="display:none;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">TRAJET SÉLECTIONNÉ</div>
+      <div id="sillon-sel-text" style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--accent)">—</div>
+    </div>
+
+    <!-- Bouton démarrer — désactivé jusqu'à sélection complète -->
+    <button id="sillon-start-btn" onclick="sillonStart()" disabled
+      style="width:100%;padding:14px;font-size:16px;font-weight:700;
+             background:linear-gradient(135deg,rgba(231,76,60,.8),rgba(192,57,43,.9));
+             color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:1px">
+      ▶ DÉMARRER APPRENTISSAGE
+    </button>
+  </div>
+
+  <!-- Live panel — visible pendant enregistrement -->
+  <div id="sillon-live-card" class="card" style="display:none;border:2px solid #e74c3c">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#e74c3c">📍 TRACÉ EN COURS</div>
+      <div style="text-align:right">
+        <div id="sillon-live-pk" style="font-family:'Share Tech Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">0.00 km</div>
+        <div style="font-size:10px;color:var(--muted)">PK cumulé</div>
+      </div>
+    </div>
+    <!-- Barre de stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-pts" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--text)">0</div>
+        <div style="font-size:9px;color:var(--muted)">POINTS GPS</div>
+      </div>
+      <div style="background:rgba(39,174,96,.1);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-stops" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">0</div>
+        <div style="font-size:9px;color:var(--muted)">ARRÊTS</div>
+      </div>
+      <div style="background:rgba(255,193,7,.08);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-spd" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:#ffc107">—</div>
+        <div style="font-size:9px;color:var(--muted)">km/h</div>
+      </div>
+    </div>
+    <!-- Dernier arrêt détecté -->
+    <div id="sillon-last-stop" style="font-size:12px;color:var(--muted);padding:8px;background:rgba(255,255,255,.03);border-radius:8px;margin-bottom:10px;min-height:36px">
+      Aucun arrêt détecté
+    </div>
+    <!-- Bouton terminus -->
+    <button onclick="sillonTerminus()"
+      style="width:100%;padding:14px;font-size:15px;font-weight:700;
+             background:linear-gradient(135deg,#27ae60,#1e8449);
+             color:#fff;border:none;border-radius:12px;cursor:pointer">
+      🏁 TERMINUS / EXPORTER
+    </button>
+  </div>
+
+  <!-- Résultat JSON export -->
+  <div id="sillon-export-card" class="card" style="display:none;border:1px solid rgba(0,212,255,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin:0">📦 Export JSON — Sillon</div>
+      <button onclick="sillonCopyJSON()" class="btn btn-sm" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">
+        📋 Copier
+      </button>
+    </div>
+    <!-- Résumé -->
+    <div id="sillon-export-summary" style="font-size:12px;color:var(--muted);margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;line-height:1.8"></div>
+    <!-- JSON textarea -->
+    <textarea id="sillon-export-json" rows="12" readonly
+      style="width:100%;padding:10px;font-size:10px;font-family:monospace;background:rgba(0,0,0,.3);
+             color:#00ff88;border:1px solid rgba(0,212,255,.2);border-radius:8px;resize:vertical;
+             box-sizing:border-box"></textarea>
+    <!-- Nouveau parcours -->
+    <button onclick="sillonReset()"
+      style="width:100%;margin-top:10px;padding:12px;font-size:14px;font-weight:700;
+             background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+             border-radius:10px;cursor:pointer">
+      🔄 Nouveau parcours
+    </button>
+  </div>
+
+</div>
+
 <nav id="nav">
   <button class="nav-btn active" data-view="view-live" onclick="showView('view-live')">
     <span class="ico">⏱</span>EN DIRECT
@@ -921,6 +1242,9 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <span class="ico">🗺</span>SERVICE
   </button>
 
+  <button class="nav-btn" data-view="view-sillon" onclick="showView('view-sillon')">
+    <span class="ico">🔴</span>SILLON
+  </button>
   <button class="nav-btn" data-view="view-settings" onclick="showView('view-settings')">
     <span class="ico">⚙</span>OPTIONS
   </button>
@@ -2956,9 +3280,20 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
+  if(id === 'view-settings') { loadSettings(); }
+  if(id === 'view-sillon')   { sillonInitView(); }
+  // Bouton carte visible seulement sur EN DIRECT
+  const mapBtn = document.getElementById('map-toggle-btn');
+  if(mapBtn) mapBtn.style.display = (id === 'view-live') ? 'flex' : 'none';
+  // Fermer le panneau carte si on quitte EN DIRECT
+  if(id !== 'view-live') {
+    const ov = document.getElementById('map-overlay');
+    if(ov) ov.classList.remove('open');
+    const btn = document.getElementById('map-toggle-btn');
+    if(btn) btn.classList.remove('active');
+  }
   if(id === 'view-heures') heuresRender();
-  if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
+  if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
 }
 
 // ══ CLOCK ════════════════════════════════════════════════════
@@ -3459,6 +3794,8 @@ function activateTrip(lineIdx, tripIdx) {
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: undefined };
+  // Reconstruire la table des PK si le mode auto est déjà actif
+  if(gpsMode === 'auto') odoReset();
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -3468,8 +3805,6 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
-  // Rafraîchir la carte Leaflet
-  setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 300);
 }
 
 function showStartFromStop() {
@@ -5071,7 +5406,17 @@ function exportHeuresPDF() {
     <div class="sig-box">Signature employeur</div>
   </div>
   <script>window.onload=()=>window.print()<\/script>
-  </body></html>`;
+  
+<!-- Nav mini paysage -->
+<div id="landscape-nav" style="display:none">
+  <button onclick="showView('view-live')" data-lnav="view-live" class="active">⏱ DIRECT</button>
+  <button onclick="showView('view-lines')" data-lnav="view-lines">🚌 TRAJET</button>
+  <button onclick="showView('view-roadmap')" data-lnav="view-roadmap">🗺 SERVICE</button>
+  <button onclick="showView('view-sillon')" data-lnav="view-sillon">🔴 SILLON</button>
+  <button onclick="showView('view-settings')" data-lnav="view-settings">⚙ OPTIONS</button>
+</div>
+
+</body></html>`;
 
   // Ouvrir dans un nouvel onglet → Ctrl+P pour imprimer/sauvegarder en PDF
   const newTab = window.open('', '_blank');
@@ -5213,6 +5558,32 @@ function exportPrimePDF() {
 
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
+// ══ PK OFFICIELS PAR LIGNE ═══════════════════════════════════════════════════
+// Format : { 'lineNum': { 'tripLabel_substring_ou_direction': { 'NomArrêt': pkMetres } } }
+// La clé de trajet est comparée via includes() sur le label ou la direction.
+// Mettre 'aller' pour tous les trajets aller d'une ligne, ou un label exact.
+// Si un arrêt n'est pas dans la table, buildPkTable() interpolera depuis ses voisins.
+const OFFICIAL_PK = {
+  '1202': {
+    // Sens Cergy Préfecture → Les Beurriers (aller)
+    aller: {
+      'Gare de Cergy Préfecture - Quai K': 0,
+      'Les Marjoberts':                     821,
+      'Marcouville':                        2100,
+      'Croix Saint Siméon':                 4040,
+      'Normandie':                          4330,
+      'Place de la Paix':                   4720,
+      'Boblingen':                          5100,
+      'Alsace Bretagne':                    5360,
+      'Hôpital René Dubos':                 5720,
+      'Hôpital Administration':             6180,
+      'Maison de Retraite':                 6400,
+      'Paul Cézanne':                       6580,
+      'Les Beurriers':                      6800,
+    },
+  },
+};
+
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
 const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
@@ -5225,6 +5596,17 @@ let gpsRecStopIdx = 0;
 let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
 let gpsAutoNextIdx = 0;
 let gpsSession = []; // [{stopName, planned, actual, diff}]
+
+// ── ODOMÉTRIE ────────────────────────────────────────────────────────────────
+// pkStops[]  : tableau des PK (mètres depuis départ) de chaque arrêt du trajet actif
+// pkBus      : position kilométrique courante du bus sur l'itinéraire théorique (m)
+// pkPrevCoords: dernière position GPS connue pour le calcul du delta
+// pkRecaled  : true si un recalage vient d'avoir lieu (pour log/debug)
+let pkStops     = [];       // PK de chaque arrêt (index = stopIdx)
+let pkBus       = 0;        // PK courant du bus (mètres depuis 1er arrêt)
+let pkPrevCoords = null;    // dernière position GPS pour calculer le delta odo
+let pkRecaled   = false;    // indicateur de recalage
+const PK_SNAP_DIST = 30;    // mètres — seuil de recalage automatique sur un arrêt
 
 // ── WATCHDOG GPS ─────────────────────────────────────────────
 const GPS_WATCHDOG_TIMEOUT = 15000; // ms sans signal → alerte
@@ -5715,6 +6097,7 @@ function startGpsAuto() {
   gpsAutoNextIdx = 0;
   gpsSession = [];
   gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+  odoReset();           // ← réinitialiser l'odométrie
   cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
   updateGpsIcon('auto');
   document.getElementById('gps-auto-banner').style.display = 'block';
@@ -5722,17 +6105,10 @@ function startGpsAuto() {
   startGpsWatch(
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
-      checkGpsAutoDetect(coords);
+      odoStep(coords);              // ← odométrie + recalage PK en 1er
+      checkGpsAutoDetect(coords);  // ← détection d'arrêt
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
-      liveMapUpdateBus();
-      // Carte OPTIONS
-      const settingsView = document.getElementById('view-settings');
-      if(settingsView && settingsView.classList.contains('active')) {
-        if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
-        mapSetupEvents();
-        mapDraw();
-      }
     },
     () => toast('Erreur GPS')
   );
@@ -5753,6 +6129,198 @@ function bearingTo(lat1, lon1, lat2, lon2) {
 function angleDiff(a, b) {
   let d = ((b - a) + 540) % 360 - 180;
   return d;
+}
+
+// ── ODOMÉTRIE : Construction de la table des PK ─────────────────────────────
+// Calcule la distance cumulée de chaque arrêt depuis le 1er arrêt du trajet.
+// On utilise les coordonnées GPS réelles enregistrées dans gpsCoordsDB.
+// Si un arrêt n'a pas de coords, on interpole linéairement depuis les voisins.
+function buildPkTable() {
+  pkStops = [];
+  if(!activeTrip) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+  const n = trip.stops.length;
+  pkStops = new Array(n).fill(null);
+
+  // ── PRIORITÉ 1 : PK officiels définis dans OFFICIAL_PK ─────────────────
+  const officialLine = OFFICIAL_PK[line.num];
+  if(officialLine) {
+    // Trouver la bonne entrée : chercher par direction d'abord, puis par label
+    let officialMap = null;
+    const dir = trip.direction || 'aller';
+    if(officialLine[dir]) {
+      officialMap = officialLine[dir];
+    } else {
+      // Chercher par substring du label
+      for(const key of Object.keys(officialLine)) {
+        if(trip.label && trip.label.toLowerCase().includes(key.toLowerCase())) {
+          officialMap = officialLine[key];
+          break;
+        }
+      }
+    }
+
+    if(officialMap) {
+      let officialCount = 0;
+      trip.stops.forEach((s, i) => {
+        // Cherche le nom exact, puis insensible à la casse, puis normalisé
+        let pk = officialMap[s.name];
+        if(pk === undefined) {
+          // Recherche souple (sans accents ni casse)
+          const normalize = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const norm = normalize(s.name);
+          for(const [k, v] of Object.entries(officialMap)) {
+            if(normalize(k) === norm) { pk = v; break; }
+          }
+        }
+        if(pk !== undefined) { pkStops[i] = pk; officialCount++; }
+      });
+
+      // Si tous les arrêts sont couverts par les PK officiels → terminé
+      if(officialCount === n) {
+        console.log(`[ODO] PK officiels 100% — ligne ${line.num} ${dir} (${n} arrêts)`);
+        return;
+      }
+      console.log(`[ODO] PK officiels partiels — ${officialCount}/${n} arrêts, interpolation pour le reste`);
+    }
+  }
+
+  // ── PRIORITÉ 2 : PK calculés depuis les coords GPS enregistrées ─────────
+  const known = [];
+  trip.stops.forEach((s, i) => {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
+    const c = gpsCoordsDB[key];
+    // N'utiliser les coords GPS que si ce PK n'est pas déjà fixé par les officiels
+    if(c && pkStops[i] === null) known.push({ idx: i, lat: c.lat, lon: c.lon });
+    else if(c) known.push({ idx: i, lat: c.lat, lon: c.lon, locked: true });
+  });
+
+  if(known.length >= 2) {
+    // Calculer cumul haversine pour les arrêts sans PK officiel
+    // Ancre de départ : premier PK officiel connu, ou 0
+    let anchorIdx  = 0, anchorPk = 0;
+    for(let i = 0; i < n; i++) {
+      if(pkStops[i] !== null) { anchorIdx = i; anchorPk = pkStops[i]; break; }
+    }
+
+    // Calculer les distances entre arrêts GPS consécutifs connus
+    let cumul = anchorPk;
+    let prevGps = null;
+    for(const kp of known) {
+      if(kp.idx < anchorIdx) continue; // ignorer avant l'ancre
+      if(prevGps !== null) {
+        cumul += haversine(prevGps.lat, prevGps.lon, kp.lat, kp.lon);
+      }
+      // Ne pas écraser un PK officiel déjà fixé
+      if(pkStops[kp.idx] === null) pkStops[kp.idx] = cumul;
+      else cumul = pkStops[kp.idx]; // se recaler sur le PK officiel
+      prevGps = kp;
+    }
+  }
+
+  // ── PRIORITÉ 3 : Interpolation linéaire pour les trous restants ─────────
+  for(let i = 0; i < n; i++) {
+    if(pkStops[i] !== null) continue;
+    let prevK = null, nextK = null;
+    for(let k = i-1; k >= 0; k--) { if(pkStops[k] !== null) { prevK = k; break; } }
+    for(let k = i+1; k < n; k++) { if(pkStops[k] !== null) { nextK = k; break; } }
+    if(prevK !== null && nextK !== null) {
+      const frac = (i - prevK) / (nextK - prevK);
+      pkStops[i] = pkStops[prevK] + frac * (pkStops[nextK] - pkStops[prevK]);
+    } else if(prevK !== null) {
+      pkStops[i] = pkStops[prevK] + (i - prevK) * 300;
+    } else if(nextK !== null) {
+      pkStops[i] = pkStops[nextK] - (nextK - i) * 300;
+      if(pkStops[i] < 0) pkStops[i] = 0;
+    } else {
+      pkStops[i] = i * 300; // aucune info : espacement uniforme
+    }
+  }
+
+  // Garantir PK strictement croissants
+  for(let i = 1; i < n; i++) {
+    if(pkStops[i] <= pkStops[i-1]) pkStops[i] = pkStops[i-1] + 1;
+  }
+
+  if(console) console.log('[ODO] PK table built:', pkStops.map((v,i) => `${trip.stops[i]?.name}: ${Math.round(v)}m`));
+}
+
+// ── ODOMÉTRIE : Mise à jour à chaque position GPS ───────────────────────────
+// Appelée à chaque tick GPS. Avance pkBus du delta haversine, puis
+// vérifie si on est à ≤ PK_SNAP_DIST d'un arrêt pour se recaler.
+function odoStep(coords) {
+  if(!activeTrip || gpsMode !== 'auto') return;
+  if(pkStops.length === 0) buildPkTable();
+
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  // ── 1. Delta odométrique ─────────────────────────────────────────────────
+  if(pkPrevCoords) {
+    const delta = haversine(pkPrevCoords.lat, pkPrevCoords.lon, coords.lat, coords.lon);
+    // Filtrer les sauts aberrants (> 150m entre deux positions = erreur GPS)
+    if(delta < 150) {
+      pkBus += delta;
+    }
+  }
+  pkPrevCoords = coords;
+
+  // ── 2. Recalage automatique sur un arrêt réel ────────────────────────────
+  // Vérifier TOUS les arrêts du trajet (pas seulement le suivant)
+  // pour caler le bus exactement sur son PK si on passe à ≤ 30m
+  let snapDone = false;
+  for(let i = gpsAutoNextIdx; i < Math.min(gpsAutoNextIdx + 8, trip.stops.length); i++) {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
+    const c = gpsCoordsDB[key];
+    if(!c) continue;
+    const distToStop = haversine(coords.lat, coords.lon, c.lat, c.lon);
+    if(distToStop <= PK_SNAP_DIST && pkStops[i] !== null) {
+      // Recalage : aligner pkBus exactement sur le PK de cet arrêt
+      pkBus = pkStops[i];
+      pkRecaled = true;
+      snapDone = true;
+      break; // un seul recalage par tick
+    }
+  }
+
+  // ── 3. Mise à jour de l'index d'arrêt basé sur le PK ────────────────────
+  // Trouver quel est le prochain arrêt dont le PK est > pkBus
+  // (on ne change gpsAutoNextIdx que si l'avance est cohérente)
+  if(!snapDone) {
+    for(let i = gpsAutoNextIdx; i < trip.stops.length; i++) {
+      if(pkStops[i] !== null && pkStops[i] > pkBus) {
+        // gpsAutoNextIdx pointe vers le prochain arrêt à venir
+        if(i > gpsAutoNextIdx) {
+          // Le PK indique qu'on a dépassé gpsAutoNextIdx → avancer
+          // (uniquement si la détection principale ne l'a pas déjà fait)
+          // On ne saute qu'un arrêt à la fois pour éviter les faux positifs
+          gpsAutoNextIdx = Math.min(i, gpsAutoNextIdx + 1);
+          if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
+          updateLive();
+        }
+        break;
+      }
+    }
+  }
+
+  // ── 4. Rafraîchir la carte si ouverte ───────────────────────────────────
+  const overlay = document.getElementById('map-overlay');
+  if(overlay && overlay.classList.contains('open')) {
+    if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
+    mapDraw();
+  }
+}
+
+// Réinitialiser l'odométrie (appelé au démarrage d'un nouveau trajet)
+function odoReset() {
+  pkBus       = 0;
+  pkPrevCoords = null;
+  pkStops     = [];
+  pkRecaled   = false;
+  buildPkTable();
 }
 
 function checkGpsAutoDetect(coords) {
@@ -6725,7 +7293,9 @@ function mapDraw() {
     const line = db.lines[activeTrip.lineIdx];
     const trip = line?.trips?.[activeTrip.tripIdx];
     const stop = trip?.stops?.[gpsAutoNextIdx];
-    mapInfoEl.textContent = stop ? `→ ${stop.name}` : 'GPS actif';
+    const pkStr = pkBus > 0 ? ` · PK ${pkBus >= 1000 ? (pkBus/1000).toFixed(2)+'km' : Math.round(pkBus)+'m'}${pkRecaled ? ' 📌' : ''}` : '';
+    mapInfoEl.textContent = stop ? `→ ${stop.name}${pkStr}` : `GPS actif${pkStr}`;
+    pkRecaled = false; // reset indicateur recalage après affichage
   }
 }
 
@@ -6782,202 +7352,740 @@ function mapSetupEvents() {
   canvas.addEventListener('touchend', () => { lastTouch = null; lastPinchDist = null; });
 }
 
-// Rafraîchir la carte quand on arrive sur l'onglet OPTIONS
-const _origShowView = typeof showView === 'function' ? showView : null;
+// (carte déplacée dans le panneau flottant EN DIRECT)
 
-// ══ CARTE LEAFLET EN DIRECT ════════════════════════════════════
-let liveMap = null;
-let liveMapBusMarker = null;
-let liveMapPolyline = null;
-let liveMapStopMarkers = [];
-let liveMapVisible = true;
-let liveMapInitialized = false;
-
-function liveMapToggle() {
-  const mapEl = document.getElementById('live-map');
-  const btn = document.getElementById('live-map-toggle-btn');
-  if(!mapEl) return;
-  liveMapVisible = !liveMapVisible;
-  mapEl.style.height = liveMapVisible ? '300px' : '0';
-  if(btn) btn.textContent = liveMapVisible ? '▼ Réduire' : '▶ Agrandir';
-  if(liveMapVisible && liveMap) setTimeout(() => liveMap.invalidateSize(), 100);
-}
-
-function liveMapCenter() {
-  if(!liveMap) return;
-  if(gpsCoords) {
-    liveMap.setView([gpsCoords.lat, gpsCoords.lon], 16);
-  } else if(liveMapPolyline) {
-    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [20, 20]});
+function mapTogglePanel() {
+  const overlay = document.getElementById('map-overlay');
+  const btn     = document.getElementById('map-toggle-btn');
+  if(!overlay) return;
+  const isOpen = overlay.classList.toggle('open');
+  if(btn) btn.classList.toggle('active', isOpen);
+  if(isOpen) {
+    // Init canvas une seule fois
+    setTimeout(() => { mapSetupEvents(); mapDraw(); }, 80);
   }
 }
 
-function liveMapInit() {
-  if(liveMapInitialized || typeof L === 'undefined') return;
-  const mapEl = document.getElementById('live-map');
-  if(!mapEl) return;
 
-  liveMap = L.map('live-map', {
-    zoomControl: true,
-    attributionControl: false
-  }).setView([49.04, 2.07], 13);
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE SILLON — Apprentissage Automatique d'Itinéraire
+// ══════════════════════════════════════════════════════════════════════════════
 
-  // Tuiles OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  }).addTo(liveMap);
+// ── Variables d'état ──────────────────────────────────────────────────────────
+let sillonActive      = false;       // enregistrement en cours
+let sillonDirection   = 'aller';     // 'aller' | 'retour'
+let sillonLineNum     = '';          // numéro de ligne sélectionnée
+let sillonLineName    = '';
+let sillonPath        = [];          // [{lat, lon, pk, ts}] — tracé complet (le Sillon)
+let sillonStops       = [];          // [{name, lat, lon, pk, auto}] — arrêts validés
+let sillonPkCumul     = 0;           // PK courant en mètres
+let sillonPrevCoord   = null;        // dernière coord pour delta haversine
+let sillonPrevTime    = null;        // timestamp dernière position
+let sillonRecTimer    = null;        // setInterval 2s
+let sillonGpsWatchId  = null;        // watchPosition ID
+let sillonLastCoords  = null;        // dernière position GPS connue
+let sillonStopTimer   = null;        // setTimeout détection arrêt 5s
+let sillonStopCandLat = null;        // coords du candidat arrêt potentiel
+let sillonStopCandLon = null;
+let sillonSpeedHistory = [];         // historique vitesses pour affichage
 
-  // Attribution discrète
-  L.control.attribution({prefix: false}).addTo(liveMap);
+// ── Constantes ────────────────────────────────────────────────────────────────
+const SILLON_INTERVAL    = 2000;   // ms entre deux enregistrements de position
+const SILLON_STOP_SPEED  = 2;      // km/h en dessous duquel = arrêt
+const SILLON_STOP_DELAY  = 5000;   // ms à l'arrêt avant validation (5s)
+const SILLON_STOP_RADIUS = 50;     // m — rayon fusion avec arrêt connu
+const SILLON_MIN_DIST    = 150;    // m — distance minimale entre 2 arrêts
+const SILLON_MAX_JUMP    = 150;    // m — saut max entre 2 positions (filtre erreur GPS)
 
-  liveMapInitialized = true;
-  liveMapRefresh();
+// ── Initialisation de la vue ──────────────────────────────────────────────────
+function sillonInitView() {
+  // Peupler le sélecteur de lignes depuis db.lines
+  const sel = document.getElementById('sillon-line-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
+    db.lines.map(l => `<option value="${l.num}">${l.num} — ${l.name||''}</option>`).join('');
+  // Remettre la direction active
+  sillonSetDir(sillonDirection);
 }
 
-function liveMapRefresh() {
-  if(!liveMap || !liveMapInitialized) return;
-
-  // Supprimer anciens éléments
-  if(liveMapPolyline) { liveMap.removeLayer(liveMapPolyline); liveMapPolyline = null; }
-  liveMapStopMarkers.forEach(m => liveMap.removeLayer(m));
-  liveMapStopMarkers = [];
-
-  if(!activeTrip) return;
-
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-
-  // Collecter les coordonnées GPS des arrêts
-  const stopPoints = [];
-  trip.stops.forEach((stop, idx) => {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
-    const c = gpsCoordsDB[key];
-    if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
-  });
-
-  if(stopPoints.length < 2) return;
-
-  // ── Dessiner les marqueurs d'arrêts ──────────────────────────
-  function drawStopMarkers() {
-    stopPoints.forEach(sp => {
-      const isCurrent = sp.idx === gpsAutoNextIdx;
-      const isPassed  = sp.idx < gpsAutoNextIdx;
-      const isRef     = sp.isRef;
-      const size  = isCurrent ? 16 : isRef ? 12 : 8;
-      const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(200,200,200,0.8)';
-      const border = isCurrent ? '#fff' : '#222';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
-      });
-      const marker = L.marker([sp.lat, sp.lon], {icon})
-        .bindPopup(`<b>${sp.name}</b>${sp.time ? `<br>⏱ ${sp.time}` : ''}${isRef ? '<br>🔴 Arrêt régulation' : ''}`)
-        .addTo(liveMap);
-      liveMapStopMarkers.push(marker);
-    });
-  }
-
-  // ── Tracé OSRM (route réelle sur les rues) ───────────────────
-  // OSRM accepte max ~25 waypoints — on envoie tous les arrêts GPS
-  const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
-
-  // Afficher une polyline droite provisoire pendant le chargement
-  const provisoire = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
-    color: line.color || '#c0392b',
-    weight: 4,
-    opacity: 0.4,
-    dashArray: '8 6'
-  }).addTo(liveMap);
-  liveMap.fitBounds(provisoire.getBounds(), {padding: [24, 24]});
-
-  drawStopMarkers();
-
-  // Appel OSRM
-  fetch(osrmUrl)
-    .then(r => { if(!r.ok) throw new Error('OSRM ' + r.status); return r.json(); })
-    .then(data => {
-      if(!data.routes || !data.routes[0]) throw new Error('Pas de route OSRM');
-      const geom = data.routes[0].geometry.coordinates; // [[lon,lat], ...]
-      const latLngs = geom.map(c => [c[1], c[0]]);
-
-      // Supprimer la polyline provisoire
-      liveMap.removeLayer(provisoire);
-
-      // Tracer la vraie route
-      liveMapPolyline = L.polyline(latLngs, {
-        color: line.color || '#c0392b',
-        weight: 5,
-        opacity: 0.9
-      }).addTo(liveMap);
-
-      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
-      toast('🗺 Tracé réaliste chargé');
-    })
-    .catch(err => {
-      // Fallback : garder la polyline provisoire comme définitive
-      liveMap.removeLayer(provisoire);
-      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
-        color: line.color || '#c0392b',
-        weight: 5,
-        opacity: 0.85
-      }).addTo(liveMap);
-      console.warn('OSRM indisponible, tracé droit utilisé :', err.message);
-    });
-}
-
-function liveMapUpdateBus() {
-  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
-
-  // Icône bus
-  const busIcon = L.divIcon({
-    className: '',
-    html: `<div style="width:22px;height:22px;border-radius:50%;
-           background:#00d4ff;border:3px solid #fff;
-           display:flex;align-items:center;justify-content:center;
-           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11]
-  });
-
-  if(liveMapBusMarker) {
-    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
+// ── Sélection de direction ────────────────────────────────────────────────────
+function sillonSetDir(dir) {
+  sillonDirection = dir;
+  const ba = document.getElementById('sillon-btn-aller');
+  const br = document.getElementById('sillon-btn-retour');
+  if(!ba || !br) return;
+  if(dir === 'aller') {
+    ba.style.background   = 'rgba(0,212,255,.2)';
+    ba.style.borderColor  = 'var(--accent)';
+    ba.style.color        = 'var(--accent)';
+    br.style.background   = 'rgba(39,174,96,.05)';
+    br.style.borderColor  = 'rgba(39,174,96,.3)';
+    br.style.color        = 'var(--muted)';
   } else {
-    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
-      .addTo(liveMap);
+    br.style.background   = 'rgba(39,174,96,.2)';
+    br.style.borderColor  = 'var(--green)';
+    br.style.color        = 'var(--green)';
+    ba.style.background   = 'rgba(0,212,255,.05)';
+    ba.style.borderColor  = 'rgba(0,212,255,.3)';
+    ba.style.color        = 'var(--muted)';
+  }
+}
+
+// ── DÉMARRER l'apprentissage ──────────────────────────────────────────────────
+function sillonStart() {
+  const sel = document.getElementById('sillon-line-sel');
+  sillonLineNum  = sel ? sel.value : '';
+  sillonLineName = sel ? (sel.options[sel.selectedIndex]?.text || '') : '';
+  if(!sillonLineNum) { toast("⚠ Sélectionnez une ligne d'abord"); return; }
+  if(!navigator.geolocation) { toast('GPS non disponible'); return; }
+
+  // Réinitialiser l'état
+  sillonActive     = true;
+  sillonPath       = [];
+  sillonStops      = [];
+  sillonPkCumul    = 0;
+  sillonPrevCoord  = null;
+  sillonPrevTime   = null;
+  sillonSpeedHistory = [];
+  sillonLastCoords = null;
+
+  // UI
+  document.getElementById('sillon-config-card').style.display = 'none';
+  document.getElementById('sillon-live-card').style.display   = 'block';
+  document.getElementById('sillon-export-card').style.display = 'none';
+  sillonSetStatusBar('REC', `${sillonLineNum} ${sillonDirection.toUpperCase()} — En cours...`, '#e74c3c', true);
+
+  // Lancer GPS watchPosition
+  sillonGpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const coords = {
+        lat:     pos.coords.latitude,
+        lon:     pos.coords.longitude,
+        acc:     pos.coords.accuracy,
+        speed:   pos.coords.speed,    // m/s ou null
+        heading: pos.coords.heading,
+        ts:      Date.now()
+      };
+      // Ignorer positions trop imprécises (> 30m)
+      if(coords.acc > 30) return;
+      sillonLastCoords = coords;
+      sillonCheckStop(coords);
+      sillonUpdateLiveUI(coords);
+    },
+    err => toast('Erreur GPS : ' + err.message),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+
+  // Enregistrement périodique toutes les 2s
+  sillonRecTimer = setInterval(() => {
+    if(!sillonLastCoords) return;
+    sillonRecordPoint(sillonLastCoords);
+  }, SILLON_INTERVAL);
+
+  toast('🔴 Apprentissage démarré — roulez !');
+}
+
+// ── Enregistrer un point dans le sillon ──────────────────────────────────────
+function sillonRecordPoint(coords) {
+  // Calculer delta PK
+  if(sillonPrevCoord) {
+    const d = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
+    if(d < SILLON_MAX_JUMP) sillonPkCumul += d; // filtrer les sauts aberrants
+  }
+  sillonPrevCoord = coords;
+  sillonPath.push({ lat: coords.lat, lon: coords.lon, pk: Math.round(sillonPkCumul) });
+  sillonUpdateLiveUI(coords);
+}
+
+// ── Détection d'arrêt (mains libres) ─────────────────────────────────────────
+function sillonCheckStop(coords) {
+  // Calculer vitesse (m/s → km/h)
+  let kmh = 0;
+  if(coords.speed !== null && coords.speed !== undefined) {
+    kmh = coords.speed * 3.6;
+  } else if(sillonPrevCoord && sillonPrevTime) {
+    const dt = (Date.now() - sillonPrevTime) / 1000;
+    if(dt > 0.5 && dt < 15) {
+      const dm = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
+      kmh = (dm / dt) * 3.6;
+    }
+  }
+  sillonPrevTime = Date.now();
+  sillonSpeedHistory.push(kmh);
+  if(sillonSpeedHistory.length > 5) sillonSpeedHistory.shift();
+
+  const avgKmh = sillonSpeedHistory.reduce((a,b)=>a+b,0) / sillonSpeedHistory.length;
+  const el = document.getElementById('sillon-live-spd');
+  if(el) el.textContent = Math.round(avgKmh);
+
+  const isStationary = avgKmh < SILLON_STOP_SPEED;
+
+  if(isStationary) {
+    // Lancer le timer d'arrêt si pas déjà en cours
+    if(!sillonStopTimer) {
+      sillonStopCandLat = coords.lat;
+      sillonStopCandLon = coords.lon;
+      sillonStopTimer = setTimeout(() => {
+        sillonValidateStop(coords);
+        sillonStopTimer = null;
+      }, SILLON_STOP_DELAY);
+    }
+  } else {
+    // En mouvement : annuler le timer
+    if(sillonStopTimer) { clearTimeout(sillonStopTimer); sillonStopTimer = null; }
+  }
+}
+
+// ── Valider un arrêt potentiel ────────────────────────────────────────────────
+function sillonValidateStop(coords) {
+  // Vérifier distance minimale depuis le dernier arrêt
+  if(sillonStops.length > 0) {
+    const last = sillonStops[sillonStops.length - 1];
+    const distFromLast = haversine(last.lat, last.lon, coords.lat, coords.lon);
+    if(distFromLast < SILLON_MIN_DIST) return; // trop proche → feux rouges, stop ignoré
   }
 
-  // Mettre à jour les couleurs des pastilles
-  liveMapRefreshStopColors();
+  // Chercher un arrêt connu dans gpsCoordsDB pour cette ligne et direction
+  let matchedName = null;
+  let bestMatchDist = SILLON_STOP_RADIUS + 1;
+
+  // Chercher dans tous les trajets de la ligne sélectionnée
+  loadGpsCoordsDB();
+  const lineObj = db.lines.find(l => l.num === sillonLineNum);
+  if(lineObj) {
+    lineObj.trips.forEach((trip, tripIdx) => {
+      if(trip.direction !== sillonDirection) return;
+      trip.stops.forEach((stop, stopIdx) => {
+        const key = gpsCoordKey(lineObj.num, tripIdx, stopIdx);
+        const c = gpsCoordsDB[key];
+        if(!c) return;
+        const d = haversine(coords.lat, coords.lon, c.lat, c.lon);
+        if(d < bestMatchDist) { bestMatchDist = d; matchedName = stop.name; }
+      });
+    });
+  }
+
+  const pkActuel = Math.round(sillonPkCumul);
+
+  if(matchedName) {
+    // ── FUSION : arrêt connu à proximité ────────────────────────────────────
+    sillonStops.push({ name: matchedName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: false });
+    const el = document.getElementById('sillon-last-stop');
+    if(el) el.innerHTML = `✅ <strong>${matchedName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:var(--green);font-size:10px">(fusion base)</span>`;
+    toast(`📍 Arrêt lié : ${matchedName}`);
+  } else {
+    // ── AUTO-DÉTECTION : aucun arrêt connu à proximité ──────────────────────
+    const autoName = `Arrêt potentiel #${sillonStops.filter(s=>s.auto).length + 1}`;
+    sillonStops.push({ name: autoName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: true });
+    const el = document.getElementById('sillon-last-stop');
+    if(el) el.innerHTML = `🟡 <strong>${autoName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:orange;font-size:10px">(auto)</span>`;
+    toast(`🟡 Arrêt potentiel créé`);
+  }
+
+  document.getElementById('sillon-live-stops').textContent = sillonStops.length;
 }
 
-function liveMapRefreshStopColors() {
-  if(!activeTrip || !liveMap) return;
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
+// ── Mise à jour de l'interface live ──────────────────────────────────────────
+function sillonUpdateLiveUI(coords) {
+  const pkKm = (sillonPkCumul / 1000).toFixed(3);
+  const pkEl = document.getElementById('sillon-live-pk');
+  if(pkEl) pkEl.textContent = pkKm + ' km';
 
-  liveMapStopMarkers.forEach((marker, idx) => {
-    const stop = trip.stops[idx];
-    if(!stop) return;
-    const isCurrent = idx === gpsAutoNextIdx;
-    const isPassed  = idx < gpsAutoNextIdx;
-    const isRef     = stop.isRef;
-    const size  = isCurrent ? 16 : isRef ? 12 : 8;
-    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
-    const border = isCurrent ? '#fff' : '#333';
-    marker.setIcon(L.divIcon({
-      className: '',
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
-    }));
+  const ptsEl = document.getElementById('sillon-live-pts');
+  if(ptsEl) ptsEl.textContent = sillonPath.length;
+
+  const counterEl = document.getElementById('sillon-pt-counter');
+  if(counterEl) counterEl.textContent = sillonPath.length + ' pts';
+}
+
+// ── Statut bar ────────────────────────────────────────────────────────────────
+function sillonSetStatusBar(badge, label, color, blink) {
+  const dot   = document.getElementById('sillon-rec-dot');
+  const lbl   = document.getElementById('sillon-status-label');
+  const sub   = document.getElementById('sillon-status-sub');
+  const bdg   = document.getElementById('sillon-rec-badge');
+  const ctr   = document.getElementById('sillon-pt-counter');
+  if(dot)  { dot.style.background = color; dot.style.animation = blink ? 'pulse 0.8s infinite' : 'none'; }
+  if(lbl)  lbl.textContent = label;
+  if(bdg)  { bdg.style.display = blink ? '' : 'none'; }
+  if(ctr)  { ctr.style.display = blink ? '' : 'none'; }
+}
+
+// ── TERMINUS — Arrêter et exporter ───────────────────────────────────────────
+function sillonTerminus() {
+  if(!sillonActive) return;
+  sillonActive = false;
+
+  // Stopper GPS et timers
+  if(sillonGpsWatchId !== null) { navigator.geolocation.clearWatch(sillonGpsWatchId); sillonGpsWatchId = null; }
+  if(sillonRecTimer)  { clearInterval(sillonRecTimer);  sillonRecTimer = null; }
+  if(sillonStopTimer) { clearTimeout(sillonStopTimer);  sillonStopTimer = null; }
+
+  // Construire l'objet JSON structuré
+  const result = {
+    meta: {
+      generatedAt: new Date().toISOString(),
+      ligne:       sillonLineNum,
+      nom:         sillonLineName,
+      direction:   sillonDirection === 'aller' ? 'Aller' : 'Retour',
+      totalPoints: sillonPath.length,
+      totalStops:  sillonStops.length,
+      distanceTotale_m: Math.round(sillonPkCumul),
+      distanceTotale_km: (sillonPkCumul / 1000).toFixed(3),
+    },
+    stops: sillonStops.map(s => ({
+      name:  s.name,
+      lat:   parseFloat(s.lat.toFixed(7)),
+      lon:   parseFloat(s.lon.toFixed(7)),
+      pk_m:  s.pk,
+      pk_km: parseFloat((s.pk / 1000).toFixed(3)),
+      source: s.auto ? 'auto-detect' : 'fusion-base',
+    })),
+    path: sillonPath.map(p => ({
+      lat: parseFloat(p.lat.toFixed(7)),
+      lon: parseFloat(p.lon.toFixed(7)),
+      pk_m: p.pk,
+    })),
+  };
+
+  const jsonStr = JSON.stringify(result, null, 2);
+
+  // UI — afficher le résultat
+  document.getElementById('sillon-live-card').style.display   = 'none';
+  document.getElementById('sillon-export-card').style.display = 'block';
+
+  const summary = document.getElementById('sillon-export-summary');
+  if(summary) {
+    const stopsKnown = sillonStops.filter(s=>!s.auto).length;
+    const stopsAuto  = sillonStops.filter(s=>s.auto).length;
+    summary.innerHTML =
+      `🚌 Ligne <strong>${sillonLineNum}</strong> — <strong>${sillonDirection.toUpperCase()}</strong><br>` +
+      `📍 ${sillonStops.length} arrêts (${stopsKnown} fusion base + ${stopsAuto} auto)<br>` +
+      `🛣 ${(sillonPkCumul/1000).toFixed(2)} km — ${sillonPath.length} points GPS enregistrés`;
+  }
+
+  const ta = document.getElementById('sillon-export-json');
+  if(ta) ta.value = jsonStr;
+
+  sillonSetStatusBar('', 'TERMINÉ', 'var(--green)', false);
+  const lbl = document.getElementById('sillon-status-label');
+  if(lbl) lbl.style.color = 'var(--green)';
+  const sub = document.getElementById('sillon-status-sub');
+  if(sub) sub.textContent = `${sillonStops.length} arrêts · ${(sillonPkCumul/1000).toFixed(2)} km`;
+
+  toast('✅ Export JSON prêt — copiez et réintégrez !');
+}
+
+// ── Copier le JSON dans le presse-papier ─────────────────────────────────────
+function sillonCopyJSON() {
+  const ta = document.getElementById('sillon-export-json');
+  if(!ta) return;
+  if(navigator.clipboard) {
+    navigator.clipboard.writeText(ta.value)
+      .then(() => toast('📋 JSON copié !'))
+      .catch(() => { ta.select(); document.execCommand('copy'); toast('📋 JSON copié !'); });
+  } else {
+    ta.select(); document.execCommand('copy'); toast('📋 JSON copié !');
+  }
+}
+
+// ── Réinitialiser pour un nouveau parcours ───────────────────────────────────
+function sillonReset() {
+  sillonActive = false;
+  sillonPath   = []; sillonStops = []; sillonPkCumul = 0;
+  sillonPrevCoord = null; sillonLastCoords = null; sillonSpeedHistory = [];
+  document.getElementById('sillon-config-card').style.display  = 'block';
+  document.getElementById('sillon-live-card').style.display    = 'none';
+  document.getElementById('sillon-export-card').style.display  = 'none';
+  sillonSetStatusBar('', 'EN ATTENTE', 'var(--muted)', false);
+  const lbl = document.getElementById('sillon-status-label');
+  if(lbl) { lbl.style.color = 'var(--muted)'; }
+  const sub = document.getElementById('sillon-status-sub');
+  if(sub) sub.textContent = "Configurez et démarrez l'apprentissage";
+  sillonInitView();
+  toast('🔄 Prêt pour un nouveau parcours');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════════
+// MODULE MULTI-LIGNES & VARIANTES
+// ══════════════════════════════════════════════════════════════
+
+// Base de données réseau : chaque ligne avec ses variantes nommées
+const baseDeDonneesReseau = {};
+
+function buildReseauDB() {
+  // Construire depuis db.lines (PRELOADED_TRIPS)
+  db.lines.forEach(line => {
+    if(!line.trips || !line.trips.length) return;
+    baseDeDonneesReseau[line.num] = {
+      num:      line.num,
+      name:     line.name,
+      color:    line.color,
+      variantes: line.trips.map((t, i) => ({
+        idx:       i,
+        label:     t.label,
+        direction: t.direction || 'aller',
+        shortLabel: buildShortLabel(t)
+      }))
+    };
   });
 }
+
+function buildShortLabel(trip) {
+  // Extraire la destination depuis le label
+  const m = trip.label.match(/→\s*(.+?)(?:\s*\(|$)/);
+  if(m) return (trip.direction === 'retour' ? '↙ ' : '↗ ') + m[1].trim();
+  return trip.label.replace(/^Ligne \S+ — /, '').split('(')[0].trim();
+}
+
+// Peupler le select ligne dans view-lines (remplacement du renderLineGrid)
+function renderLineSelector() {
+  const grid = document.getElementById('line-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  buildReseauDB();
+  db.lines.forEach((line, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'line-chip' + (activeLine === i ? ' selected' : '');
+    chip.innerHTML = `
+      <div style="background:${line.color||'#00d4ff'};color:#fff;border-radius:6px;padding:2px 6px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif">${line.num}</div>
+      <div style="font-size:9px;margin-top:3px;color:var(--muted)">${(line.name||'').split('→')[0].trim()}</div>`;
+    chip.onclick = () => selectLine(i);
+    grid.appendChild(chip);
+  });
+}
+
+// Mise à jour du badge Ligne > Destination
+function updateLigneBadge() {
+  const badge = document.getElementById('ligne-badge');
+  const numEl  = document.getElementById('badge-num-text');
+  const destEl = document.getElementById('badge-dest-text');
+  if(!badge) return;
+  if(!activeTrip) {
+    badge.style.display = 'none';
+    return;
+  }
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!line || !trip) { badge.style.display='none'; return; }
+  badge.style.display = 'flex';
+  numEl.style.background = line.color || '#888';
+  numEl.textContent = 'L' + line.num;
+  const shortDest = buildShortLabel(trip);
+  destEl.textContent = shortDest;
+}
+
+// ══ CARTE INLINE PAYSAGE ══════════════════════════════════════
+let mapInlineSetup = false;
+let mapInlineZoom = 16;
+let mapInlineOffX = 0, mapInlineOffY = 0;
+let mapInlineCentered = true;
+
+function drawMapInline() {
+  const canvas = document.getElementById('map-canvas-inline');
+  if(!canvas) return;
+  const container = document.getElementById('map-inline');
+  if(!container) return;
+  canvas.width  = container.offsetWidth  || 300;
+  canvas.height = container.offsetHeight || 200;
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#1a2035';
+  ctx.fillRect(0, 0, w, h);
+  // Grille
+  ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.lineWidth=1;
+  for(let gx=0;gx<w;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,h);ctx.stroke();}
+  for(let gy=0;gy<h;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
+
+  if(!gpsCoords){
+    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='12px monospace'; ctx.textAlign='center';
+    ctx.fillText('En attente GPS...', w/2, h/2); return;
+  }
+  const cLat=gpsCoords.lat, cLon=gpsCoords.lon;
+
+  // Arrêts et tracé
+  if(activeTrip) {
+    const line = db.lines[activeTrip.lineIdx];
+    const trip = line?.trips?.[activeTrip.tripIdx];
+    if(trip) {
+      ctx.strokeStyle='rgba(192,57,43,.5)'; ctx.lineWidth=2; ctx.beginPath();
+      let fp=true;
+      trip.stops.forEach((s,idx)=>{
+        const key=gpsCoordKey(line.num,activeTrip.tripIdx,idx);
+        const c=gpsCoordsDB[key]; if(!c) return;
+        const p=mapLatLonToXY(c.lat,c.lon,cLat,cLon,mapInlineZoom+mapInlineOffX,w,h);
+        if(fp){ctx.moveTo(p.x,p.y);fp=false;}else ctx.lineTo(p.x,p.y);
+      });
+      ctx.stroke();
+      trip.stops.forEach((s,idx)=>{
+        const key=gpsCoordKey(line.num,activeTrip.tripIdx,idx);
+        const c=gpsCoordsDB[key]; if(!c) return;
+        const p=mapLatLonToXY(c.lat,c.lon,cLat,cLon,mapInlineZoom,w,h);
+        const isCur=idx===gpsAutoNextIdx, isPast=idx<gpsAutoNextIdx;
+        ctx.beginPath(); ctx.arc(p.x,p.y,isCur?7:4,0,2*Math.PI);
+        ctx.fillStyle=isCur?'#c0392b':isPast?'rgba(39,174,96,.6)':'rgba(255,255,255,.35)';
+        ctx.fill();
+        if(isCur){
+          ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+          ctx.fillStyle='#ff9500'; ctx.font='bold 9px sans-serif'; ctx.textAlign='left';
+          const lbl=s.name.length>16?s.name.substring(0,16)+'…':s.name;
+          ctx.fillText(lbl,p.x+9,p.y+3);
+        }
+      });
+    }
+  }
+  // Bus
+  const bp=mapLatLonToXY(cLat,cLon,cLat,cLon,mapInlineZoom,w,h);
+  ctx.beginPath(); ctx.arc(bp.x,bp.y,6,0,2*Math.PI);
+  ctx.fillStyle='#00d4ff'; ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+
+  const infoEl=document.getElementById('map-info-inline');
+  if(infoEl && activeTrip){
+    const line=db.lines[activeTrip.lineIdx];
+    const trip=line?.trips?.[activeTrip.tripIdx];
+    const stop=trip?.stops?.[gpsAutoNextIdx];
+    infoEl.textContent=stop?`→ ${stop.name}`:'GPS actif';
+  }
+}
+
+function mapInlineCenterBus() { mapInlineCentered=true; mapInlineOffX=0; mapInlineOffY=0; drawMapInline(); }
+
+function setupMapInline() {
+  if(mapInlineSetup) return;
+  const canvas = document.getElementById('map-canvas-inline');
+  if(!canvas) return;
+  mapInlineSetup = true;
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    mapInlineZoom=Math.max(13,Math.min(19,mapInlineZoom-Math.sign(e.deltaY)));
+    drawMapInline();
+  },{passive:false});
+  let lastT=null;
+  canvas.addEventListener('touchstart',e=>{if(e.touches.length===1)lastT={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+  canvas.addEventListener('touchmove',e=>{
+    if(e.touches.length===1&&lastT){
+      mapInlineOffX+=e.touches[0].clientX-lastT.x;
+      mapInlineOffY+=e.touches[0].clientY-lastT.y;
+      lastT={x:e.touches[0].clientX,y:e.touches[0].clientY};
+      mapInlineCentered=false; drawMapInline();
+    }
+  },{passive:true});
+  canvas.addEventListener('touchend',()=>lastT=null);
+}
+
+function toggleInlineMap() {
+  const right = document.getElementById('ineo-panel-right');
+  const left  = document.getElementById('ineo-panel-left');
+  if(!right) return;
+  const hidden = right.classList.toggle('hidden');
+  if(left) left.classList.toggle('full-width', hidden);
+  if(!hidden) { setTimeout(()=>{ setupMapInline(); drawMapInline(); },80); }
+}
+
+// Détection orientation → split screen
+function handleOrientation() {
+  const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
+  const right  = document.getElementById('ineo-panel-right');
+  const left   = document.getElementById('ineo-panel-left');
+  const lNav   = document.getElementById('landscape-nav');
+  const mapBtn = document.getElementById('map-toggle-btn');
+  const ghostBtn = document.getElementById('ghost-map-btn');
+
+  if(isLandscape) {
+    // Mode paysage : show right panel + draw
+    if(right) right.classList.remove('hidden');
+    if(left) left.classList.remove('full-width');
+    if(lNav) lNav.style.display = 'flex';
+    if(mapBtn) mapBtn.style.display = 'none';
+    if(ghostBtn) ghostBtn.style.display = 'none';
+    setTimeout(()=>{ setupMapInline(); drawMapInline(); }, 100);
+  } else {
+    // Mode portrait : hide right panel, show ghost btn
+    if(right) right.classList.add('hidden');
+    if(left) left.classList.remove('full-width');
+    if(lNav) lNav.style.display = 'none';
+    if(mapBtn) mapBtn.style.display = 'flex';
+  }
+  // Sync landscape nav active state
+  syncLandscapeNav();
+}
+
+function syncLandscapeNav() {
+  document.querySelectorAll('[data-lnav]').forEach(btn => {
+    const target = btn.getAttribute('data-lnav');
+    const isActive = document.getElementById(target)?.classList.contains('active');
+    btn.classList.toggle('active', !!isActive);
+  });
+}
+
+window.addEventListener('resize', handleOrientation);
+window.addEventListener('orientationchange', ()=>setTimeout(handleOrientation, 200));
+
+// ══ SILLON — SÉLECTEUR 2 NIVEAUX ════════════════════════════
+let sillonSelectedVariantIdx = null;
+
+function sillonLineChanged() {
+  const sel = document.getElementById('sillon-line-sel');
+  sillonLineNum = sel ? sel.value : '';
+  sillonLineName = sel ? (sel.options[sel.selectedIndex]?.text || '') : '';
+  sillonSelectedVariantIdx = null;
+
+  const varSection = document.getElementById('sillon-variant-section');
+  const summary    = document.getElementById('sillon-selection-summary');
+  const startBtn   = document.getElementById('sillon-start-btn');
+  const row        = document.getElementById('sillon-variant-row');
+
+  if(!sillonLineNum) {
+    if(varSection) varSection.style.display='none';
+    if(summary)    summary.style.display='none';
+    if(startBtn)   startBtn.disabled=true;
+    return;
+  }
+
+  // Trouver les variantes de la ligne
+  const lineObj = db.lines.find(l => l.num === sillonLineNum);
+  if(!lineObj || !lineObj.trips.length) {
+    if(varSection) varSection.style.display='none';
+    return;
+  }
+
+  // Créer les chips variantes
+  if(row) {
+    row.innerHTML = lineObj.trips.map((t, i) => {
+      const isRet = (t.direction||'aller') === 'retour';
+      const dest = buildShortLabel(t);
+      return `<button class="sillon-variant-btn ${isRet?'retour':'aller'}" 
+        style="border:2px solid ${isRet?'rgba(39,174,96,.4)':'rgba(0,212,255,.4)'};
+               background:${isRet?'rgba(39,174,96,.05)':'rgba(0,212,255,.05)'};
+               color:${isRet?'var(--green)':'var(--accent)'};"
+        onclick="sillonSelectVariant(${i},'${dest.replace(/'/g,"\'")}')">
+        ${dest}
+      </button>`;
+    }).join('');
+  }
+
+  if(varSection) varSection.style.display='block';
+  if(summary)    summary.style.display='none';
+  if(startBtn)   startBtn.disabled=true;
+}
+
+function sillonSelectVariant(idx, dest) {
+  sillonSelectedVariantIdx = idx;
+  const lineObj = db.lines.find(l => l.num === sillonLineNum);
+  if(lineObj) {
+    const trip = lineObj.trips[idx];
+    sillonDirection = trip.direction || 'aller';
+  }
+
+  // Mettre à jour le visuel chips
+  document.querySelectorAll('#sillon-variant-row .sillon-variant-btn').forEach((btn, i) => {
+    const isActive = (i === idx);
+    btn.style.background = isActive
+      ? (sillonDirection==='retour'?'rgba(39,174,96,.25)':'rgba(0,212,255,.25)')
+      : (sillonDirection==='retour'?'rgba(39,174,96,.05)':'rgba(0,212,255,.05)');
+    btn.style.fontWeight = isActive ? '900' : '700';
+    btn.style.transform  = isActive ? 'scale(1.02)' : '';
+  });
+
+  // Afficher résumé
+  const summary = document.getElementById('sillon-selection-summary');
+  const selText = document.getElementById('sillon-sel-text');
+  const lineObj2 = db.lines.find(l => l.num === sillonLineNum);
+  if(summary) summary.style.display='block';
+  if(selText && lineObj2) {
+    selText.innerHTML = `<span style="background:${lineObj2.color||'#888'};color:#fff;padding:1px 8px;border-radius:5px;margin-right:8px">L${sillonLineNum}</span>${dest}`;
+  }
+
+  // Activer le bouton démarrer
+  const startBtn = document.getElementById('sillon-start-btn');
+  if(startBtn) {
+    startBtn.disabled = false;
+    startBtn.style.background = 'linear-gradient(135deg,rgba(231,76,60,.9),rgba(192,57,43,1))';
+    startBtn.style.color = '#fff';
+  }
+}
+
+// Override sillonStart pour utiliser la variante sélectionnée
+const _origSillonStart = sillonStart;
+sillonStart = function() {
+  if(!sillonLineNum) { toast("⚠ Sélectionnez une ligne d'abord"); return; }
+  if(sillonSelectedVariantIdx === null) { toast("⚠ Sélectionnez une variante/destination"); return; }
+  // Centrer sur premier arrêt si coords dispo
+  _origSillonStart();
+  // Après démarrage, center la carte sur la position GPS
+  if(gpsCoords) { mapInlineCenterBus(); mapCenterOnBus(); }
+};
+
+// Override sillonInitView pour utiliser la nouvelle UI
+const _origSillonInitView = sillonInitView;
+sillonInitView = function() {
+  const sel = document.getElementById('sillon-line-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
+    db.lines.filter(l => l.trips && l.trips.length > 0)
+    .map(l => `<option value="${l.num}">L${l.num} — ${l.name||''}</option>`).join('');
+  // Reset état
+  sillonSelectedVariantIdx = null;
+  const varSection = document.getElementById('sillon-variant-section');
+  const summary    = document.getElementById('sillon-selection-summary');
+  const startBtn   = document.getElementById('sillon-start-btn');
+  if(varSection) varSection.style.display='none';
+  if(summary)    summary.style.display='none';
+  if(startBtn)   startBtn.disabled=true;
+  sillonSetDir(sillonDirection);
+};
+
+// Override sillonTerminus pour inclure lineId + variantName dans JSON
+const _origSillonTerminus = sillonTerminus;
+sillonTerminus = function() {
+  _origSillonTerminus();
+  // Enrichir le JSON exporté avec lineId et variantName
+  const ta = document.getElementById('sillon-export-json');
+  if(!ta || !ta.value) return;
+  try {
+    const obj = JSON.parse(ta.value);
+    const lineObj = db.lines.find(l => l.num === sillonLineNum);
+    const trip = lineObj?.trips?.[sillonSelectedVariantIdx ?? 0];
+    obj.meta.lineId = sillonLineNum;
+    obj.meta.variantIdx = sillonSelectedVariantIdx ?? 0;
+    obj.meta.variantName = trip ? trip.label : sillonLineName;
+    obj.meta.lineColor   = lineObj?.color || '#888';
+    ta.value = JSON.stringify(obj, null, 2);
+  } catch(e) {}
+};
+
+// Override showView pour mettre à jour la nav paysage et badge
+const _origShowView = showView;
+showView = function(id) {
+  _origShowView(id);
+  syncLandscapeNav();
+  updateLigneBadge();
+  if(id === 'view-sillon') { sillonInitView(); }
+  // Bouton ghost map : visible sur view-live portrait
+  const ghostBtn = document.getElementById('ghost-map-btn');
+  if(ghostBtn) ghostBtn.style.display = (id==='view-live') ? 'flex' : 'none';
+};
+
+// Override activateTrip pour badge
+const _origActivateTrip = activateTrip;
+activateTrip = function(lineIdx, tripIdx) {
+  _origActivateTrip(lineIdx, tripIdx);
+  updateLigneBadge();
+};
+
+// Carte inline : mise à jour en même temps que la carte principale
+const _origMapDraw = mapDraw;
+mapDraw = function() {
+  _origMapDraw();
+  drawMapInline();
+};
+
+// ══ BOOT additions ═════════════════════════════════════════════
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
@@ -6990,6 +8098,11 @@ updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
 gdriveInit();
+buildReseauDB();
+handleOrientation();
+updateLigneBadge();
+// Refresh carte inline toutes les 2s si GPS actif
+setInterval(()=>{ if(gpsCoords) drawMapInline(); }, 2000);
 </script>
 </body>
 </html>
