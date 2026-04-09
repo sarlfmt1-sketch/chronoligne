@@ -16,6 +16,8 @@
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -130,174 +132,103 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
-/* ══ PANNEAU CARTE ══ */
-#map-overlay {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 70px;
-  z-index: 150;
-  pointer-events: none;
-}
-#map-overlay.open { display: block; }
+/* ══ MODE PAYSAGE ══════════════════════════════════════════════ */
+@media (orientation: landscape) and (max-height: 500px) {
 
-#map-panel {
-  position: absolute;
-  bottom: 12px; left: 12px; right: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,.6);
-  pointer-events: all;
-  animation: mapSlideUp .22s ease;
-}
-@keyframes mapSlideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
+  /* Nav en bas plus compacte */
+  nav { height: 46px; }
+  .nav-btn { padding: 4px 4px 6px; font-size: 9px; }
+  .nav-btn .ico { font-size: 16px; }
 
-#map-toggle-btn {
-  position: fixed;
-  bottom: 82px;
-  right: 14px;
-  z-index: 160;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 20px;
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,.4);
-  transition: background .2s, border-color .2s;
-}
-#map-toggle-btn.active {
-  background: rgba(0,212,255,.2);
-  border-color: var(--accent);
-}
+  /* App padding réduit */
+  #app { padding-bottom: 46px; }
 
-/* ══ PAYSAGE (LANDSCAPE) ══ */
+  /* Header compact */
+  #header { padding: 4px 10px; }
+  #clock-header { font-size: clamp(28px, 7vw, 44px); }
 
-/* Cacher header/nav pour maximiser l'espace */
-body.landscape #header { display: none; }
-body.landscape nav     { display: none; }
-body.landscape #app    { padding-bottom: 0; }
-body.landscape .view   { padding: 0; gap: 0; }
+  /* View live en paysage : carte à gauche, INEO à droite */
+  #view-live.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 6px;
+    padding: 6px;
+    height: calc(100vh - 46px - 56px);
+    overflow: hidden;
+    align-items: start;
+  }
 
-/* Bouton retour portrait fixe */
-#landscape-exit-btn {
-  display: none;
-  position: fixed;
-  top: 6px; left: 6px;
-  z-index: 400;
-  background: rgba(0,0,0,.6);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-body.landscape #landscape-exit-btn { display: block; }
+  /* Carte Leaflet occupe toute la colonne gauche */
+  #live-map-card {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+  }
+  #live-map {
+    height: calc(100vh - 46px - 56px - 38px) !important;
+  }
 
-/* ── Landscape : carte cachée — INEO plein écran ── */
-body.landscape #view-live {
-  display: flex !important;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-body.landscape #mode-classique { display: none !important; }
-body.landscape #mode-ineo {
-  display: flex !important;
-  flex: 1;
-  height: 100%;
-}
-body.landscape #mode-ineo > .card,
-body.landscape #mode-ineo > div > .card {
-  flex: 1;
-  border-radius: 0;
-  border: none;
-  height: 100%;
-}
+  /* Mode INEO occupe la colonne droite */
+  #mode-ineo {
+    grid-column: 2;
+    grid-row: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 46px - 56px);
+  }
 
-/* Textes INEO agrandis en paysage sans carte */
-body.landscape:not(.map-open) #ineo-ln-hh,
-body.landscape:not(.map-open) #ineo-ln-mm {
-  font-size: clamp(72px, 18vw, 110px) !important;
-}
-body.landscape:not(.map-open) #ineo-ln-name {
-  font-size: clamp(40px, 8vw, 64px) !important;
-}
-body.landscape:not(.map-open) #ineo-la-time {
-  font-size: clamp(48px, 10vw, 72px) !important;
-}
-body.landscape:not(.map-open) #ineo-la-name {
-  font-size: clamp(32px, 6vw, 52px) !important;
-}
-body.landscape:not(.map-open) #ineo-lb-time,
-body.landscape:not(.map-open) #ineo-lb-name {
-  font-size: clamp(24px, 4vw, 36px) !important;
-}
+  /* Mode classique aussi en colonne droite */
+  #mode-classique {
+    grid-column: 2;
+    grid-row: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 46px - 56px);
+  }
 
-/* ── Landscape : carte ouverte — split 50/50 ── */
-body.landscape.map-open #map-overlay {
-  display: block !important;
-  position: fixed;
-  top: 0; right: 0; left: 50%;
-  bottom: 0;
-  z-index: 10;
-  pointer-events: all;
-}
-body.landscape.map-open #map-panel {
-  position: absolute;
-  inset: 0;
-  border-radius: 0;
-  bottom: 0; left: 0; right: 0; top: 0;
-  animation: none;
-}
-body.landscape.map-open #map-container {
-  height: calc(100vh - 44px) !important;
-}
-body.landscape.map-open #view-live {
-  width: 50%;
-}
-body.landscape.map-open #mode-ineo {
-  width: 100%;
-}
+  /* Bannières GPS en pleine largeur au-dessus */
+  #gps-record-banner,
+  #gps-auto-banner,
+  #gps-lost-banner {
+    grid-column: 1 / -1;
+    grid-row: 0;
+  }
 
-/* Banières GPS en paysage : compactes */
-body.landscape #gps-record-banner,
-body.landscape #gps-auto-banner,
-body.landscape #gps-lost-banner {
-  border-radius: 0;
-  padding: 6px 10px;
-}
+  /* Pause banner pleine largeur */
+  #pause-banner {
+    grid-column: 1 / -1;
+  }
 
-/* Bouton carte en paysage */
-body.landscape #map-toggle-btn {
-  display: flex !important;
-  bottom: 8px;
-  right: 8px;
-  width: 38px; height: 38px;
-  font-size: 17px;
-  z-index: 420;
-}
-body.landscape.map-open #map-toggle-btn {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  bottom: 8px;
+  /* Prédiction GPS cachée en paysage (trop verbeux) */
+  #gps-prediction-card { display: none !important; }
+
+  /* Carte live : bouton réduire caché (toujours visible en paysage) */
+  #live-map-toggle-btn { display: none; }
+
+  /* INEO paysage : réduire les paddings */
+  #mode-ineo .card { border-radius: 10px; }
+
+  /* Bannières GPS moins hautes */
+  #gps-record-banner, #gps-auto-banner, #gps-lost-banner {
+    padding: 6px 10px;
+  }
+
+  /* Header INEO plus compact */
+  #live-mode-btn-ineo {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* Textes INEO plus petits en paysage */
+  #ineo-lb-time { font-size: clamp(14px, 3vw, 20px) !important; }
+  #ineo-la-time { font-size: clamp(24px, 6vw, 36px) !important; }
+  #ineo-ln-hh, #ineo-ln-mm { font-size: clamp(28px, 7vw, 42px) !important; }
+  #ineo-lb-name, #ineo-la-name { font-size: clamp(13px, 3vw, 18px) !important; }
+  #ineo-ln-name { font-size: clamp(16px, 4vw, 24px) !important; }
 }
 </style>
 </head>
 <body>
 <div id="toast"></div>
-<button id="landscape-exit-btn" onclick="landscapeForce(false)">⬆ Portrait</button>
 
 <!-- HEADER -->
 <div id="header">
@@ -307,37 +238,6 @@ body.landscape.map-open #map-toggle-btn {
     <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
       style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
     <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
-  </div>
-</div>
-
-<!-- Bouton toggle carte — fixe, visible seulement sur EN DIRECT -->
-<button id="map-toggle-btn" onclick="mapTogglePanel()" title="Carte GPS">🗺</button>
-
-<!-- Overlay panneau carte flottant -->
-<div id="map-overlay">
-  <div id="map-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px">📍</button>
-        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:11px;padding:4px 8px">🔴 Arrêts</button>
-        <button onclick="mapTogglePanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
-      </div>
-    </div>
-    <div id="map-container" style="width:100%;height:260px;background:#1a2035;position:relative;overflow:hidden">
-      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
-      <div id="map-info" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
-        En attente GPS...
-      </div>
-      <div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:5px 7px;font-size:9px;color:#fff">
-        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div> Position</div>
-        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#c0392b;flex-shrink:0"></div> Arrêt courant</div>
-        <div style="display:flex;align-items:center;gap:3px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0"></div> Autres arrêts</div>
-      </div>
-    </div>
-    <div id="map-coords" style="padding:5px 14px;font-size:10px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
-      Lat: — | Lon: — | Précision: —
-    </div>
   </div>
 </div>
 
@@ -622,6 +522,18 @@ body.landscape.map-open #map-toggle-btn {
     </div>
   </div>
 
+  <!-- ══ CARTE LEAFLET EN DIRECT ══ -->
+  <div class="card" style="padding:0;overflow:hidden" id="live-map-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px">
+      <div class="card-title" style="margin:0">🗺 Carte du trajet</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="liveMapCenter()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="liveMapToggle()" id="live-map-toggle-btn" class="btn btn-sm btn-ghost" style="font-size:12px">▼ Réduire</button>
+      </div>
+    </div>
+    <div id="live-map" style="height:300px;width:100%;z-index:10"></div>
+  </div>
+
 </div>
 
 <!-- ══ VIEW: TRAJET ══ -->
@@ -858,127 +770,189 @@ body.landscape.map-open #map-toggle-btn {
 
 </div>
 
-<!-- VIEW HEURES SUPPRIMÉE -->
-<div class="view" id="view-heures" style="display:none!important">
 
-  <!-- Mois navigation -->
-  <div class="card" style="padding:10px 14px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <button class="btn btn-ghost btn-sm" onclick="heuresMoisPrev()">◀</button>
-      <div id="heures-mois-label" style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--accent)"></div>
-      <button class="btn btn-ghost btn-sm" onclick="heuresMoisNext()">▶</button>
+<!-- ══ VIEW: SILLON — MODULE D'APPRENTISSAGE ══ -->
+<div class="view" id="view-sillon">
+
+  <!-- En-tête statut -->
+  <div id="sillon-status-bar" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px">
+    <div id="sillon-rec-dot" style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0"></div>
+    <div style="flex:1">
+      <div id="sillon-status-label" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--muted)">EN ATTENTE</div>
+      <div id="sillon-status-sub" style="font-size:11px;color:var(--muted)">Configurez et démarrez l'apprentissage</div>
     </div>
+    <div id="sillon-rec-badge" style="display:none;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:1px">REC</div>
+    <div id="sillon-pt-counter" style="display:none;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted)">0 pts</div>
   </div>
 
-  <!-- Cumul du mois -->
-  <div class="card" style="background:rgba(0,212,255,.05);border:2px solid rgba(0,212,255,.3)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div>
-        <div style="font-size:12px;color:var(--muted)">TOTAL DU MOIS</div>
-        <div id="heures-total" style="font-family:'Share Tech Mono',monospace;font-size:48px;font-weight:700;color:var(--accent);line-height:1">0h00</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:12px;color:var(--muted)">JOURS TRAVAILLÉS</div>
-        <div id="heures-jours" style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--text)">0</div>
+  <!-- Configuration -->
+  <div class="card" id="sillon-config-card">
+    <div class="card-title">⚙ Configuration</div>
+
+    <!-- Sélecteur ligne -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ligne</div>
+      <select id="sillon-line-sel" style="width:100%;padding:8px 10px;font-size:14px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+        <option value="">— Choisir une ligne —</option>
+      </select>
+    </div>
+
+    <!-- Sélecteur sens -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sens</div>
+      <div style="display:flex;gap:8px">
+        <button id="sillon-btn-aller" onclick="sillonSetDir('aller')"
+          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
+                 border:2px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08);color:var(--accent);transition:.2s">
+          ↗ ALLER
+        </button>
+        <button id="sillon-btn-retour" onclick="sillonSetDir('retour')"
+          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
+                 border:2px solid rgba(39,174,96,.3);background:rgba(39,174,96,.05);color:var(--muted);transition:.2s">
+          ↙ RETOUR
+        </button>
       </div>
     </div>
-    <!-- Quatorzaine -->
-    <div style="border-top:1px solid var(--border);padding-top:10px">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📅 QUATORZAINE EN COURS (14 jours glissants)</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div id="heures-q14-total" style="font-family:'Share Tech Mono',monospace;font-size:28px;font-weight:700;line-height:1">0h00</div>
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
-            <span>0h</span><span id="heures-q14-label">/ 74h</span>
-          </div>
-          <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden">
-            <div id="heures-q14-bar" style="height:100%;border-radius:4px;transition:width .4s;background:var(--green);width:0%"></div>
-          </div>
-        </div>
-      </div>
-      <div id="heures-q14-info" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
-    </div>
-    <button onclick="exportHeuresPDF()" style="margin-top:10px;width:100%" class="btn btn-sm">
-      📄 Exporter PDF employeur
+
+    <!-- Bouton démarrer -->
+    <button id="sillon-start-btn" onclick="sillonStart()"
+      style="width:100%;padding:14px;font-size:16px;font-weight:700;
+             background:linear-gradient(135deg,rgba(231,76,60,.8),rgba(192,57,43,.9));
+             color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:1px">
+      ▶ DÉMARRER APPRENTISSAGE
     </button>
+
+    <!-- Bouton variante -->
+    <button onclick="sillonShowDepartPartiel()"
+      style="width:100%;margin-top:8px;padding:10px;font-size:13px;font-weight:700;
+             background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);
+             color:var(--accent);border-radius:10px;cursor:pointer;letter-spacing:.5px">
+      ✂️ VARIANTE — DÉPART PARTIEL
+    </button>
+
+    <!-- Variante / Départ Partiel -->
+    <div id="sillon-depart-partiel-panel" style="display:none;margin-top:14px">
+      <hr style="border-color:rgba(255,255,255,.08);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:8px">✂️ VARIANTE — DÉPART PARTIEL</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Cliquez sur un arrêt pour démarrer depuis cet arrêt (les arrêts précédents seront ignorés).</div>
+      <div id="sillon-stops-list" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto"></div>
+    </div>
   </div>
 
-  <!-- Saisie rapide -->
-  <div class="card">
-    <div class="card-title">➕ Ajouter une journée</div>
-
-    <!-- Champ feuille de service auto -->
+  <!-- Live panel — visible pendant enregistrement -->
+  <div id="sillon-live-card" class="card" style="display:none;border:2px solid #e74c3c">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#e74c3c">📍 TRACÉ EN COURS</div>
+      <div style="text-align:right">
+        <div id="sillon-live-pk" style="font-family:'Share Tech Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">0.00 km</div>
+        <div style="font-size:10px;color:var(--muted)">PK cumulé</div>
+      </div>
+    </div>
+    <!-- Barre de stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-pts" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--text)">0</div>
+        <div style="font-size:9px;color:var(--muted)">POINTS GPS</div>
+      </div>
+      <div style="background:rgba(39,174,96,.1);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-stops" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">0</div>
+        <div style="font-size:9px;color:var(--muted)">ARRÊTS</div>
+      </div>
+      <div style="background:rgba(255,193,7,.08);border-radius:8px;padding:8px;text-align:center">
+        <div id="sillon-live-spd" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:#ffc107">—</div>
+        <div style="font-size:9px;color:var(--muted)">km/h</div>
+      </div>
+    </div>
+    <!-- Barre de progression Ghost Map -->
     <div style="margin-bottom:10px">
-      <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🗂 N° feuille de service (remplissage auto)</div>
-      <div style="display:flex;gap:6px">
-        <input type="text" id="heures-svc-num" placeholder="ex: 7" inputmode="numeric"
-          style="width:80px;padding:7px 8px;font-size:16px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace"
-          oninput="heuresAutoFillSvc(this.value)">
-        <div id="heures-svc-info" style="flex:1;display:flex;align-items:center;font-size:12px;color:var(--muted);padding:0 6px;border:1px solid var(--border);border-radius:8px;min-height:36px">
-          Entrez un numéro de service
-        </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+        <span id="sillon-ghost-depart">Départ</span>
+        <span id="sillon-ghost-pct">0%</span>
+        <span id="sillon-ghost-terminus">Terminus</span>
       </div>
+      <div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+        <div id="sillon-ghost-bar" style="height:100%;background:linear-gradient(90deg,#27ae60,#00d4ff);border-radius:4px;width:0%;transition:width .5s"></div>
+      </div>
+      <div id="sillon-ghost-current" style="font-size:11px;color:var(--green);margin-top:4px;text-align:center">—</div>
     </div>
 
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px">
-      <div style="flex:1;min-width:110px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Date</div>
-        <input type="date" id="heures-date" style="width:100%;padding:7px 8px;font-size:14px">
-      </div>
-      <div style="width:100px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Heures</div>
-        <input type="number" id="heures-val" placeholder="0" min="0" max="24" step="0.25"
-          style="width:100%;padding:7px 8px;font-size:18px;font-weight:700;text-align:center;font-family:'Share Tech Mono',monospace">
-      </div>
-      <div style="width:80px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">H. nuit</div>
-        <input type="number" id="heures-nuit" placeholder="0" min="0" max="9" step="0.25"
-          style="width:100%;padding:7px 8px;font-size:16px;text-align:center;font-family:'Share Tech Mono',monospace" title="Heures entre 21h et 6h">
-      </div>
-      <div style="flex:1;min-width:120px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Note (optionnel)</div>
-        <input type="text" id="heures-note" placeholder="ex: Service 2030" style="width:100%;padding:7px 8px;font-size:13px">
-      </div>
+    <!-- Dernier arrêt détecté -->
+    <div id="sillon-last-stop" style="font-size:12px;color:var(--muted);padding:8px;background:rgba(255,255,255,.03);border-radius:8px;margin-bottom:10px;min-height:36px">
+      Aucun arrêt détecté
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.3);padding:6px 10px;border-radius:8px">
-        <input type="checkbox" id="heures-dimanche" style="width:16px;height:16px;accent-color:#ffc107">
-        <span>🌅 Dimanche <span style="color:#ffc107;font-weight:700">+55€</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);padding:6px 10px;border-radius:8px">
-        <input type="checkbox" id="heures-ferie" style="width:16px;height:16px;accent-color:#e74c3c">
-        <span>🎉 Jour férié <span style="color:#e74c3c;font-weight:700">+55€ +7h24</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(100,149,237,.1);border:1px solid rgba(100,149,237,.3);padding:6px 10px;border-radius:8px">
-        <input type="checkbox" id="heures-mai" style="width:16px;height:16px;accent-color:#6495ed">
-        <span>🌹 1er Mai <span style="color:#6495ed;font-weight:700">+110€</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);padding:6px 10px;border-radius:8px"
-        onclick="heuresToggleRepos(this)">
-        <input type="checkbox" id="heures-repos" style="width:16px;height:16px;accent-color:#27ae60">
-        <span>😴 Repos <span style="color:#27ae60;font-weight:700">0h</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;background:rgba(255,120,0,.1);border:1px solid rgba(255,120,0,.3);padding:6px 10px;border-radius:8px">
-        <input type="checkbox" id="heures-suppl" style="width:16px;height:16px;accent-color:#ff7800">
-        <span>➕ Jour supplémentaire</span>
-      </label>
+    <!-- Boutons actions -->
+    <div style="display:flex;gap:8px">
+      <button onclick="sillonTerminusExceptionnel()"
+        style="flex:1;padding:12px;font-size:13px;font-weight:700;
+               background:rgba(255,193,7,.15);border:2px solid #ffc107;color:#ffc107;
+               border-radius:10px;cursor:pointer">
+        ⚠️ TERMINUS EXCEPT.
+      </button>
+      <button onclick="sillonTerminus()"
+        style="flex:1;padding:12px;font-size:15px;font-weight:700;
+               background:linear-gradient(135deg,#27ae60,#1e8449);
+               color:#fff;border:none;border-radius:10px;cursor:pointer">
+        🏁 TERMINUS / EXPORT
+      </button>
     </div>
-    <button class="btn" onclick="heuresAjouter()" style="width:100%;background:var(--green);color:#000;font-weight:700">+ Ajouter cette journée</button>
   </div>
 
-  <!-- Liste des jours -->
-  <div id="heures-list-container"></div>
-
-  <!-- Récap primes du mois -->
-  <div id="heures-primes-card" class="card" style="display:none;border:1px solid rgba(255,193,7,.3);background:rgba(255,193,7,.05)">
-    <div class="card-title" style="color:#ffc107">💰 Primes du mois</div>
-    <div id="heures-primes-content"></div>
+  <!-- Résultat JSON export -->
+  <div id="sillon-export-card" class="card" style="display:none;border:1px solid rgba(0,212,255,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin:0">📦 Export JSON — Sillon</div>
+      <button onclick="sillonCopyJSON()" class="btn btn-sm" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">
+        📋 Copier
+      </button>
+    </div>
+    <!-- Résumé -->
+    <div id="sillon-export-summary" style="font-size:12px;color:var(--muted);margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;line-height:1.8"></div>
+    <!-- JSON textarea -->
+    <textarea id="sillon-export-json" rows="12" readonly
+      style="width:100%;padding:10px;font-size:10px;font-family:monospace;background:rgba(0,0,0,.3);
+             color:#00ff88;border:1px solid rgba(0,212,255,.2);border-radius:8px;resize:vertical;
+             box-sizing:border-box"></textarea>
+    <!-- Nouveau parcours -->
+    <button onclick="sillonReset()"
+      style="width:100%;margin-top:10px;padding:12px;font-size:14px;font-weight:700;
+             background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+             border-radius:10px;cursor:pointer">
+      🔄 Nouveau parcours
+    </button>
   </div>
 
 </div>
 
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
+
+  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
+      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
+      </div>
+    </div>
+    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
+      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
+      <!-- Info position -->
+      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
+        En attente GPS...
+      </div>
+      <!-- Légende -->
+      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
+      </div>
+    </div>
+    <!-- Coords détaillées -->
+    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
+      Lat: — | Lon: — | Précision: —
+    </div>
+  </div>
 
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
@@ -1008,21 +982,6 @@ body.landscape.map-open #map-toggle-btn {
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Retard toléré (sec)</div>
       <input type="number" id="set-tolerance-late" value="120" min="0" max="300" style="width:100%;padding:8px;font-size:16px">
     </div>
-    <hr style="margin:14px 0">
-
-    <!-- Forcer mode paysage -->
-    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:13px;font-weight:600">📐 Mode paysage</div>
-        <div style="font-size:11px;color:var(--muted)">Forcer l'affichage horizontal</div>
-      </div>
-      <button id="landscape-force-btn" onclick="landscapeToggleForce()"
-        style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);
-               background:rgba(255,255,255,.06);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer">
-        OFF
-      </button>
-    </div>
-
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
   <div class="card">
@@ -1079,121 +1038,6 @@ body.landscape.map-open #map-toggle-btn {
 </div><!-- #app -->
 
 <!-- NAV -->
-<!-- ══ VIEW: SILLON — MODULE D'APPRENTISSAGE ══ -->
-<div class="view" id="view-sillon">
-
-  <!-- En-tête statut -->
-  <div id="sillon-status-bar" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px">
-    <div id="sillon-rec-dot" style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0"></div>
-    <div style="flex:1">
-      <div id="sillon-status-label" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--muted)">EN ATTENTE</div>
-      <div id="sillon-status-sub" style="font-size:11px;color:var(--muted)">Configurez et démarrez l'apprentissage</div>
-    </div>
-    <div id="sillon-rec-badge" style="display:none;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:1px">REC</div>
-    <div id="sillon-pt-counter" style="display:none;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted)">0 pts</div>
-  </div>
-
-  <!-- Configuration -->
-  <div class="card" id="sillon-config-card">
-    <div class="card-title">⚙ Configuration</div>
-
-    <!-- Sélecteur ligne -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ligne</div>
-      <select id="sillon-line-sel" style="width:100%;padding:8px 10px;font-size:14px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
-        <option value="">— Choisir une ligne —</option>
-      </select>
-    </div>
-
-    <!-- Sélecteur sens -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sens</div>
-      <div style="display:flex;gap:8px">
-        <button id="sillon-btn-aller" onclick="sillonSetDir('aller')"
-          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
-                 border:2px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08);color:var(--accent);transition:.2s">
-          ↗ ALLER
-        </button>
-        <button id="sillon-btn-retour" onclick="sillonSetDir('retour')"
-          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
-                 border:2px solid rgba(39,174,96,.3);background:rgba(39,174,96,.05);color:var(--muted);transition:.2s">
-          ↙ RETOUR
-        </button>
-      </div>
-    </div>
-
-    <!-- Bouton démarrer -->
-    <button id="sillon-start-btn" onclick="sillonStart()"
-      style="width:100%;padding:14px;font-size:16px;font-weight:700;
-             background:linear-gradient(135deg,rgba(231,76,60,.8),rgba(192,57,43,.9));
-             color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:1px">
-      ▶ DÉMARRER APPRENTISSAGE
-    </button>
-  </div>
-
-  <!-- Live panel — visible pendant enregistrement -->
-  <div id="sillon-live-card" class="card" style="display:none;border:2px solid #e74c3c">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#e74c3c">📍 TRACÉ EN COURS</div>
-      <div style="text-align:right">
-        <div id="sillon-live-pk" style="font-family:'Share Tech Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">0.00 km</div>
-        <div style="font-size:10px;color:var(--muted)">PK cumulé</div>
-      </div>
-    </div>
-    <!-- Barre de stats -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-      <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center">
-        <div id="sillon-live-pts" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--text)">0</div>
-        <div style="font-size:9px;color:var(--muted)">POINTS GPS</div>
-      </div>
-      <div style="background:rgba(39,174,96,.1);border-radius:8px;padding:8px;text-align:center">
-        <div id="sillon-live-stops" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">0</div>
-        <div style="font-size:9px;color:var(--muted)">ARRÊTS</div>
-      </div>
-      <div style="background:rgba(255,193,7,.08);border-radius:8px;padding:8px;text-align:center">
-        <div id="sillon-live-spd" style="font-family:'Share Tech Mono',monospace;font-size:20px;font-weight:700;color:#ffc107">—</div>
-        <div style="font-size:9px;color:var(--muted)">km/h</div>
-      </div>
-    </div>
-    <!-- Dernier arrêt détecté -->
-    <div id="sillon-last-stop" style="font-size:12px;color:var(--muted);padding:8px;background:rgba(255,255,255,.03);border-radius:8px;margin-bottom:10px;min-height:36px">
-      Aucun arrêt détecté
-    </div>
-    <!-- Bouton terminus -->
-    <button onclick="sillonTerminus()"
-      style="width:100%;padding:14px;font-size:15px;font-weight:700;
-             background:linear-gradient(135deg,#27ae60,#1e8449);
-             color:#fff;border:none;border-radius:12px;cursor:pointer">
-      🏁 TERMINUS / EXPORTER
-    </button>
-  </div>
-
-  <!-- Résultat JSON export -->
-  <div id="sillon-export-card" class="card" style="display:none;border:1px solid rgba(0,212,255,.3)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="card-title" style="margin:0">📦 Export JSON — Sillon</div>
-      <button onclick="sillonCopyJSON()" class="btn btn-sm" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">
-        📋 Copier
-      </button>
-    </div>
-    <!-- Résumé -->
-    <div id="sillon-export-summary" style="font-size:12px;color:var(--muted);margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:8px;line-height:1.8"></div>
-    <!-- JSON textarea -->
-    <textarea id="sillon-export-json" rows="12" readonly
-      style="width:100%;padding:10px;font-size:10px;font-family:monospace;background:rgba(0,0,0,.3);
-             color:#00ff88;border:1px solid rgba(0,212,255,.2);border-radius:8px;resize:vertical;
-             box-sizing:border-box"></textarea>
-    <!-- Nouveau parcours -->
-    <button onclick="sillonReset()"
-      style="width:100%;margin-top:10px;padding:12px;font-size:14px;font-weight:700;
-             background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
-             border-radius:10px;cursor:pointer">
-      🔄 Nouveau parcours
-    </button>
-  </div>
-
-</div>
-
 <nav id="nav">
   <button class="nav-btn active" data-view="view-live" onclick="showView('view-live')">
     <span class="ico">⏱</span>EN DIRECT
@@ -1208,6 +1052,7 @@ body.landscape.map-open #map-toggle-btn {
   <button class="nav-btn" data-view="view-sillon" onclick="showView('view-sillon')">
     <span class="ico">🔴</span>SILLON
   </button>
+
   <button class="nav-btn" data-view="view-settings" onclick="showView('view-settings')">
     <span class="ico">⚙</span>OPTIONS
   </button>
@@ -3243,20 +3088,9 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') { loadSettings(); }
-  if(id === 'view-sillon')   { sillonInitView(); }
-  // Bouton carte visible seulement sur EN DIRECT
-  const mapBtn = document.getElementById('map-toggle-btn');
-  if(mapBtn) mapBtn.style.display = (id === 'view-live') ? 'flex' : 'none';
-  // Fermer le panneau carte si on quitte EN DIRECT
-  if(id !== 'view-live') {
-    const ov = document.getElementById('map-overlay');
-    if(ov) ov.classList.remove('open');
-    const btn = document.getElementById('map-toggle-btn');
-    if(btn) btn.classList.remove('active');
-  }
-  if(id === 'view-heures') heuresRender();
-  if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
+  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
+  if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
+  if(id === 'view-sillon') { sillonInitView(); }
 }
 
 // ══ CLOCK ════════════════════════════════════════════════════
@@ -3757,8 +3591,6 @@ function activateTrip(lineIdx, tripIdx) {
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: undefined };
-  // Reconstruire la table des PK si le mode auto est déjà actif
-  if(gpsMode === 'auto') odoReset();
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -3768,6 +3600,8 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
+  // Rafraîchir la carte Leaflet
+  setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 300);
 }
 
 function showStartFromStop() {
@@ -4287,8 +4121,7 @@ function startServiceDirect(num, jour) {
   // Pré-remplir les heures automatiquement si dépôt renseigné
   if(svc.heures && svc.depotDepart && svc.depotRetour) {
     const today = new Date().toISOString().split('T')[0];
-    heuresInit();
-    const mois = today.substring(0,7);
+      const mois = today.substring(0,7);
     if(!heuresData[mois]) heuresData[mois] = [];
     const existing = heuresData[mois].findIndex(j => j.date === today);
     const entry = { date: today, heures: svc.heures, note: `Service ${svc.num} (${svc.depotDepart}→${svc.depotRetour})` };
@@ -4981,562 +4814,8 @@ function renderRoadmapActive() {
   }
 }
 
-// ══ CARNET D'HEURES ══════════════════════════════════════════
-const HEURES_KEY = 'chronoligne_heures';
-let heuresData = {}; // { 'YYYY-MM': [ {date, heures, note}, ... ] }
-let heuresMoisCourant = '';
-
-function heuresInit() {
-  try {
-    const s = localStorage.getItem(HEURES_KEY);
-    heuresData = s ? JSON.parse(s) : {};
-  } catch(e) { heuresData = {}; }
-  const now = new Date();
-  heuresMoisCourant = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  // Mettre la date du jour par défaut
-  const today = now.toISOString().split('T')[0];
-  const dateInput = document.getElementById('heures-date');
-  if(dateInput) dateInput.value = today;
-}
-
-function heuresSave() {
-  localStorage.setItem(HEURES_KEY, JSON.stringify(heuresData));
-}
-
-function heuresRender() {
-  const mois = heuresMoisCourant;
-  const [year, month] = mois.split('-').map(Number);
-  const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  document.getElementById('heures-mois-label').textContent = `${moisNoms[month-1]} ${year}`;
-
-  const jours = (heuresData[mois] || []).sort((a,b) => a.date.localeCompare(b.date));
-
-  // Cumul mois (hors repos)
-  const joursTravailles = jours.filter(j => !j.repos);
-  const totalMin = joursTravailles.reduce((acc, j) => acc + Math.round(j.heures * 60), 0);
-  const totalH = Math.floor(totalMin / 60);
-  const totalM = totalMin % 60;
-  document.getElementById('heures-total').textContent = `${totalH}h${String(totalM).padStart(2,'0')}`;
-  document.getElementById('heures-jours').textContent = `${joursTravailles.length}${jours.length > joursTravailles.length ? '+'+( jours.length - joursTravailles.length)+'R' : ''}`;
-
-  // Quatorzaine — 14 jours glissants depuis aujourd'hui
-  const QUOTA_Q14 = 74;
-  const today = new Date();
-  const q14Start = new Date(today);
-  q14Start.setDate(today.getDate() - 13);
-
-  // Collecter toutes les entrées de tous les mois
-  let allJours = [];
-  Object.values(heuresData).forEach(arr => allJours = allJours.concat(arr));
-
-  const q14Jours = allJours.filter(j => {
-    const d = new Date(j.date + 'T12:00:00');
-    return d >= q14Start && d <= today;
-  });
-
-  const q14Min = q14Jours.reduce((acc,j) => acc + Math.round(j.heures*60), 0);
-  const q14H = Math.floor(q14Min/60);
-  const q14M = q14Min%60;
-  const q14Str = `${q14H}h${String(q14M).padStart(2,'0')}`;
-  const pct = Math.min(100, Math.round(q14Min / (QUOTA_Q14*60) * 100));
-  const suppl = q14Min - QUOTA_Q14*60;
-
-  document.getElementById('heures-q14-total').textContent = q14Str;
-  document.getElementById('heures-q14-total').style.color = suppl > 0 ? 'var(--green)' : 'var(--accent)';
-  document.getElementById('heures-q14-label').textContent = `/ ${QUOTA_Q14}h`;
-  document.getElementById('heures-q14-bar').style.width = pct + '%';
-  document.getElementById('heures-q14-bar').style.background = suppl > 0 ? 'var(--green)' : 'var(--accent)';
-
-  const dateDebStr = `${q14Start.getDate()}/${String(q14Start.getMonth()+1).padStart(2,'0')}`;
-  const dateFinStr = `${today.getDate()}/${String(today.getMonth()+1).padStart(2,'0')}`;
-
-  if(suppl > 0) {
-    const sH = Math.floor(suppl/60);
-    const sM = suppl%60;
-    const sStr = `${sH}h${String(sM).padStart(2,'0')}`;
-    document.getElementById('heures-q14-info').innerHTML =
-      `<span style="color:var(--green);font-weight:700;font-size:13px">✅ ${sStr} supplémentaires</span>
-       <span style="color:var(--muted)"> · ${dateDebStr} → ${dateFinStr}</span>`;
-  } else {
-    const restMin = -suppl;
-    const rH = Math.floor(restMin/60);
-    const rM = restMin%60;
-    const rStr = `${rH}h${String(rM).padStart(2,'0')}`;
-    document.getElementById('heures-q14-info').innerHTML =
-      `<span style="color:var(--muted)">${dateDebStr} → ${dateFinStr} · </span>
-       <span style="color:var(--accent);font-weight:700">${rStr} restantes</span>
-       <span style="color:var(--muted)"> pour 74h</span>`;
-  }
-
-  // Liste des jours
-  const el = document.getElementById('heures-list-container');
-  if(!jours.length) {
-    el.innerHTML = `<div class="empty-state"><span class="ico">📅</span>Aucune heure ce mois-ci<br><small>Ajoutez vos journées ci-dessus</small></div>`;
-    return;
-  }
-
-  const joursNoms = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  el.innerHTML = jours.map((j,i) => {
-    const d = new Date(j.date + 'T12:00:00');
-    const nomJour = joursNoms[d.getDay()];
-    const numJour = d.getDate();
-    const h = Math.floor(j.heures);
-    const m = Math.round((j.heures - h) * 60);
-    const hStr = `${h}h${m > 0 ? String(m).padStart(2,'0') : ''}`;
-    const inQ14 = new Date(j.date+'T12:00:00') >= q14Start;
-
-    // Badges primes
-    let badges = '';
-    if(j.repos) badges += `<span style="background:rgba(39,174,96,.2);color:#27ae60;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">😴 Repos</span>`;
-    if(j.suppl) badges += `<span style="background:rgba(255,120,0,.2);color:#ff7800;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">➕ Suppl.</span>`;
-    if(j.heuresNuit > 0) badges += `<span style="background:rgba(100,149,237,.2);color:#6495ed;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌙 ${j.heuresNuit}h nuit</span>`;
-    if(j.dimanche) badges += `<span style="background:rgba(255,193,7,.2);color:#ffc107;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌅 55€</span>`;
-    if(j.ferie) badges += `<span style="background:rgba(231,76,60,.2);color:#e74c3c;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🎉 55€+7h24</span>`;
-    if(j.premierMai) badges += `<span style="background:rgba(100,149,237,.2);color:#6495ed;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">🌹 110€</span>`;
-
-    return `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:4px;
-      background:${j.repos?'rgba(39,174,96,.05)':'rgba(255,255,255,.03)'};border:1px solid ${j.repos?'rgba(39,174,96,.3)':inQ14?'rgba(0,212,255,.25)':'var(--border)'};border-radius:10px">
-      <div style="width:44px;text-align:center;background:${j.repos?'rgba(39,174,96,.15)':inQ14?'rgba(0,212,255,.15)':'rgba(255,255,255,.05)'};border-radius:8px;padding:4px">
-        <div style="font-size:10px;color:var(--muted)">${nomJour}</div>
-        <div style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;line-height:1">${numJour}</div>
-      </div>
-      <div style="flex:1">
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
-          <span style="font-size:20px;font-weight:700;font-family:'Share Tech Mono',monospace;color:${inQ14?'var(--accent)':'var(--text)'}">${hStr}</span>
-          ${badges}
-        </div>
-        ${j.note ? `<div style="font-size:11px;color:var(--muted)">${j.note}</div>` : ''}
-      </div>
-      <button class="del-btn" onclick="heuresSupprimer('${mois}',${i})">✕</button>
-    </div>`;
-  }).join('');
-
-  // Récap primes du mois
-  let nbDim = jours.filter(j=>j.dimanche).length;
-  let nbFerie = jours.filter(j=>j.ferie).length;
-  let nbMai = jours.filter(j=>j.premierMai).length;
-  let nbRepos = jours.filter(j=>j.repos).length;
-  let nbSuppl = jours.filter(j=>j.suppl).length;
-  let totalNuitMin = jours.reduce((acc,j)=>acc+Math.round((j.heuresNuit||0)*60),0);
-  const primesCard = document.getElementById('heures-primes-card');
-  const primesContent = document.getElementById('heures-primes-content');
-
-  if(nbDim||nbFerie||nbMai||totalNuitMin>0||nbRepos>0||nbSuppl>0) {
-    primesCard.style.display = 'block';
-    let lines = [];
-    if(nbRepos) lines.push(`😴 ${nbRepos} jour(s) de repos`);
-    if(nbSuppl) lines.push(`➕ ${nbSuppl} jour(s) supplémentaire(s) de travail`);
-    if(nbDim) lines.push(`🌅 ${nbDim} dimanche(s) × 55€ = <strong>${nbDim*55}€</strong>`);
-    if(nbFerie) lines.push(`🎉 ${nbFerie} jour(s) férié(s) × 55€ = <strong>${nbFerie*55}€</strong> + ${nbFerie}×7h24 indemnisées`);
-    if(nbMai) lines.push(`🌹 ${nbMai} × 1er Mai = <strong>${nbMai*110}€</strong>`);
-    if(totalNuitMin>0) {
-      const nH=Math.floor(totalNuitMin/60), nM=totalNuitMin%60;
-      lines.push(`🌙 ${nH}h${String(nM).padStart(2,'0')} de nuit = <strong>+20% sur ces heures</strong>`);
-    }
-    const totalPrimes = nbDim*55 + nbFerie*55 + nbMai*110;
-    if(totalPrimes>0) lines.push(`<hr style="border-color:rgba(255,193,7,.2);margin:6px 0"><span style="font-size:15px;font-weight:700;color:#ffc107">💰 Total primes fixes : ${totalPrimes}€ bruts</span>`);
-    primesContent.innerHTML = lines.map(l=>`<div style="font-size:13px;padding:4px 0;color:var(--text)">${l}</div>`).join('');
-  } else {
-    primesCard.style.display = 'none';
-  }
-}
-
-function heuresAutoFillSvc(num) {
-  const info = document.getElementById('heures-svc-info');
-  if(!num) {
-    info.innerHTML = 'Entrez un numéro de service';
-    info.style.color = 'var(--muted)';
-    return;
-  }
-
-  // Cas spécial : Repos
-  if(num.toLowerCase() === 'repos') {
-    document.getElementById('heures-repos').checked = true;
-    document.getElementById('heures-val').value = '0';
-    document.getElementById('heures-val').disabled = true;
-    document.getElementById('heures-val').style.opacity = '0.4';
-    document.getElementById('heures-note').value = 'Repos';
-    info.innerHTML = `😴 <strong>Journée de repos</strong> — 0h`;
-    info.style.color = '#27ae60';
-    return;
-  }
-  // Chercher dans les feuilles enregistrées (tous les jours)
-  loadRoadmapServices();
-  // On prend la feuille qui correspond au jour courant en priorité, sinon la première trouvée
-  const today = new Date();
-  const jourMap = { 0:'dimanche', 1:'semaine', 2:'semaine', 3:'semaine', 4:'semaine', 5:'semaine', 6:'samedi' };
-  const jourAujourdhui = jourMap[today.getDay()];
-  let svc = roadmapServices.find(s => s.num === num && s.jour === jourAujourdhui);
-  if(!svc) svc = roadmapServices.find(s => s.num === num);
-
-  if(!svc) {
-    info.innerHTML = `❌ Service ${num} introuvable`;
-    info.style.color = 'var(--red)';
-    return;
-  }
-
-  // Calculer les heures si dépôt renseigné
-  if(!svc.heures || !svc.depotDepart || !svc.depotRetour) {
-    info.innerHTML = `⚠️ Service ${num} trouvé mais heures non renseignées`;
-    info.style.color = '#ffc107';
-    return;
-  }
-
-  const h = Math.floor(svc.heures);
-  const m = Math.round((svc.heures - h) * 60);
-  const hStr = m > 0 ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`;
-
-  // Remplir les champs
-  document.getElementById('heures-val').value = Math.round(svc.heures * 100) / 100;
-  document.getElementById('heures-note').value = `Service ${svc.num} (${svc.depotDepart}→${svc.depotRetour})`;
-
-  // Détecter heures de nuit (avant 6h ou après 21h)
-  let heuresNuit = 0;
-  if(svc.depotDepart && svc.depotRetour) {
-    const [hD, mD] = svc.depotDepart.split(':').map(Number);
-    const [hR, mR] = svc.depotRetour.split(':').map(Number);
-    const debutMin = hD * 60 + mD;
-    const finMin = hR * 60 + mR;
-    // Nuit = avant 6h (360 min) ou après 21h (1260 min)
-    const nuitAvant6 = Math.max(0, Math.min(debutMin, 360) === debutMin ? 360 - debutMin : 0);
-    if(debutMin < 360) heuresNuit = Math.round(((360 - debutMin) / 60) * 100) / 100;
-    if(heuresNuit > 0) document.getElementById('heures-nuit').value = heuresNuit;
-  }
-
-  info.innerHTML = `✅ <strong>Service ${svc.num}</strong> · ${svc.depotDepart} → ${svc.depotRetour} · <span style="color:var(--green);font-weight:700">${hStr}</span>${heuresNuit > 0 ? ` · 🌙 ${heuresNuit}h nuit` : ''}`;
-  info.style.color = 'var(--text)';
-  toast(`✅ Service ${num} : ${hStr} chargées`);
-}
-
-function heuresToggleRepos(label) {
-  // Laisser le checkbox changer naturellement, puis réagir
-  setTimeout(() => {
-    const checked = document.getElementById('heures-repos').checked;
-    const valInput = document.getElementById('heures-val');
-    const noteInput = document.getElementById('heures-note');
-    if(checked) {
-      valInput.value = '0';
-      valInput.disabled = true;
-      valInput.style.opacity = '0.4';
-      if(!noteInput.value) noteInput.value = 'Repos';
-    } else {
-      valInput.value = '';
-      valInput.disabled = false;
-      valInput.style.opacity = '1';
-      if(noteInput.value === 'Repos') noteInput.value = '';
-    }
-  }, 10);
-}
-
-function heuresAjouter() {
-  const date = document.getElementById('heures-date').value;
-  const repos = document.getElementById('heures-repos').checked;
-  const suppl = document.getElementById('heures-suppl').checked;
-  const val = repos ? 0 : parseFloat(document.getElementById('heures-val').value);
-  const heuresNuit = parseFloat(document.getElementById('heures-nuit').value)||0;
-  const note = document.getElementById('heures-note').value.trim() || (repos ? 'Repos' : '');
-  const dimanche = document.getElementById('heures-dimanche').checked;
-  const ferie = document.getElementById('heures-ferie').checked;
-  const premierMai = document.getElementById('heures-mai').checked;
-
-  if(!date) { toast('Choisissez une date'); return; }
-  if(!repos && (isNaN(val) || val < 0)) { toast('Entrez un nombre d\'heures valide'); return; }
-
-  const mois = date.substring(0, 7);
-  if(!heuresData[mois]) heuresData[mois] = [];
-
-  const entry = { date, heures: val, heuresNuit, note, dimanche, ferie, premierMai, repos, suppl };
-  const idx = heuresData[mois].findIndex(j => j.date === date);
-  if(idx >= 0) heuresData[mois][idx] = entry;
-  else heuresData[mois].push(entry);
-
-  heuresSave();
-  heuresMoisCourant = mois;
-
-  // Reset
-  document.getElementById('heures-svc-num').value = '';
-  document.getElementById('heures-svc-info').innerHTML = 'Entrez un numéro de service';
-  document.getElementById('heures-val').value = '';
-  document.getElementById('heures-val').disabled = false;
-  document.getElementById('heures-val').style.opacity = '1';
-  document.getElementById('heures-nuit').value = '';
-  document.getElementById('heures-note').value = '';
-  document.getElementById('heures-dimanche').checked = false;
-  document.getElementById('heures-ferie').checked = false;
-  document.getElementById('heures-mai').checked = false;
-  document.getElementById('heures-repos').checked = false;
-  document.getElementById('heures-suppl').checked = false;
-
-  // Avancer la date au lendemain
-  const next = new Date(date+'T12:00:00');
-  next.setDate(next.getDate()+1);
-  document.getElementById('heures-date').value = next.toISOString().split('T')[0];
-
-  heuresRender();
-  let msg = `✅ ${val}h ajoutées`;
-  if(dimanche) msg += ' · Prime dim. 55€';
-  if(ferie) msg += ' · Prime férié 55€';
-  if(premierMai) msg += ' · Prime 1er Mai 110€';
-  toast(msg);
-}
-
-function heuresSupprimer(mois, idx) {
-  heuresData[mois].splice(idx, 1);
-  heuresSave();
-  heuresRender();
-  toast('🗑 Journée supprimée');
-}
-
-function heuresMoisPrev() {
-  const [y, m] = heuresMoisCourant.split('-').map(Number);
-  const d = new Date(y, m-2, 1);
-  heuresMoisCourant = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  heuresRender();
-}
-
-function heuresMoisNext() {
-  const [y, m] = heuresMoisCourant.split('-').map(Number);
-  const d = new Date(y, m, 1);
-  heuresMoisCourant = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  heuresRender();
-}
-
-function exportHeuresPDF() {
-  const mois = heuresMoisCourant;
-  const [year, month] = mois.split('-').map(Number);
-  const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const moisNom = `${moisNoms[month-1]} ${year}`;
-  const jours = (heuresData[mois] || []).sort((a,b) => a.date.localeCompare(b.date));
-  const joursNoms = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-
-  const totalMin = jours.reduce((acc,j) => acc + Math.round(j.heures*60), 0);
-  const totalH = Math.floor(totalMin/60);
-  const totalM = totalMin%60;
-  const totalStr = `${totalH}h${String(totalM).padStart(2,'0')}`;
-
-  // Calcul supplémentaires sur la période du mois (approx 2 quatorzaines = 148h)
-  const QUOTA_MOIS = 148;
-  const supplMin = totalMin - QUOTA_MOIS*60;
-  const supplStr = supplMin > 0
-    ? `${Math.floor(supplMin/60)}h${String(supplMin%60).padStart(2,'0')}`
-    : null;
-
-  const rows = jours.map(j => {
-    const d = new Date(j.date+'T12:00:00');
-    const h = Math.floor(j.heures);
-    const m = Math.round((j.heures-h)*60);
-    return `<tr>
-      <td>${joursNoms[d.getDay()]} ${d.getDate()} ${moisNoms[month-1]}</td>
-      <td style="text-align:center;font-weight:700">${h}h${m>0?String(m).padStart(2,'0'):''}</td>
-      <td style="color:#666">${j.note||''}</td>
-    </tr>`;
-  }).join('');
-
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Heures ${moisNom}</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; color: #333; }
-    h1 { font-size: 22px; margin-bottom: 4px; }
-    h2 { font-size: 16px; color: #666; font-weight: normal; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    th { background: #1a237e; color: white; padding: 10px; text-align: left; font-size: 13px; }
-    td { padding: 9px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-    tr:nth-child(even) td { background: #f8f9fa; }
-    .total { background: #1a237e; color: white; padding: 14px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .total-num { font-size: 32px; font-weight: 700; font-family: monospace; }
-    .suppl { background: #1b5e20; color: white; padding: 12px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .signature { margin-top: 40px; display: flex; justify-content: space-between; }
-    .sig-box { border-top: 1px solid #333; width: 200px; padding-top: 6px; font-size: 12px; color: #666; }
-    @media print { body { margin: 20px; } }
-  </style></head><body>
-  <h1>🚌 Relevé d'heures — ${moisNom}</h1>
-  <h2>Réseau Cergy-Pontoise · Base quatorzaine 74h</h2>
-  <table>
-    <thead><tr><th>Date</th><th style="text-align:center">Heures</th><th>Service / Note</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="total">
-    <div><div style="font-size:13px;opacity:.8">TOTAL DU MOIS</div><div class="total-num">${totalStr}</div></div>
-    <div style="text-align:right"><div style="font-size:13px;opacity:.8">JOURS TRAVAILLÉS</div><div style="font-size:32px;font-weight:700">${jours.length}</div></div>
-  </div>
-  ${supplStr ? `<div class="suppl">
-    <div><div style="font-size:13px;opacity:.8">HEURES SUPPLÉMENTAIRES</div><div class="total-num">✅ ${supplStr}</div></div>
-    <div style="text-align:right;font-size:12px;opacity:.8">Base 2×74h = 148h<br>majorées selon accord</div>
-  </div>` : ''}
-  <div class="signature">
-    <div class="sig-box">Signature employé</div>
-    <div class="sig-box">Signature employeur</div>
-  </div>
-  <script>window.onload=()=>window.print()<\/script>
-  </body></html>`;
-
-  // Ouvrir dans un nouvel onglet → Ctrl+P pour imprimer/sauvegarder en PDF
-  const newTab = window.open('', '_blank');
-  if(newTab) {
-    newTab.document.write(html);
-    newTab.document.close();
-    toast('📄 Ouvert dans un nouvel onglet — faites Ctrl+P pour sauvegarder en PDF');
-  } else {
-    // Fallback si popup bloqué : télécharger en HTML
-    const b64 = btoa(unescape(encodeURIComponent(html)));
-    const a = document.createElement('a');
-    a.href = 'data:text/html;charset=utf-8;base64,' + b64;
-    a.download = `heures-${mois}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast('📄 Fichier téléchargé — ouvrez-le et faites Ctrl+P pour imprimer');
-  }
-}
-
-function exportPrimePDF() {
-  const avsi = parseInt(document.getElementById('p-avsi').value)||0;
-  const avc  = parseInt(document.getElementById('p-avc').value)||0;
-  const rc   = parseInt(document.getElementById('p-rc').value)||0;
-  const rsc  = parseInt(document.getElementById('p-rsc').value)||0;
-  const rnc  = parseInt(document.getElementById('p-rnc').value)||0;
-  const rsi  = parseInt(document.getElementById('p-rsi').value)||0;
-  const total = avsi+avc+rc+rsc+rnc+rsi;
-
-  if(!total) { toast('Aucune mesure à exporter'); return; }
-
-  const score = (avc*1+rc*1+rsc*0.5)/total*100;
-  const pct = Math.round(score*10)/10;
-  const ok = pct >= 90;
-  const primeBase = 200;
-  const deductSae = saeCount*50;
-  const primeFinal = Math.max(0, primeBase-deductSae);
-
-  const now = new Date();
-  const moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const periode = `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const margin = 14;
-
-    // En-tête
-    const headerColor = ok ? [27,94,32] : [183,28,28];
-    doc.setFillColor(...headerColor);
-    doc.rect(0,0,pageW,28,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(16); doc.setFont('helvetica','bold');
-    doc.text('BILAN REGULARITE', margin, 11);
-    doc.setFontSize(11); doc.setFont('helvetica','normal');
-    doc.text(periode.toUpperCase(), margin, 18);
-    doc.setFontSize(8);
-    doc.text(`Exporté le ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`, pageW-margin, 24, {align:'right'});
-
-    // Score principal
-    doc.setFillColor(245,245,245);
-    doc.roundedRect(margin, 34, pageW-2*margin, 28, 3, 3, 'F');
-    doc.setTextColor(...headerColor);
-    doc.setFontSize(36); doc.setFont('helvetica','bold');
-    doc.text(`${pct}%`, pageW/2, 54, {align:'center'});
-    doc.setFontSize(10); doc.setFont('helvetica','normal');
-    doc.text(ok ? '✓ Objectif 90% atteint — prime éligible' : `✗ Objectif non atteint — manque ${(90-pct).toFixed(1)}%`, pageW/2, 60, {align:'center'});
-
-    // Tableau des mesures
-    doc.autoTable({
-      startY: 68,
-      head: [['Catégorie', 'Coefficient', 'Nombre', 'Points']],
-      body: [
-        ['⛔ Avance SI (>1min)',          '×0', avsi, 0],
-        ['✓ Avance conforme (0–1min)',     '×1', avc,  avc],
-        ['✓ Retard conforme (0–3min)',     '×1', rc,   rc],
-        ['⚠ Retard semi-conf. (3–6min)',  '×0.5', rsc, Math.round(rsc*0.5*10)/10],
-        ['✗ Retard non-conf. (6–12min)', '×0', rnc, 0],
-        ['⛔ Retard SI (>12min)',          '×0', rsi, 0],
-      ],
-      foot: [['TOTAL', '', total, `${(avc+rc+rsc*0.5).toFixed(1)} pts`]],
-      margin: { left:margin, right:margin },
-      styles: { fontSize:10, cellPadding:4 },
-      headStyles: { fillColor:[50,50,80], textColor:255, fontStyle:'bold' },
-      footStyles: { fillColor:[230,230,240], textColor:[30,30,30], fontStyle:'bold' },
-      columnStyles: { 0:{cellWidth:80}, 1:{cellWidth:22,halign:'center'}, 2:{cellWidth:20,halign:'center'}, 3:{cellWidth:22,halign:'center'} }
-    });
-
-    let y = doc.lastAutoTable.finalY + 10;
-
-    // Bloc prime
-    if(ok) {
-      doc.setFillColor(232,245,233);
-      doc.setDrawColor(27,94,32);
-      doc.roundedRect(margin, y, pageW-2*margin, 28, 3, 3, 'FD');
-      doc.setTextColor(27,94,32);
-      doc.setFontSize(9); doc.setFont('helvetica','normal');
-      doc.text('PRIME TRIMESTRIELLE ESTIMÉE (1ère année)', margin+6, y+7);
-      doc.setFontSize(20); doc.setFont('helvetica','bold');
-      doc.text(`${primeFinal}€ bruts`, margin+6, y+20);
-      if(deductSae>0) {
-        doc.setFontSize(9); doc.setFont('helvetica','normal');
-        doc.text(`${primeBase}€ − ${deductSae}€ (${saeCount} non-ouverture SAE) = ${primeFinal}€`, pageW-margin-4, y+20, {align:'right'});
-      }
-    }
-
-    // Formule
-    y += 36;
-    doc.setFillColor(240,240,248);
-    doc.roundedRect(margin, y, pageW-2*margin, 22, 3, 3, 'F');
-    doc.setTextColor(80,80,120);
-    doc.setFontSize(8); doc.setFont('helvetica','bold');
-    doc.text('FORMULE DE CALCUL', margin+4, y+6);
-    doc.setFont('helvetica','normal');
-    doc.text('% = (Av.conf.×1 + Ret.conf.×1 + Ret.semi×0.5) / Total mesures × 100', margin+4, y+13);
-    doc.text(`Objectif : ≥ 90,0% · Base prime : ${primeBase}€/trimestre (1ère année)`, margin+4, y+19);
-
-    // Signatures
-    y += 30;
-    doc.setDrawColor(160,160,160); doc.setTextColor(100,100,100);
-    doc.setFontSize(8); doc.setFont('helvetica','normal');
-    doc.line(margin, y+20, margin+65, y+20);
-    doc.text('Signature employé', margin, y+25);
-    doc.line(pageW-margin-65, y+20, pageW-margin, y+20);
-    doc.text('Visa employeur', pageW-margin-65, y+25);
-
-    doc.setFontSize(7); doc.setTextColor(180,180,180);
-    doc.text('Généré par ChronoLigne PRO', pageW/2, doc.internal.pageSize.getHeight()-6, {align:'center'});
-
-    const moisStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    doc.save(`regularite-${moisStr}.pdf`);
-    toast('📄 PDF régularité téléchargé');
-  } catch(e) {
-    console.error('jsPDF error:', e);
-    toast('⚠️ Erreur PDF — vérifiez votre connexion internet');
-  }
-}
-
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
-// ══ PK OFFICIELS PAR LIGNE ═══════════════════════════════════════════════════
-// Format : { 'lineNum': { 'tripLabel_substring_ou_direction': { 'NomArrêt': pkMetres } } }
-// La clé de trajet est comparée via includes() sur le label ou la direction.
-// Mettre 'aller' pour tous les trajets aller d'une ligne, ou un label exact.
-// Si un arrêt n'est pas dans la table, buildPkTable() interpolera depuis ses voisins.
-const OFFICIAL_PK = {
-  '1202': {
-    // Sens Cergy Préfecture → Les Beurriers (aller)
-    aller: {
-      'Gare de Cergy Préfecture - Quai K': 0,
-      'Les Marjoberts':                     821,
-      'Marcouville':                        2100,
-      'Croix Saint Siméon':                 4040,
-      'Normandie':                          4330,
-      'Place de la Paix':                   4720,
-      'Boblingen':                          5100,
-      'Alsace Bretagne':                    5360,
-      'Hôpital René Dubos':                 5720,
-      'Hôpital Administration':             6180,
-      'Maison de Retraite':                 6400,
-      'Paul Cézanne':                       6580,
-      'Les Beurriers':                      6800,
-    },
-  },
-};
-
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
 const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
@@ -5549,17 +4828,6 @@ let gpsRecStopIdx = 0;
 let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
 let gpsAutoNextIdx = 0;
 let gpsSession = []; // [{stopName, planned, actual, diff}]
-
-// ── ODOMÉTRIE ────────────────────────────────────────────────────────────────
-// pkStops[]  : tableau des PK (mètres depuis départ) de chaque arrêt du trajet actif
-// pkBus      : position kilométrique courante du bus sur l'itinéraire théorique (m)
-// pkPrevCoords: dernière position GPS connue pour le calcul du delta
-// pkRecaled  : true si un recalage vient d'avoir lieu (pour log/debug)
-let pkStops     = [];       // PK de chaque arrêt (index = stopIdx)
-let pkBus       = 0;        // PK courant du bus (mètres depuis 1er arrêt)
-let pkPrevCoords = null;    // dernière position GPS pour calculer le delta odo
-let pkRecaled   = false;    // indicateur de recalage
-const PK_SNAP_DIST = 30;    // mètres — seuil de recalage automatique sur un arrêt
 
 // ── WATCHDOG GPS ─────────────────────────────────────────────
 const GPS_WATCHDOG_TIMEOUT = 15000; // ms sans signal → alerte
@@ -6050,7 +5318,6 @@ function startGpsAuto() {
   gpsAutoNextIdx = 0;
   gpsSession = [];
   gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
-  odoReset();           // ← réinitialiser l'odométrie
   cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
   updateGpsIcon('auto');
   document.getElementById('gps-auto-banner').style.display = 'block';
@@ -6058,11 +5325,17 @@ function startGpsAuto() {
   startGpsWatch(
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
-      odoStep(coords);              // ← odométrie + recalage PK (carte arrière-plan OK)
-      checkGpsAutoDetect(coords);  // ← détection d'arrêt
+      checkGpsAutoDetect(coords);
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
-      // carte : mapDraw est appelé dans odoStep uniquement si mapVisible=true
+      liveMapUpdateBus();
+      // Carte OPTIONS
+      const settingsView = document.getElementById('view-settings');
+      if(settingsView && settingsView.classList.contains('active')) {
+        if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
+        mapSetupEvents();
+        mapDraw();
+      }
     },
     () => toast('Erreur GPS')
   );
@@ -6083,197 +5356,6 @@ function bearingTo(lat1, lon1, lat2, lon2) {
 function angleDiff(a, b) {
   let d = ((b - a) + 540) % 360 - 180;
   return d;
-}
-
-// ── ODOMÉTRIE : Construction de la table des PK ─────────────────────────────
-// Calcule la distance cumulée de chaque arrêt depuis le 1er arrêt du trajet.
-// On utilise les coordonnées GPS réelles enregistrées dans gpsCoordsDB.
-// Si un arrêt n'a pas de coords, on interpole linéairement depuis les voisins.
-function buildPkTable() {
-  pkStops = [];
-  if(!activeTrip) return;
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-  const n = trip.stops.length;
-  pkStops = new Array(n).fill(null);
-
-  // ── PRIORITÉ 1 : PK officiels définis dans OFFICIAL_PK ─────────────────
-  const officialLine = OFFICIAL_PK[line.num];
-  if(officialLine) {
-    // Trouver la bonne entrée : chercher par direction d'abord, puis par label
-    let officialMap = null;
-    const dir = trip.direction || 'aller';
-    if(officialLine[dir]) {
-      officialMap = officialLine[dir];
-    } else {
-      // Chercher par substring du label
-      for(const key of Object.keys(officialLine)) {
-        if(trip.label && trip.label.toLowerCase().includes(key.toLowerCase())) {
-          officialMap = officialLine[key];
-          break;
-        }
-      }
-    }
-
-    if(officialMap) {
-      let officialCount = 0;
-      trip.stops.forEach((s, i) => {
-        // Cherche le nom exact, puis insensible à la casse, puis normalisé
-        let pk = officialMap[s.name];
-        if(pk === undefined) {
-          // Recherche souple (sans accents ni casse)
-          const normalize = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-          const norm = normalize(s.name);
-          for(const [k, v] of Object.entries(officialMap)) {
-            if(normalize(k) === norm) { pk = v; break; }
-          }
-        }
-        if(pk !== undefined) { pkStops[i] = pk; officialCount++; }
-      });
-
-      // Si tous les arrêts sont couverts par les PK officiels → terminé
-      if(officialCount === n) {
-        console.log(`[ODO] PK officiels 100% — ligne ${line.num} ${dir} (${n} arrêts)`);
-        return;
-      }
-      console.log(`[ODO] PK officiels partiels — ${officialCount}/${n} arrêts, interpolation pour le reste`);
-    }
-  }
-
-  // ── PRIORITÉ 2 : PK calculés depuis les coords GPS enregistrées ─────────
-  const known = [];
-  trip.stops.forEach((s, i) => {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
-    const c = gpsCoordsDB[key];
-    // N'utiliser les coords GPS que si ce PK n'est pas déjà fixé par les officiels
-    if(c && pkStops[i] === null) known.push({ idx: i, lat: c.lat, lon: c.lon });
-    else if(c) known.push({ idx: i, lat: c.lat, lon: c.lon, locked: true });
-  });
-
-  if(known.length >= 2) {
-    // Calculer cumul haversine pour les arrêts sans PK officiel
-    // Ancre de départ : premier PK officiel connu, ou 0
-    let anchorIdx  = 0, anchorPk = 0;
-    for(let i = 0; i < n; i++) {
-      if(pkStops[i] !== null) { anchorIdx = i; anchorPk = pkStops[i]; break; }
-    }
-
-    // Calculer les distances entre arrêts GPS consécutifs connus
-    let cumul = anchorPk;
-    let prevGps = null;
-    for(const kp of known) {
-      if(kp.idx < anchorIdx) continue; // ignorer avant l'ancre
-      if(prevGps !== null) {
-        cumul += haversine(prevGps.lat, prevGps.lon, kp.lat, kp.lon);
-      }
-      // Ne pas écraser un PK officiel déjà fixé
-      if(pkStops[kp.idx] === null) pkStops[kp.idx] = cumul;
-      else cumul = pkStops[kp.idx]; // se recaler sur le PK officiel
-      prevGps = kp;
-    }
-  }
-
-  // ── PRIORITÉ 3 : Interpolation linéaire pour les trous restants ─────────
-  for(let i = 0; i < n; i++) {
-    if(pkStops[i] !== null) continue;
-    let prevK = null, nextK = null;
-    for(let k = i-1; k >= 0; k--) { if(pkStops[k] !== null) { prevK = k; break; } }
-    for(let k = i+1; k < n; k++) { if(pkStops[k] !== null) { nextK = k; break; } }
-    if(prevK !== null && nextK !== null) {
-      const frac = (i - prevK) / (nextK - prevK);
-      pkStops[i] = pkStops[prevK] + frac * (pkStops[nextK] - pkStops[prevK]);
-    } else if(prevK !== null) {
-      pkStops[i] = pkStops[prevK] + (i - prevK) * 300;
-    } else if(nextK !== null) {
-      pkStops[i] = pkStops[nextK] - (nextK - i) * 300;
-      if(pkStops[i] < 0) pkStops[i] = 0;
-    } else {
-      pkStops[i] = i * 300; // aucune info : espacement uniforme
-    }
-  }
-
-  // Garantir PK strictement croissants
-  for(let i = 1; i < n; i++) {
-    if(pkStops[i] <= pkStops[i-1]) pkStops[i] = pkStops[i-1] + 1;
-  }
-
-  if(console) console.log('[ODO] PK table built:', pkStops.map((v,i) => `${trip.stops[i]?.name}: ${Math.round(v)}m`));
-}
-
-// ── ODOMÉTRIE : Mise à jour à chaque position GPS ───────────────────────────
-// Appelée à chaque tick GPS. Avance pkBus du delta haversine, puis
-// vérifie si on est à ≤ PK_SNAP_DIST d'un arrêt pour se recaler.
-function odoStep(coords) {
-  if(!activeTrip || gpsMode !== 'auto') return;
-  if(pkStops.length === 0) buildPkTable();
-
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-
-  // ── 1. Delta odométrique ─────────────────────────────────────────────────
-  if(pkPrevCoords) {
-    const delta = haversine(pkPrevCoords.lat, pkPrevCoords.lon, coords.lat, coords.lon);
-    // Filtrer les sauts aberrants (> 150m entre deux positions = erreur GPS)
-    if(delta < 150) {
-      pkBus += delta;
-    }
-  }
-  pkPrevCoords = coords;
-
-  // ── 2. Recalage automatique sur un arrêt réel ────────────────────────────
-  // Vérifier TOUS les arrêts du trajet (pas seulement le suivant)
-  // pour caler le bus exactement sur son PK si on passe à ≤ 30m
-  let snapDone = false;
-  for(let i = gpsAutoNextIdx; i < Math.min(gpsAutoNextIdx + 8, trip.stops.length); i++) {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
-    const c = gpsCoordsDB[key];
-    if(!c) continue;
-    const distToStop = haversine(coords.lat, coords.lon, c.lat, c.lon);
-    if(distToStop <= PK_SNAP_DIST && pkStops[i] !== null) {
-      // Recalage : aligner pkBus exactement sur le PK de cet arrêt
-      pkBus = pkStops[i];
-      pkRecaled = true;
-      snapDone = true;
-      break; // un seul recalage par tick
-    }
-  }
-
-  // ── 3. Mise à jour de l'index d'arrêt basé sur le PK ────────────────────
-  // Trouver quel est le prochain arrêt dont le PK est > pkBus
-  // (on ne change gpsAutoNextIdx que si l'avance est cohérente)
-  if(!snapDone) {
-    for(let i = gpsAutoNextIdx; i < trip.stops.length; i++) {
-      if(pkStops[i] !== null && pkStops[i] > pkBus) {
-        // gpsAutoNextIdx pointe vers le prochain arrêt à venir
-        if(i > gpsAutoNextIdx) {
-          // Le PK indique qu'on a dépassé gpsAutoNextIdx → avancer
-          // (uniquement si la détection principale ne l'a pas déjà fait)
-          // On ne saute qu'un arrêt à la fois pour éviter les faux positifs
-          gpsAutoNextIdx = Math.min(i, gpsAutoNextIdx + 1);
-          if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
-          updateLive();
-        }
-        break;
-      }
-    }
-  }
-
-  // ── 4. Rafraîchir la carte si ouverte (mapDraw ignore si mapVisible=false)
-  if(mapVisible) {
-    if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
-    mapDraw();
-  }
-}
-
-// Réinitialiser l'odométrie (appelé au démarrage d'un nouveau trajet)
-function odoReset() {
-  pkBus       = 0;
-  pkPrevCoords = null;
-  pkStops     = [];
-  pkRecaled   = false;
-  buildPkTable();
 }
 
 function checkGpsAutoDetect(coords) {
@@ -6572,180 +5654,663 @@ function validateStopManual() {
 let autoAdvanceTimer = null;
 
 function scheduleAutoAdvance() {
-  // Annuler le timer précédent
   if(autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
-  // Seulement si GPS auto inactif et trajet actif
-  if(gpsMode === 'auto' || !activeTrip) return;
+  // JAMAIS en mode GPS auto ou record — le GPS gère seul
+  if(gpsMode === 'auto' || gpsMode === 'record' || !activeTrip) return;
   const line = db.lines[activeTrip.lineIdx];
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
   const idx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : 0;
   const stop = trip.stops[idx];
   if(!stop || idx >= trip.stops.length - 1) return;
-  const interval = (stop.intervalAfter || 1) * 60 * 1000; // en ms
+
+  // Calculer le délai basé sur l'heure réelle de l'horaire
+  // plutôt que sur intervalAfter (qui est une durée fixe peu fiable)
+  let delayMs = null;
+  const nextStop = trip.stops[idx + 1];
+  if(nextStop && nextStop.time) {
+    const now = new Date();
+    const [nh, nm] = nextStop.time.split(':').map(Number);
+    const nextMs = (nh * 60 + nm) * 60000;
+    const nowMs  = (now.getHours() * 60 + now.getMinutes()) * 60000 + now.getSeconds() * 1000;
+    // Avancer seulement si l'heure du prochain arrêt est dépassée de plus de 3 min
+    // (sécurité pour ne pas sauter trop vite)
+    const MARGE_MS = 3 * 60 * 1000;
+    delayMs = (nextMs - nowMs) + MARGE_MS;
+    // Si le prochain arrêt est déjà très en retard, ne pas avancer automatiquement
+    // Laisser le chauffeur valider manuellement
+    if(delayMs < -5 * 60 * 1000) return; // plus de 5 min de retard → pas d'auto
+    if(delayMs < 0) delayMs = MARGE_MS; // déjà passé → attendre 3 min quand même
+  } else {
+    // Fallback sur intervalAfter si pas d'heure dans le trajet
+    delayMs = (stop.intervalAfter || 1) * 60 * 1000;
+  }
+
   autoAdvanceTimer = setTimeout(() => {
-    // Vérifier que GPS est toujours inactif avant d'avancer
-    if(gpsMode !== 'auto' && activeTrip) {
-      validateStopManual();
-    }
-  }, interval);
+    // Double vérification : ne jamais avancer si GPS actif
+    if(gpsMode === 'auto' || gpsMode === 'record') return;
+    if(activeTrip) validateStopManual();
+  }, delayMs);
 }
 
 function cancelAutoAdvance() {
   if(autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
 }
 
-// ══ CALCULATEUR PRIME MÉTIER ══════════════════════════════════
-let saeCount = 0;
 
-function calcRegularite() {
-  const avsi = parseInt(document.getElementById('p-avsi').value)||0;
-  const avc  = parseInt(document.getElementById('p-avc').value)||0;
-  const rc   = parseInt(document.getElementById('p-rc').value)||0;
-  const rsc  = parseInt(document.getElementById('p-rsc').value)||0;
-  const rnc  = parseInt(document.getElementById('p-rnc').value)||0;
-  const rsi  = parseInt(document.getElementById('p-rsi').value)||0;
+// MODULE SILLON — Apprentissage Automatique d'Itinéraire
+// ══════════════════════════════════════════════════════════════════════════════
 
-  const total = avsi + avc + rc + rsc + rnc + rsi;
-  if(total === 0) return;
+// ── Variables d'état ──────────────────────────────────────────────────────────
+let sillonActive      = false;       // enregistrement en cours
+let sillonDirection   = 'aller';     // 'aller' | 'retour'
+let sillonLineNum     = '';          // numéro de ligne sélectionnée
+let sillonLineName    = '';
+let sillonPath        = [];          // [{lat, lon, pk, ts}] — tracé complet (le Sillon)
+let sillonStops       = [];          // [{name, lat, lon, pk, auto}] — arrêts validés
+let sillonPkCumul     = 0;           // PK courant en mètres
+let sillonPrevCoord   = null;        // dernière coord pour delta haversine
+let sillonPrevTime    = null;        // timestamp dernière position
+let sillonRecTimer    = null;        // setInterval 2s
+let sillonGpsWatchId  = null;        // watchPosition ID
+let sillonLastCoords  = null;        // dernière position GPS connue
+let sillonStopTimer   = null;        // setTimeout détection arrêt 5s
+let sillonStopCandLat = null;        // coords du candidat arrêt potentiel
+let sillonStopCandLon = null;
+let sillonSpeedHistory = [];         // historique vitesses pour affichage
 
-  const score = (avc*1 + rc*1 + rsc*0.5) / total * 100;
-  const pct = Math.round(score * 10) / 10;
-  const objectif = 90.0;
-  const ok = pct >= objectif;
+// ── Constantes ────────────────────────────────────────────────────────────────
+const SILLON_INTERVAL    = 2000;   // ms entre deux enregistrements de position
+const SILLON_STOP_SPEED  = 2;      // km/h en dessous duquel = arrêt
+const SILLON_STOP_DELAY  = 5000;   // ms à l'arrêt avant validation (5s)
+const SILLON_STOP_RADIUS = 50;     // m — rayon fusion avec arrêt connu
+const SILLON_MIN_DIST    = 150;    // m — distance minimale entre 2 arrêts
+const SILLON_MAX_JUMP    = 150;    // m — saut max entre 2 positions (filtre erreur GPS)
 
-  const color = ok ? 'var(--green)' : '#e74c3c';
-  const bgColor = ok ? 'rgba(39,174,96,.1)' : 'rgba(231,76,60,.1)';
-  const borderColor = ok ? 'rgba(39,174,96,.4)' : 'rgba(231,76,60,.4)';
-  const icon = ok ? '✅' : '❌';
-  const msg = ok
-    ? `Objectif 90% atteint — prime éligible`
-    : `Objectif 90% non atteint — ${(objectif - pct).toFixed(1)}% manquant`;
-
-  // Déduction SAE
-  const deductSae = saeCount * 50;
-  const primeBase = 200; // 1ère année = 200€/trimestre
-  const primeFinal = Math.max(0, primeBase - deductSae);
-
-  document.getElementById('prime-resultat').style.background = bgColor;
-  document.getElementById('prime-resultat').style.borderColor = borderColor;
-  document.getElementById('prime-resultat').innerHTML = `
-    <div style="font-size:48px;font-weight:700;font-family:'Share Tech Mono',monospace;color:${color};line-height:1">${pct}%</div>
-    <div style="font-size:13px;color:${color};margin:6px 0">${icon} ${msg}</div>
-    <div style="border-top:1px solid ${borderColor};margin-top:10px;padding-top:10px;font-size:12px;color:var(--muted)">
-      Total mesures : <strong style="color:var(--text)">${total}</strong> · 
-      Score : <strong style="color:var(--text)">${Math.round(avc+rc+rsc*0.5)} pts</strong>
-    </div>
-    ${ok ? `<div style="margin-top:8px;background:rgba(39,174,96,.15);border-radius:8px;padding:8px">
-      <div style="font-size:11px;color:var(--muted)">PRIME TRIMESTRIELLE ESTIMÉE</div>
-      <div style="font-size:28px;font-weight:700;color:var(--green);font-family:'Rajdhani',sans-serif">${primeFinal}€ bruts</div>
-      ${deductSae > 0 ? `<div style="font-size:11px;color:#e74c3c">${primeBase}€ − ${deductSae}€ (${saeCount} SAE) = ${primeFinal}€</div>` : ''}
-    </div>` : ''}
-  `;
+// ── Initialisation de la vue ──────────────────────────────────────────────────
+function sillonInitView() {
+  // Peupler le sélecteur de lignes depuis db.lines
+  const sel = document.getElementById('sillon-line-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
+    db.lines.map(l => `<option value="${l.num}">${l.num} — ${l.name||''}</option>`).join('');
+  // Remettre la direction active
+  sillonSetDir(sillonDirection);
 }
 
-function renderGpsStats() {
-  try {
-    const key = 'chronoligne_prime_sessions';
-    const sessions = JSON.parse(localStorage.getItem(key)||'[]');
-    const now = new Date();
-    const moisStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const moisSessions = sessions.filter(s => s.date.startsWith(moisStr));
-    const el = document.getElementById('prime-gps-content');
-    if(!moisSessions.length) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Aucun trajet GPS ce mois-ci — activez 🚗 Conduite auto</div>';
-      return;
+// ── Sélection de direction ────────────────────────────────────────────────────
+function sillonSetDir(dir) {
+  sillonDirection = dir;
+  const ba = document.getElementById('sillon-btn-aller');
+  const br = document.getElementById('sillon-btn-retour');
+  if(!ba || !br) return;
+  if(dir === 'aller') {
+    ba.style.background   = 'rgba(0,212,255,.2)';
+    ba.style.borderColor  = 'var(--accent)';
+    ba.style.color        = 'var(--accent)';
+    br.style.background   = 'rgba(39,174,96,.05)';
+    br.style.borderColor  = 'rgba(39,174,96,.3)';
+    br.style.color        = 'var(--muted)';
+  } else {
+    br.style.background   = 'rgba(39,174,96,.2)';
+    br.style.borderColor  = 'var(--green)';
+    br.style.color        = 'var(--green)';
+    ba.style.background   = 'rgba(0,212,255,.05)';
+    ba.style.borderColor  = 'rgba(0,212,255,.3)';
+    ba.style.color        = 'var(--muted)';
+  }
+}
+
+// ── DÉMARRER l'apprentissage ──────────────────────────────────────────────────
+function sillonStart() {
+  const sel = document.getElementById('sillon-line-sel');
+  sillonLineNum  = sel ? sel.value : '';
+  sillonLineName = sel ? (sel.options[sel.selectedIndex]?.text || '') : '';
+  if(!sillonLineNum) { toast("⚠ Sélectionnez une ligne d'abord"); return; }
+  if(!navigator.geolocation) { toast('GPS non disponible'); return; }
+
+  // Réinitialiser l'état
+  sillonActive       = true;
+  sillonPath         = [];
+  sillonStops        = [];
+  sillonPkCumul      = 0;
+  sillonPrevCoord    = null;
+  sillonPrevTime     = null;
+  sillonSpeedHistory = [];
+  sillonLastCoords   = null;
+  sillonVarianteDepuis = 0;
+  sillonVarianteNom    = '';
+
+  // UI
+  document.getElementById('sillon-config-card').style.display = 'none';
+  document.getElementById('sillon-live-card').style.display   = 'block';
+  document.getElementById('sillon-export-card').style.display = 'none';
+  sillonSetStatusBar('REC', `${sillonLineNum} ${sillonDirection.toUpperCase()} — En cours...`, '#e74c3c', true);
+
+  // Lancer GPS watchPosition
+  sillonGpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const coords = {
+        lat:     pos.coords.latitude,
+        lon:     pos.coords.longitude,
+        acc:     pos.coords.accuracy,
+        speed:   pos.coords.speed,    // m/s ou null
+        heading: pos.coords.heading,
+        ts:      Date.now()
+      };
+      // Ignorer positions trop imprécises (> 30m)
+      if(coords.acc > 30) return;
+      sillonLastCoords = coords;
+      sillonCheckStop(coords);
+      sillonUpdateLiveUI(coords);
+    },
+    err => toast('Erreur GPS : ' + err.message),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+
+  // Enregistrement périodique toutes les 2s
+  sillonRecTimer = setInterval(() => {
+    if(!sillonLastCoords) return;
+    sillonRecordPoint(sillonLastCoords);
+  }, SILLON_INTERVAL);
+
+  toast('🔴 Apprentissage démarré — roulez !');
+}
+
+// ── Enregistrer un point dans le sillon ──────────────────────────────────────
+function sillonRecordPoint(coords) {
+  // Calculer delta PK
+  if(sillonPrevCoord) {
+    const d = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
+    if(d < SILLON_MAX_JUMP) sillonPkCumul += d; // filtrer les sauts aberrants
+  }
+  sillonPrevCoord = coords;
+  sillonPath.push({ lat: coords.lat, lon: coords.lon, pk: Math.round(sillonPkCumul) });
+  sillonUpdateLiveUI(coords);
+}
+
+// ── Détection d'arrêt (mains libres) ─────────────────────────────────────────
+function sillonCheckStop(coords) {
+  // Calculer vitesse (m/s → km/h)
+  let kmh = 0;
+  if(coords.speed !== null && coords.speed !== undefined) {
+    kmh = coords.speed * 3.6;
+  } else if(sillonPrevCoord && sillonPrevTime) {
+    const dt = (Date.now() - sillonPrevTime) / 1000;
+    if(dt > 0.5 && dt < 15) {
+      const dm = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
+      kmh = (dm / dt) * 3.6;
     }
-    // Cumuler
-    const total = {avsi:0,avc:0,rc:0,rsc:0,rnc:0,rsi:0,total:0};
-    moisSessions.forEach(s => {
-      Object.keys(s.counts).forEach(k => total[k] += s.counts[k]);
-      total.total += s.total;
+  }
+  sillonPrevTime = Date.now();
+  sillonSpeedHistory.push(kmh);
+  if(sillonSpeedHistory.length > 5) sillonSpeedHistory.shift();
+
+  const avgKmh = sillonSpeedHistory.reduce((a,b)=>a+b,0) / sillonSpeedHistory.length;
+  const el = document.getElementById('sillon-live-spd');
+  if(el) el.textContent = Math.round(avgKmh);
+
+  const isStationary = avgKmh < SILLON_STOP_SPEED;
+
+  if(isStationary) {
+    // Lancer le timer d'arrêt si pas déjà en cours
+    if(!sillonStopTimer) {
+      sillonStopCandLat = coords.lat;
+      sillonStopCandLon = coords.lon;
+      sillonStopTimer = setTimeout(() => {
+        sillonValidateStop(coords);
+        sillonStopTimer = null;
+      }, SILLON_STOP_DELAY);
+    }
+  } else {
+    // En mouvement : annuler le timer
+    if(sillonStopTimer) { clearTimeout(sillonStopTimer); sillonStopTimer = null; }
+  }
+}
+
+// ── Valider un arrêt potentiel ────────────────────────────────────────────────
+function sillonValidateStop(coords) {
+  // Vérifier distance minimale depuis le dernier arrêt
+  if(sillonStops.length > 0) {
+    const last = sillonStops[sillonStops.length - 1];
+    const distFromLast = haversine(last.lat, last.lon, coords.lat, coords.lon);
+    if(distFromLast < SILLON_MIN_DIST) return; // trop proche → feux rouges, stop ignoré
+  }
+
+  // Chercher un arrêt connu dans gpsCoordsDB pour cette ligne et direction
+  let matchedName = null;
+  let bestMatchDist = SILLON_STOP_RADIUS + 1;
+
+  // Chercher dans tous les trajets de la ligne sélectionnée
+  loadGpsCoordsDB();
+  const lineObj = db.lines.find(l => l.num === sillonLineNum);
+  if(lineObj) {
+    lineObj.trips.forEach((trip, tripIdx) => {
+      if(trip.direction !== sillonDirection) return;
+      trip.stops.forEach((stop, stopIdx) => {
+        const key = gpsCoordKey(lineObj.num, tripIdx, stopIdx);
+        const c = gpsCoordsDB[key];
+        if(!c) return;
+        const d = haversine(coords.lat, coords.lon, c.lat, c.lon);
+        if(d < bestMatchDist) { bestMatchDist = d; matchedName = stop.name; }
+      });
     });
-    const score = total.total > 0 ? (total.avc+total.rc+total.rsc*0.5)/total.total*100 : 0;
-    const pct = Math.round(score*10)/10;
-    const ok = pct >= 90;
-    const col = ok ? 'var(--green)' : '#e74c3c';
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-        <div style="font-family:'Share Tech Mono',monospace;font-size:36px;font-weight:700;color:${col}">${pct}%</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:${col}">${ok?'✅ Objectif atteint':'❌ Objectif non atteint'}</div>
-          <div style="font-size:11px;color:var(--muted)">${total.total} mesures · ${moisSessions.length} trajet(s)</div>
-        </div>
+  }
+
+  const pkActuel = Math.round(sillonPkCumul);
+
+  if(matchedName) {
+    // ── FUSION : arrêt connu à proximité ────────────────────────────────────
+    sillonStops.push({ name: matchedName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: false });
+    const el = document.getElementById('sillon-last-stop');
+    if(el) el.innerHTML = `✅ <strong>${matchedName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:var(--green);font-size:10px">(fusion base)</span>`;
+    toast(`📍 Arrêt lié : ${matchedName}`);
+  } else {
+    // ── AUTO-DÉTECTION : aucun arrêt connu à proximité ──────────────────────
+    const autoName = `Arrêt potentiel #${sillonStops.filter(s=>s.auto).length + 1}`;
+    sillonStops.push({ name: autoName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: true });
+    const el = document.getElementById('sillon-last-stop');
+    if(el) el.innerHTML = `🟡 <strong>${autoName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:orange;font-size:10px">(auto)</span>`;
+    toast(`🟡 Arrêt potentiel créé`);
+  }
+
+  document.getElementById('sillon-live-stops').textContent = sillonStops.length;
+}
+
+// ── Variante : afficher la liste des arrêts pour départ partiel ──────────────
+function sillonShowDepartPartiel() {
+  const lineNum = document.getElementById('sillon-line-sel')?.value;
+  const panel   = document.getElementById('sillon-depart-partiel-panel');
+  const list    = document.getElementById('sillon-stops-list');
+  if(!panel || !list) return;
+
+  if(!lineNum) { toast('⚠ Sélectionnez une ligne d\'abord'); return; }
+
+  const line = db.lines.find(l => l.num === lineNum);
+  if(!line) { toast('Ligne introuvable'); return; }
+
+  // Trouver le trajet correspondant à la direction
+  const trip = line.trips.find(t => t.direction === sillonDirection) || line.trips[0];
+  if(!trip) { toast('Aucun trajet trouvé'); return; }
+
+  // Construire la liste
+  list.innerHTML = trip.stops.map((stop, idx) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;
+                background:rgba(255,255,255,.03);border-radius:8px;
+                border:1px solid rgba(255,255,255,.06)">
+      <div style="width:22px;height:22px;border-radius:50%;background:#c0392b;
+                  border:2px solid rgba(255,255,255,.4);flex-shrink:0;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:9px;color:#fff;font-weight:700">${idx}</div>
+      <div style="flex:1;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${stop.name}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:11px">
-        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">⛔ Av.SI</div><div style="font-weight:700">${total.avsi}</div></div>
-        <div style="background:rgba(39,174,96,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:var(--green)">✅ Av.OK</div><div style="font-weight:700">${total.avc}</div></div>
-        <div style="background:rgba(39,174,96,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:var(--green)">✅ Ret.OK</div><div style="font-weight:700">${total.rc}</div></div>
-        <div style="background:rgba(255,165,0,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:orange">⚠️ Semi</div><div style="font-weight:700">${total.rsc}</div></div>
-        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">❌ N-C</div><div style="font-weight:700">${total.rnc}</div></div>
-        <div style="background:rgba(231,76,60,.1);border-radius:6px;padding:5px;text-align:center"><div style="color:#e74c3c">⛔ Ret.SI</div><div style="font-weight:700">${total.rsi}</div></div>
-      </div>`;
-    // Pré-remplir le calculateur manuel avec ces stats
-    document.getElementById('p-avsi').value = total.avsi;
-    document.getElementById('p-avc').value = total.avc;
-    document.getElementById('p-rc').value = total.rc;
-    document.getElementById('p-rsc').value = total.rsc;
-    document.getElementById('p-rnc').value = total.rnc;
-    document.getElementById('p-rsi').value = total.rsi;
-    calcRegularite();
-  } catch(e) {}
+      <button onclick="sillonDepartPartiel(${idx},'${stop.name.replace(/'/g, "\\'")}')"
+        style="padding:5px 10px;font-size:11px;font-weight:700;
+               background:rgba(0,212,255,.15);border:1px solid var(--accent);
+               color:var(--accent);border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        ▶ Démarrer ici
+      </button>
+    </div>
+  `).join('');
+
+  // Afficher / masquer toggle
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : 'block';
 }
 
-const PRIME_HISTO_KEY = 'chronoligne_prime_historique';
+// ── Départ partiel depuis un arrêt précis ────────────────────────────────────
+function sillonDepartPartiel(stopIdx, stopName) {
+  const lineNum = document.getElementById('sillon-line-sel')?.value;
+  if(!lineNum) { toast('⚠ Sélectionnez une ligne'); return; }
 
-function savePrimeHistorique() {
-  const avsi = parseInt(document.getElementById('p-avsi').value)||0;
-  const avc  = parseInt(document.getElementById('p-avc').value)||0;
-  const rc   = parseInt(document.getElementById('p-rc').value)||0;
-  const rsc  = parseInt(document.getElementById('p-rsc').value)||0;
-  const rnc  = parseInt(document.getElementById('p-rnc').value)||0;
-  const rsi  = parseInt(document.getElementById('p-rsi').value)||0;
-  const total = avsi+avc+rc+rsc+rnc+rsi;
-  if(total === 0) { toast('Aucune mesure à enregistrer'); return; }
+  const line = db.lines.find(l => l.num === lineNum);
+  const trip = line?.trips.find(t => t.direction === sillonDirection) || line?.trips[0];
+  if(!trip) { toast('Trajet introuvable'); return; }
 
-  const pct = Math.round(((avc+rc+rsc*0.5)/total*100)*10)/10;
-  const now = new Date();
-  const trimestre = `T${Math.ceil((now.getMonth()+1)/3)} ${now.getFullYear()}`;
-  const date = now.toLocaleDateString('fr-FR');
+  // Calculer le PK estimé jusqu'à cet arrêt en accumulant les intervalles
+  let pkEstime = 0;
+  for(let i = 0; i < stopIdx; i++) {
+    const interval = trip.stops[i].intervalAfter || 1; // minutes
+    pkEstime += interval * 300; // ~300m par minute de trajet bus (estimation)
+  }
 
-  try {
-    const histo = JSON.parse(localStorage.getItem(PRIME_HISTO_KEY)||'[]');
-    histo.push({ date, trimestre, pct, total, avsi, avc, rc, rsc, rnc, rsi, sae: saeCount });
-    localStorage.setItem(PRIME_HISTO_KEY, JSON.stringify(histo));
-    renderPrimeHistorique();
-    toast(`💾 Résultat ${pct}% enregistré pour ${trimestre}`);
-  } catch(e) {}
+  // Démarrer le sillon en pré-calant l'odométrie
+  sillonLineNum   = lineNum;
+  sillonLineName  = line.name || lineNum;
+  sillonActive    = true;
+  sillonPath      = [];
+  sillonStops     = [];
+  sillonPkCumul   = pkEstime; // ← Recalage odométrie
+  sillonPrevCoord = null;
+  sillonPrevTime  = null;
+  sillonSpeedHistory = [];
+  sillonLastCoords   = null;
+
+  // Marquer les arrêts précédents comme "sautés" dans le résumé
+  sillonVarianteDepuis = stopIdx;
+  sillonVarianteNom    = stopName;
+
+  // UI
+  document.getElementById('sillon-config-card').style.display  = 'none';
+  document.getElementById('sillon-live-card').style.display    = 'block';
+  document.getElementById('sillon-export-card').style.display  = 'none';
+  sillonSetStatusBar('REC',
+    `${lineNum} — Depuis ${stopName}`, '#e74c3c', true);
+
+  // Mettre à jour la Ghost Map
+  sillonUpdateGhostMap();
+
+  // Lancer GPS
+  sillonGpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const coords = {
+        lat: pos.coords.latitude, lon: pos.coords.longitude,
+        acc: pos.coords.accuracy, speed: pos.coords.speed,
+        heading: pos.coords.heading, ts: Date.now()
+      };
+      if(coords.acc > 30) return;
+      sillonLastCoords = coords;
+      sillonCheckStop(coords);
+      sillonUpdateLiveUI(coords);
+    },
+    err => toast('Erreur GPS : ' + err.message),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+  );
+
+  sillonRecTimer = setInterval(() => {
+    if(sillonLastCoords) sillonRecordPoint(sillonLastCoords);
+  }, SILLON_INTERVAL);
+
+  toast(`✂️ Départ partiel depuis l'arrêt ${stopIdx} : ${stopName}`);
 }
 
-function renderPrimeHistorique() {
-  try {
-    const histo = JSON.parse(localStorage.getItem(PRIME_HISTO_KEY)||'[]');
-    const el = document.getElementById('prime-historique-content');
-    if(!histo.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Aucun enregistrement</div>'; return; }
+// ── Terminus exceptionnel (fin de service prématurée) ────────────────────────
+function sillonTerminusExceptionnel() {
+  if(!sillonActive && sillonPath.length === 0) {
+    toast('Aucun trajet en cours'); return;
+  }
 
-    el.innerHTML = histo.slice().reverse().map(h => {
-      const ok = h.pct >= 90;
-      const col = ok ? 'var(--green)' : '#e74c3c';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:${col};min-width:70px">${h.pct}%</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${h.trimestre}</div>
-          <div style="font-size:11px;color:var(--muted)">${h.date} · ${h.total} mesures${h.sae ? ' · '+h.sae+' SAE' : ''}</div>
-        </div>
-        <div style="font-size:12px;color:${col}">${ok ? '✅' : '❌'}</div>
-      </div>`;
-    }).join('');
-  } catch(e) {}
+  // Demander confirmation
+  const arrets = sillonStops.length;
+  const dist   = (sillonPkCumul / 1000).toFixed(2);
+
+  // Afficher un mini-modal de confirmation
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border:2px solid #ffc107;border-radius:16px;padding:20px;max-width:300px;width:90%;text-align:center">
+      <div style="font-size:22px;margin-bottom:8px">⚠️</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#ffc107;margin-bottom:8px">TERMINUS EXCEPTIONNEL</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Fin anticipée du service.<br>
+        <strong style="color:var(--text)">${arrets} arrêts · ${dist} km</strong> enregistrés.<br>
+        Le tracé sera exporté jusqu'ici.
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="this.closest('div[style]').remove()"
+          style="flex:1;padding:10px;background:rgba(255,255,255,.08);border:1px solid var(--border);
+                 color:var(--muted);border-radius:10px;cursor:pointer;font-weight:700">
+          Annuler
+        </button>
+        <button onclick="this.closest('div[style*=fixed]').remove();sillonTerminus(true)"
+          style="flex:1;padding:10px;background:rgba(255,193,7,.2);border:2px solid #ffc107;
+                 color:#ffc107;border-radius:10px;cursor:pointer;font-weight:700">
+          ✅ Confirmer
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
 }
 
-function saeChange(delta) {
-  saeCount = Math.max(0, saeCount + delta);
-  document.getElementById('sae-count').textContent = saeCount;
-  document.getElementById('sae-deduct').textContent = `−${saeCount*50}€`;
-  calcRegularite();
+// ── Ghost Map — barre de progression du trajet ───────────────────────────────
+let sillonVarianteDepuis = 0;
+let sillonVarianteNom    = '';
+
+function sillonUpdateGhostMap() {
+  const lineNum = sillonLineNum || document.getElementById('sillon-line-sel')?.value;
+  if(!lineNum) return;
+
+  const line = db.lines.find(l => l.num === lineNum);
+  const trip = line?.trips.find(t => t.direction === sillonDirection) || line?.trips[0];
+  if(!trip || trip.stops.length === 0) return;
+
+  // Calculer PK total estimé du trajet complet
+  const totalInterval = trip.stops.reduce((acc, s) => acc + (s.intervalAfter || 1), 0);
+  const totalPkEstime = totalInterval * 300; // ~300m/min
+
+  // Progression actuelle
+  const pct = totalPkEstime > 0
+    ? Math.min(100, Math.round((sillonPkCumul / totalPkEstime) * 100))
+    : 0;
+
+  // Trouver arrêt courant (dernier validé)
+  const currentStop = sillonStops.length > 0
+    ? sillonStops[sillonStops.length - 1].name
+    : (sillonVarianteNom || trip.stops[0]?.name || '—');
+
+  // Mise à jour UI
+  const bar     = document.getElementById('sillon-ghost-bar');
+  const pctEl   = document.getElementById('sillon-ghost-pct');
+  const depart  = document.getElementById('sillon-ghost-depart');
+  const term    = document.getElementById('sillon-ghost-terminus');
+  const current = document.getElementById('sillon-ghost-current');
+
+  if(bar)    bar.style.width = pct + '%';
+  if(pctEl)  pctEl.textContent = pct + '%';
+  if(depart) depart.textContent = trip.stops[sillonVarianteDepuis]?.name || trip.stops[0]?.name || 'Départ';
+  if(term)   term.textContent  = trip.stops[trip.stops.length - 1]?.name || 'Terminus';
+  if(current) current.textContent = currentStop;
 }
+function sillonUpdateLiveUI(coords) {
+  const pkKm = (sillonPkCumul / 1000).toFixed(3);
+  const pkEl = document.getElementById('sillon-live-pk');
+  if(pkEl) pkEl.textContent = pkKm + ' km';
+
+  const ptsEl = document.getElementById('sillon-live-pts');
+  if(ptsEl) ptsEl.textContent = sillonPath.length;
+
+  const stopsEl = document.getElementById('sillon-live-stops');
+  if(stopsEl) stopsEl.textContent = sillonStops.length;
+
+  const counterEl = document.getElementById('sillon-pt-counter');
+  if(counterEl) counterEl.textContent = sillonPath.length + ' pts';
+
+  // Vitesse lissée
+  if(sillonSpeedHistory.length > 0) {
+    const avgKmh = (sillonSpeedHistory.reduce((a,b)=>a+b,0) / sillonSpeedHistory.length * 3.6).toFixed(0);
+    const spdEl = document.getElementById('sillon-live-spd');
+    if(spdEl) spdEl.textContent = avgKmh;
+  }
+
+  // Ghost Map
+  sillonUpdateGhostMap();
+}
+
+// ── Statut bar ────────────────────────────────────────────────────────────────
+function sillonSetStatusBar(badge, label, color, blink) {
+  const dot   = document.getElementById('sillon-rec-dot');
+  const lbl   = document.getElementById('sillon-status-label');
+  const sub   = document.getElementById('sillon-status-sub');
+  const bdg   = document.getElementById('sillon-rec-badge');
+  const ctr   = document.getElementById('sillon-pt-counter');
+  if(dot)  { dot.style.background = color; dot.style.animation = blink ? 'pulse 0.8s infinite' : 'none'; }
+  if(lbl)  lbl.textContent = label;
+  if(bdg)  { bdg.style.display = blink ? '' : 'none'; }
+  if(ctr)  { ctr.style.display = blink ? '' : 'none'; }
+}
+
+// ── TERMINUS — Arrêter et exporter ───────────────────────────────────────────
+function sillonTerminus(exceptionnel) {
+  if(!sillonActive && sillonPath.length === 0) return;
+  sillonActive = false;
+
+  // Stopper GPS et timers
+  if(sillonGpsWatchId !== null) { navigator.geolocation.clearWatch(sillonGpsWatchId); sillonGpsWatchId = null; }
+  if(sillonRecTimer)  { clearInterval(sillonRecTimer);  sillonRecTimer = null; }
+  if(sillonStopTimer) { clearTimeout(sillonStopTimer);  sillonStopTimer = null; }
+
+  // Construire l'objet JSON structuré
+  const result = {
+    meta: {
+      generatedAt: new Date().toISOString(),
+      ligne:       sillonLineNum,
+      nom:         sillonLineName,
+      direction:   sillonDirection === 'aller' ? 'Aller' : 'Retour',
+      terminusExceptionnel: exceptionnel === true,
+      departPartiel: sillonVarianteDepuis > 0,
+      departDepuis:  sillonVarianteNom || null,
+      totalPoints: sillonPath.length,
+      totalStops:  sillonStops.length,
+      distanceTotale_m: Math.round(sillonPkCumul),
+      distanceTotale_km: (sillonPkCumul / 1000).toFixed(3),
+    },
+    stops: sillonStops.map(s => ({
+      name:  s.name,
+      lat:   parseFloat(s.lat.toFixed(7)),
+      lon:   parseFloat(s.lon.toFixed(7)),
+      pk_m:  s.pk,
+      pk_km: parseFloat((s.pk / 1000).toFixed(3)),
+      source: s.auto ? 'auto-detect' : 'fusion-base',
+    })),
+    path: sillonPath.map(p => ({
+      lat: parseFloat(p.lat.toFixed(7)),
+      lon: parseFloat(p.lon.toFixed(7)),
+      pk_m: p.pk,
+    })),
+  };
+
+  const jsonStr = JSON.stringify(result, null, 2);
+
+  // UI — afficher le résultat
+  document.getElementById('sillon-live-card').style.display   = 'none';
+  document.getElementById('sillon-export-card').style.display = 'block';
+
+  const summary = document.getElementById('sillon-export-summary');
+  if(summary) {
+    const stopsKnown = sillonStops.filter(s=>!s.auto).length;
+    const stopsAuto  = sillonStops.filter(s=>s.auto).length;
+    const varianteTag = sillonVarianteDepuis > 0
+      ? `<br>✂️ <span style="color:var(--accent)">Départ partiel depuis : ${sillonVarianteNom}</span>`
+      : '';
+    const exceptTag = exceptionnel
+      ? `<br>⚠️ <span style="color:#ffc107">Terminus exceptionnel</span>`
+      : '';
+    summary.innerHTML =
+      `🚌 Ligne <strong>${sillonLineNum}</strong> — <strong>${sillonDirection.toUpperCase()}</strong>${varianteTag}${exceptTag}<br>` +
+      `📍 ${sillonStops.length} arrêts (${stopsKnown} fusion base + ${stopsAuto} auto)<br>` +
+      `🛣 ${(sillonPkCumul/1000).toFixed(2)} km — ${sillonPath.length} points GPS enregistrés`;
+  }
+
+  const ta = document.getElementById('sillon-export-json');
+  if(ta) ta.value = jsonStr;
+
+  sillonSetStatusBar('', 'TERMINÉ', 'var(--green)', false);
+  const lbl = document.getElementById('sillon-status-label');
+  if(lbl) lbl.style.color = 'var(--green)';
+  const sub = document.getElementById('sillon-status-sub');
+  if(sub) sub.textContent = `${sillonStops.length} arrêts · ${(sillonPkCumul/1000).toFixed(2)} km`;
+
+  toast('✅ Export JSON prêt — copiez et réintégrez !');
+}
+
+// ── Copier le JSON dans le presse-papier ─────────────────────────────────────
+function sillonCopyJSON() {
+  const ta = document.getElementById('sillon-export-json');
+  if(!ta) return;
+  if(navigator.clipboard) {
+    navigator.clipboard.writeText(ta.value)
+      .then(() => toast('📋 JSON copié !'))
+      .catch(() => { ta.select(); document.execCommand('copy'); toast('📋 JSON copié !'); });
+  } else {
+    ta.select(); document.execCommand('copy'); toast('📋 JSON copié !');
+  }
+}
+
+// ── Réinitialiser pour un nouveau parcours ───────────────────────────────────
+function sillonReset() {
+  sillonActive = false;
+  sillonPath   = []; sillonStops = []; sillonPkCumul = 0;
+  sillonPrevCoord = null; sillonLastCoords = null; sillonSpeedHistory = [];
+  sillonVarianteDepuis = 0; sillonVarianteNom = '';
+  document.getElementById('sillon-config-card').style.display  = 'block';
+  document.getElementById('sillon-live-card').style.display    = 'none';
+  document.getElementById('sillon-export-card').style.display  = 'none';
+  sillonSetStatusBar('', 'EN ATTENTE', 'var(--muted)', false);
+  const lbl = document.getElementById('sillon-status-label');
+  if(lbl) { lbl.style.color = 'var(--muted)'; }
+  const sub = document.getElementById('sillon-status-sub');
+  if(sub) sub.textContent = "Configurez et démarrez l'apprentissage";
+  sillonInitView();
+  toast('🔄 Prêt pour un nouveau parcours');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ══ GESTION PAYSAGE (LANDSCAPE) ══════════════════════════════════════════════
+let landscapeForced = false;
+
+function landscapeApply(isLandscape) {
+  const body = document.body;
+  if(isLandscape) {
+    body.classList.add('landscape');
+    // En paysage, forcer le mode INEO (plus lisible)
+    const cl = document.getElementById('mode-classique');
+    const in_ = document.getElementById('mode-ineo');
+    if(cl && in_ && cl.style.display !== 'none') {
+      cl.style.display  = 'none';
+      in_.style.display = 'block';
+    }
+    // Redessiner la carte si elle est ouverte
+    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
+    // Mettre à jour la classe map-open si la carte est ouverte
+    const ov = document.getElementById('map-overlay');
+    if(ov && ov.classList.contains('open')) body.classList.add('map-open');
+  } else {
+    body.classList.remove('landscape');
+    body.classList.remove('map-open');
+    // Réappliquer la nav/header
+    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
+  }
+}
+
+function landscapeCheck() {
+  if(landscapeForced) return; // déjà forcé manuellement
+  const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+  landscapeApply(isLandscape);
+}
+
+function landscapeForce(on) {
+  landscapeForced = on;
+  landscapeApply(on);
+  const btn = document.getElementById('landscape-force-btn');
+  if(btn) {
+    btn.textContent    = on ? 'ON' : 'OFF';
+    btn.style.color    = on ? 'var(--green)' : 'var(--muted)';
+    btn.style.borderColor = on ? 'var(--green)' : 'var(--border)';
+    btn.style.background  = on ? 'rgba(39,174,96,.2)' : 'rgba(255,255,255,.06)';
+  }
+  toast(on ? '📐 Mode paysage forcé' : '📐 Paysage auto');
+}
+
+function landscapeToggleForce() {
+  landscapeForce(!landscapeForced);
+}
+
+// Écouteurs orientation
+window.matchMedia('(orientation: landscape)').addEventListener('change', e => {
+  if(!landscapeForced) landscapeApply(e.matches);
+});
+window.addEventListener('resize', () => {
+  if(!landscapeForced) landscapeCheck();
+  // Redessiner canvas si visible
+  if(mapVisible) setTimeout(() => { mapDraw(); }, 50);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+
+
 
 // ══ THÈME CLAIR / SOMBRE ═════════════════════════════════════
 function initTheme() {
@@ -6817,9 +6382,9 @@ const GDRIVE_CLIENT_ID = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.goo
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'chronoligne_sync.json';
 const GDRIVE_KEYS = [
-  'chronoligne_db','chronoligne_roadmaps','chronoligne_heures',
+  'chronoligne_db','chronoligne_roadmaps',
   'chronoligne_gps_coords','chronoligne_gps_sessions',
-  'chronoligne_prime_sessions','chronoligne_prime_historique',
+  'chronoligne_prime_sessions',
   'chronoligne_settings','chronoligne_planning',
   'chronoligne_intervals','chronoligne_service','chronoligne_services'
 ];
@@ -6929,7 +6494,6 @@ async function gdriveLoad() {
     toast(`✅ ${count} données chargées depuis Drive`);
     setTimeout(() => {
       initDB();
-      if(typeof heuresRender==='function') heuresRender();
       if(typeof renderLineGrid==='function') renderLineGrid();
       if(typeof renderRoadmapView==='function') renderRoadmapView();
       if(typeof renderPlanWeek==='function') renderPlanWeek();
@@ -7083,8 +6647,6 @@ document.addEventListener('click', function(e) {
 
 // ══ CARTE GPS EN TEMPS RÉEL ════════════════════════════════════
 let mapShowStops = true;
-let mapVisible   = false;  // true seulement si le panneau carte est ouvert
-let mapDrawThrottle = null; // throttle pour ne pas dessiner si carte cachée
 let mapCentered = true;
 let mapZoom = 16; // zoom initial
 let mapOffsetX = 0, mapOffsetY = 0; // offset pan
@@ -7115,8 +6677,6 @@ function mapLatLonToXY(lat, lon, centerLat, centerLon, zoom, w, h) {
 }
 
 function mapDraw() {
-  // Performance : ne pas dessiner si la carte est cachée (arrière-plan actif)
-  if(!mapVisible) return;
   const canvas = document.getElementById('map-canvas');
   if(!canvas) return;
   const container = document.getElementById('map-container');
@@ -7250,9 +6810,7 @@ function mapDraw() {
     const line = db.lines[activeTrip.lineIdx];
     const trip = line?.trips?.[activeTrip.tripIdx];
     const stop = trip?.stops?.[gpsAutoNextIdx];
-    const pkStr = pkBus > 0 ? ` · PK ${pkBus >= 1000 ? (pkBus/1000).toFixed(2)+'km' : Math.round(pkBus)+'m'}${pkRecaled ? ' 📌' : ''}` : '';
-    mapInfoEl.textContent = stop ? `→ ${stop.name}${pkStr}` : `GPS actif${pkStr}`;
-    pkRecaled = false; // reset indicateur recalage après affichage
+    mapInfoEl.textContent = stop ? `→ ${stop.name}` : 'GPS actif';
   }
 }
 
@@ -7309,445 +6867,226 @@ function mapSetupEvents() {
   canvas.addEventListener('touchend', () => { lastTouch = null; lastPinchDist = null; });
 }
 
-// (carte déplacée dans le panneau flottant EN DIRECT)
+// Rafraîchir la carte quand on arrive sur l'onglet OPTIONS
+const _origShowView = typeof showView === 'function' ? showView : null;
 
-function mapTogglePanel() {
-  const overlay = document.getElementById('map-overlay');
-  const btn     = document.getElementById('map-toggle-btn');
-  if(!overlay) return;
+// ══ CARTE LEAFLET EN DIRECT ════════════════════════════════════
+let liveMap = null;
+let liveMapBusMarker = null;
+let liveMapPolyline = null;
+let liveMapStopMarkers = [];
+let liveMapVisible = true;
+let liveMapInitialized = false;
 
-  const isLandscape = document.body.classList.contains('landscape');
-  const isOpen = overlay.classList.toggle('open');
+function liveMapToggle() {
+  const mapEl = document.getElementById('live-map');
+  const btn = document.getElementById('live-map-toggle-btn');
+  if(!mapEl) return;
+  liveMapVisible = !liveMapVisible;
+  mapEl.style.height = liveMapVisible ? '300px' : '0';
+  if(btn) btn.textContent = liveMapVisible ? '▼ Réduire' : '▶ Agrandir';
+  if(liveMapVisible && liveMap) setTimeout(() => liveMap.invalidateSize(), 100);
+}
 
-  if(btn) btn.classList.toggle('active', isOpen);
-  if(isLandscape) document.body.classList.toggle('map-open', isOpen);
-
-  if(isOpen) {
-    mapVisible = true;
-    setTimeout(() => { mapSetupEvents(); mapDraw(); }, 80);
-  } else {
-    mapVisible = false;
-    // Quand fermée en paysage, enlever la classe map-open
-    if(isLandscape) document.body.classList.remove('map-open');
+function liveMapCenter() {
+  if(!liveMap) return;
+  if(gpsCoords) {
+    liveMap.setView([gpsCoords.lat, gpsCoords.lon], 16);
+  } else if(liveMapPolyline) {
+    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [20, 20]});
   }
 }
 
+function liveMapInit() {
+  if(liveMapInitialized || typeof L === 'undefined') return;
+  const mapEl = document.getElementById('live-map');
+  if(!mapEl) return;
 
-// ══════════════════════════════════════════════════════════════════════════════
-// MODULE SILLON — Apprentissage Automatique d'Itinéraire
-// ══════════════════════════════════════════════════════════════════════════════
+  liveMap = L.map('live-map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([49.04, 2.07], 13);
 
-// ── Variables d'état ──────────────────────────────────────────────────────────
-let sillonActive      = false;       // enregistrement en cours
-let sillonDirection   = 'aller';     // 'aller' | 'retour'
-let sillonLineNum     = '';          // numéro de ligne sélectionnée
-let sillonLineName    = '';
-let sillonPath        = [];          // [{lat, lon, pk, ts}] — tracé complet (le Sillon)
-let sillonStops       = [];          // [{name, lat, lon, pk, auto}] — arrêts validés
-let sillonPkCumul     = 0;           // PK courant en mètres
-let sillonPrevCoord   = null;        // dernière coord pour delta haversine
-let sillonPrevTime    = null;        // timestamp dernière position
-let sillonRecTimer    = null;        // setInterval 2s
-let sillonGpsWatchId  = null;        // watchPosition ID
-let sillonLastCoords  = null;        // dernière position GPS connue
-let sillonStopTimer   = null;        // setTimeout détection arrêt 5s
-let sillonStopCandLat = null;        // coords du candidat arrêt potentiel
-let sillonStopCandLon = null;
-let sillonSpeedHistory = [];         // historique vitesses pour affichage
+  // Tuiles OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(liveMap);
 
-// ── Constantes ────────────────────────────────────────────────────────────────
-const SILLON_INTERVAL    = 2000;   // ms entre deux enregistrements de position
-const SILLON_STOP_SPEED  = 2;      // km/h en dessous duquel = arrêt
-const SILLON_STOP_DELAY  = 5000;   // ms à l'arrêt avant validation (5s)
-const SILLON_STOP_RADIUS = 50;     // m — rayon fusion avec arrêt connu
-const SILLON_MIN_DIST    = 150;    // m — distance minimale entre 2 arrêts
-const SILLON_MAX_JUMP    = 150;    // m — saut max entre 2 positions (filtre erreur GPS)
+  // Attribution discrète
+  L.control.attribution({prefix: false}).addTo(liveMap);
 
-// ── Initialisation de la vue ──────────────────────────────────────────────────
-function sillonInitView() {
-  // Peupler le sélecteur de lignes depuis db.lines
-  const sel = document.getElementById('sillon-line-sel');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
-    db.lines.map(l => `<option value="${l.num}">${l.num} — ${l.name||''}</option>`).join('');
-  // Remettre la direction active
-  sillonSetDir(sillonDirection);
+  liveMapInitialized = true;
+  liveMapRefresh();
 }
 
-// ── Sélection de direction ────────────────────────────────────────────────────
-function sillonSetDir(dir) {
-  sillonDirection = dir;
-  const ba = document.getElementById('sillon-btn-aller');
-  const br = document.getElementById('sillon-btn-retour');
-  if(!ba || !br) return;
-  if(dir === 'aller') {
-    ba.style.background   = 'rgba(0,212,255,.2)';
-    ba.style.borderColor  = 'var(--accent)';
-    ba.style.color        = 'var(--accent)';
-    br.style.background   = 'rgba(39,174,96,.05)';
-    br.style.borderColor  = 'rgba(39,174,96,.3)';
-    br.style.color        = 'var(--muted)';
-  } else {
-    br.style.background   = 'rgba(39,174,96,.2)';
-    br.style.borderColor  = 'var(--green)';
-    br.style.color        = 'var(--green)';
-    ba.style.background   = 'rgba(0,212,255,.05)';
-    ba.style.borderColor  = 'rgba(0,212,255,.3)';
-    ba.style.color        = 'var(--muted)';
-  }
-}
+function liveMapRefresh() {
+  if(!liveMap || !liveMapInitialized) return;
 
-// ── DÉMARRER l'apprentissage ──────────────────────────────────────────────────
-function sillonStart() {
-  const sel = document.getElementById('sillon-line-sel');
-  sillonLineNum  = sel ? sel.value : '';
-  sillonLineName = sel ? (sel.options[sel.selectedIndex]?.text || '') : '';
-  if(!sillonLineNum) { toast("⚠ Sélectionnez une ligne d'abord"); return; }
-  if(!navigator.geolocation) { toast('GPS non disponible'); return; }
+  // Supprimer anciens éléments
+  if(liveMapPolyline) { liveMap.removeLayer(liveMapPolyline); liveMapPolyline = null; }
+  liveMapStopMarkers.forEach(m => liveMap.removeLayer(m));
+  liveMapStopMarkers = [];
 
-  // Réinitialiser l'état
-  sillonActive     = true;
-  sillonPath       = [];
-  sillonStops      = [];
-  sillonPkCumul    = 0;
-  sillonPrevCoord  = null;
-  sillonPrevTime   = null;
-  sillonSpeedHistory = [];
-  sillonLastCoords = null;
+  if(!activeTrip) return;
 
-  // UI
-  document.getElementById('sillon-config-card').style.display = 'none';
-  document.getElementById('sillon-live-card').style.display   = 'block';
-  document.getElementById('sillon-export-card').style.display = 'none';
-  sillonSetStatusBar('REC', `${sillonLineNum} ${sillonDirection.toUpperCase()} — En cours...`, '#e74c3c', true);
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
 
-  // Lancer GPS watchPosition
-  sillonGpsWatchId = navigator.geolocation.watchPosition(
-    pos => {
-      const coords = {
-        lat:     pos.coords.latitude,
-        lon:     pos.coords.longitude,
-        acc:     pos.coords.accuracy,
-        speed:   pos.coords.speed,    // m/s ou null
-        heading: pos.coords.heading,
-        ts:      Date.now()
-      };
-      // Ignorer positions trop imprécises (> 30m)
-      if(coords.acc > 30) return;
-      sillonLastCoords = coords;
-      sillonCheckStop(coords);
-      sillonUpdateLiveUI(coords);
-    },
-    err => toast('Erreur GPS : ' + err.message),
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
-  );
+  // Collecter les coordonnées GPS des arrêts
+  const stopPoints = [];
+  trip.stops.forEach((stop, idx) => {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
+    const c = gpsCoordsDB[key];
+    if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
+  });
 
-  // Enregistrement périodique toutes les 2s
-  sillonRecTimer = setInterval(() => {
-    if(!sillonLastCoords) return;
-    sillonRecordPoint(sillonLastCoords);
-  }, SILLON_INTERVAL);
+  if(stopPoints.length < 2) return;
 
-  toast('🔴 Apprentissage démarré — roulez !');
-}
-
-// ── Enregistrer un point dans le sillon ──────────────────────────────────────
-function sillonRecordPoint(coords) {
-  // Calculer delta PK
-  if(sillonPrevCoord) {
-    const d = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
-    if(d < SILLON_MAX_JUMP) sillonPkCumul += d; // filtrer les sauts aberrants
-  }
-  sillonPrevCoord = coords;
-  sillonPath.push({ lat: coords.lat, lon: coords.lon, pk: Math.round(sillonPkCumul) });
-  sillonUpdateLiveUI(coords);
-}
-
-// ── Détection d'arrêt (mains libres) ─────────────────────────────────────────
-function sillonCheckStop(coords) {
-  // Calculer vitesse (m/s → km/h)
-  let kmh = 0;
-  if(coords.speed !== null && coords.speed !== undefined) {
-    kmh = coords.speed * 3.6;
-  } else if(sillonPrevCoord && sillonPrevTime) {
-    const dt = (Date.now() - sillonPrevTime) / 1000;
-    if(dt > 0.5 && dt < 15) {
-      const dm = haversine(sillonPrevCoord.lat, sillonPrevCoord.lon, coords.lat, coords.lon);
-      kmh = (dm / dt) * 3.6;
-    }
-  }
-  sillonPrevTime = Date.now();
-  sillonSpeedHistory.push(kmh);
-  if(sillonSpeedHistory.length > 5) sillonSpeedHistory.shift();
-
-  const avgKmh = sillonSpeedHistory.reduce((a,b)=>a+b,0) / sillonSpeedHistory.length;
-  const el = document.getElementById('sillon-live-spd');
-  if(el) el.textContent = Math.round(avgKmh);
-
-  const isStationary = avgKmh < SILLON_STOP_SPEED;
-
-  if(isStationary) {
-    // Lancer le timer d'arrêt si pas déjà en cours
-    if(!sillonStopTimer) {
-      sillonStopCandLat = coords.lat;
-      sillonStopCandLon = coords.lon;
-      sillonStopTimer = setTimeout(() => {
-        sillonValidateStop(coords);
-        sillonStopTimer = null;
-      }, SILLON_STOP_DELAY);
-    }
-  } else {
-    // En mouvement : annuler le timer
-    if(sillonStopTimer) { clearTimeout(sillonStopTimer); sillonStopTimer = null; }
-  }
-}
-
-// ── Valider un arrêt potentiel ────────────────────────────────────────────────
-function sillonValidateStop(coords) {
-  // Vérifier distance minimale depuis le dernier arrêt
-  if(sillonStops.length > 0) {
-    const last = sillonStops[sillonStops.length - 1];
-    const distFromLast = haversine(last.lat, last.lon, coords.lat, coords.lon);
-    if(distFromLast < SILLON_MIN_DIST) return; // trop proche → feux rouges, stop ignoré
-  }
-
-  // Chercher un arrêt connu dans gpsCoordsDB pour cette ligne et direction
-  let matchedName = null;
-  let bestMatchDist = SILLON_STOP_RADIUS + 1;
-
-  // Chercher dans tous les trajets de la ligne sélectionnée
-  loadGpsCoordsDB();
-  const lineObj = db.lines.find(l => l.num === sillonLineNum);
-  if(lineObj) {
-    lineObj.trips.forEach((trip, tripIdx) => {
-      if(trip.direction !== sillonDirection) return;
-      trip.stops.forEach((stop, stopIdx) => {
-        const key = gpsCoordKey(lineObj.num, tripIdx, stopIdx);
-        const c = gpsCoordsDB[key];
-        if(!c) return;
-        const d = haversine(coords.lat, coords.lon, c.lat, c.lon);
-        if(d < bestMatchDist) { bestMatchDist = d; matchedName = stop.name; }
+  // ── Dessiner les marqueurs d'arrêts ──────────────────────────
+  function drawStopMarkers() {
+    stopPoints.forEach(sp => {
+      const isCurrent = sp.idx === gpsAutoNextIdx;
+      const isPassed  = sp.idx < gpsAutoNextIdx;
+      const isRef     = sp.isRef;
+      const size  = isCurrent ? 16 : isRef ? 12 : 8;
+      const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(200,200,200,0.8)';
+      const border = isCurrent ? '#fff' : '#222';
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
       });
+      const marker = L.marker([sp.lat, sp.lon], {icon})
+        .bindPopup(`<b>${sp.name}</b>${sp.time ? `<br>⏱ ${sp.time}` : ''}${isRef ? '<br>🔴 Arrêt régulation' : ''}`)
+        .addTo(liveMap);
+      liveMapStopMarkers.push(marker);
     });
   }
 
-  const pkActuel = Math.round(sillonPkCumul);
+  // ── Tracé OSRM (route réelle sur les rues) ───────────────────
+  // OSRM accepte max ~25 waypoints — on envoie tous les arrêts GPS
+  const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
+  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
 
-  if(matchedName) {
-    // ── FUSION : arrêt connu à proximité ────────────────────────────────────
-    sillonStops.push({ name: matchedName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: false });
-    const el = document.getElementById('sillon-last-stop');
-    if(el) el.innerHTML = `✅ <strong>${matchedName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:var(--green);font-size:10px">(fusion base)</span>`;
-    toast(`📍 Arrêt lié : ${matchedName}`);
+  // Afficher une polyline droite provisoire pendant le chargement
+  const provisoire = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
+    color: line.color || '#c0392b',
+    weight: 4,
+    opacity: 0.4,
+    dashArray: '8 6'
+  }).addTo(liveMap);
+  liveMap.fitBounds(provisoire.getBounds(), {padding: [24, 24]});
+
+  drawStopMarkers();
+
+  // Appel OSRM
+  fetch(osrmUrl)
+    .then(r => { if(!r.ok) throw new Error('OSRM ' + r.status); return r.json(); })
+    .then(data => {
+      if(!data.routes || !data.routes[0]) throw new Error('Pas de route OSRM');
+      const geom = data.routes[0].geometry.coordinates; // [[lon,lat], ...]
+      const latLngs = geom.map(c => [c[1], c[0]]);
+
+      // Supprimer la polyline provisoire
+      liveMap.removeLayer(provisoire);
+
+      // Tracer la vraie route
+      liveMapPolyline = L.polyline(latLngs, {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.9
+      }).addTo(liveMap);
+
+      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
+      toast('🗺 Tracé réaliste chargé');
+    })
+    .catch(err => {
+      // Fallback : garder la polyline provisoire comme définitive
+      liveMap.removeLayer(provisoire);
+      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.85
+      }).addTo(liveMap);
+      console.warn('OSRM indisponible, tracé droit utilisé :', err.message);
+    });
+}
+
+function liveMapUpdateBus() {
+  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
+
+  // Icône bus
+  const busIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;
+           background:#00d4ff;border:3px solid #fff;
+           display:flex;align-items:center;justify-content:center;
+           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  if(liveMapBusMarker) {
+    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
   } else {
-    // ── AUTO-DÉTECTION : aucun arrêt connu à proximité ──────────────────────
-    const autoName = `Arrêt potentiel #${sillonStops.filter(s=>s.auto).length + 1}`;
-    sillonStops.push({ name: autoName, lat: coords.lat, lon: coords.lon, pk: pkActuel, auto: true });
-    const el = document.getElementById('sillon-last-stop');
-    if(el) el.innerHTML = `🟡 <strong>${autoName}</strong> — PK ${(pkActuel/1000).toFixed(3)} km <span style="color:orange;font-size:10px">(auto)</span>`;
-    toast(`🟡 Arrêt potentiel créé`);
+    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
+      .addTo(liveMap);
   }
 
-  document.getElementById('sillon-live-stops').textContent = sillonStops.length;
+  // Mettre à jour les couleurs des pastilles
+  liveMapRefreshStopColors();
 }
 
-// ── Mise à jour de l'interface live ──────────────────────────────────────────
-function sillonUpdateLiveUI(coords) {
-  const pkKm = (sillonPkCumul / 1000).toFixed(3);
-  const pkEl = document.getElementById('sillon-live-pk');
-  if(pkEl) pkEl.textContent = pkKm + ' km';
+function liveMapRefreshStopColors() {
+  if(!activeTrip || !liveMap) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
 
-  const ptsEl = document.getElementById('sillon-live-pts');
-  if(ptsEl) ptsEl.textContent = sillonPath.length;
-
-  const counterEl = document.getElementById('sillon-pt-counter');
-  if(counterEl) counterEl.textContent = sillonPath.length + ' pts';
+  liveMapStopMarkers.forEach((marker, idx) => {
+    const stop = trip.stops[idx];
+    if(!stop) return;
+    const isCurrent = idx === gpsAutoNextIdx;
+    const isPassed  = idx < gpsAutoNextIdx;
+    const isRef     = stop.isRef;
+    const size  = isCurrent ? 16 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
+    const border = isCurrent ? '#fff' : '#333';
+    marker.setIcon(L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    }));
+  });
 }
-
-// ── Statut bar ────────────────────────────────────────────────────────────────
-function sillonSetStatusBar(badge, label, color, blink) {
-  const dot   = document.getElementById('sillon-rec-dot');
-  const lbl   = document.getElementById('sillon-status-label');
-  const sub   = document.getElementById('sillon-status-sub');
-  const bdg   = document.getElementById('sillon-rec-badge');
-  const ctr   = document.getElementById('sillon-pt-counter');
-  if(dot)  { dot.style.background = color; dot.style.animation = blink ? 'pulse 0.8s infinite' : 'none'; }
-  if(lbl)  lbl.textContent = label;
-  if(bdg)  { bdg.style.display = blink ? '' : 'none'; }
-  if(ctr)  { ctr.style.display = blink ? '' : 'none'; }
-}
-
-// ── TERMINUS — Arrêter et exporter ───────────────────────────────────────────
-function sillonTerminus() {
-  if(!sillonActive) return;
-  sillonActive = false;
-
-  // Stopper GPS et timers
-  if(sillonGpsWatchId !== null) { navigator.geolocation.clearWatch(sillonGpsWatchId); sillonGpsWatchId = null; }
-  if(sillonRecTimer)  { clearInterval(sillonRecTimer);  sillonRecTimer = null; }
-  if(sillonStopTimer) { clearTimeout(sillonStopTimer);  sillonStopTimer = null; }
-
-  // Construire l'objet JSON structuré
-  const result = {
-    meta: {
-      generatedAt: new Date().toISOString(),
-      ligne:       sillonLineNum,
-      nom:         sillonLineName,
-      direction:   sillonDirection === 'aller' ? 'Aller' : 'Retour',
-      totalPoints: sillonPath.length,
-      totalStops:  sillonStops.length,
-      distanceTotale_m: Math.round(sillonPkCumul),
-      distanceTotale_km: (sillonPkCumul / 1000).toFixed(3),
-    },
-    stops: sillonStops.map(s => ({
-      name:  s.name,
-      lat:   parseFloat(s.lat.toFixed(7)),
-      lon:   parseFloat(s.lon.toFixed(7)),
-      pk_m:  s.pk,
-      pk_km: parseFloat((s.pk / 1000).toFixed(3)),
-      source: s.auto ? 'auto-detect' : 'fusion-base',
-    })),
-    path: sillonPath.map(p => ({
-      lat: parseFloat(p.lat.toFixed(7)),
-      lon: parseFloat(p.lon.toFixed(7)),
-      pk_m: p.pk,
-    })),
-  };
-
-  const jsonStr = JSON.stringify(result, null, 2);
-
-  // UI — afficher le résultat
-  document.getElementById('sillon-live-card').style.display   = 'none';
-  document.getElementById('sillon-export-card').style.display = 'block';
-
-  const summary = document.getElementById('sillon-export-summary');
-  if(summary) {
-    const stopsKnown = sillonStops.filter(s=>!s.auto).length;
-    const stopsAuto  = sillonStops.filter(s=>s.auto).length;
-    summary.innerHTML =
-      `🚌 Ligne <strong>${sillonLineNum}</strong> — <strong>${sillonDirection.toUpperCase()}</strong><br>` +
-      `📍 ${sillonStops.length} arrêts (${stopsKnown} fusion base + ${stopsAuto} auto)<br>` +
-      `🛣 ${(sillonPkCumul/1000).toFixed(2)} km — ${sillonPath.length} points GPS enregistrés`;
-  }
-
-  const ta = document.getElementById('sillon-export-json');
-  if(ta) ta.value = jsonStr;
-
-  sillonSetStatusBar('', 'TERMINÉ', 'var(--green)', false);
-  const lbl = document.getElementById('sillon-status-label');
-  if(lbl) lbl.style.color = 'var(--green)';
-  const sub = document.getElementById('sillon-status-sub');
-  if(sub) sub.textContent = `${sillonStops.length} arrêts · ${(sillonPkCumul/1000).toFixed(2)} km`;
-
-  toast('✅ Export JSON prêt — copiez et réintégrez !');
-}
-
-// ── Copier le JSON dans le presse-papier ─────────────────────────────────────
-function sillonCopyJSON() {
-  const ta = document.getElementById('sillon-export-json');
-  if(!ta) return;
-  if(navigator.clipboard) {
-    navigator.clipboard.writeText(ta.value)
-      .then(() => toast('📋 JSON copié !'))
-      .catch(() => { ta.select(); document.execCommand('copy'); toast('📋 JSON copié !'); });
-  } else {
-    ta.select(); document.execCommand('copy'); toast('📋 JSON copié !');
-  }
-}
-
-// ── Réinitialiser pour un nouveau parcours ───────────────────────────────────
-function sillonReset() {
-  sillonActive = false;
-  sillonPath   = []; sillonStops = []; sillonPkCumul = 0;
-  sillonPrevCoord = null; sillonLastCoords = null; sillonSpeedHistory = [];
-  document.getElementById('sillon-config-card').style.display  = 'block';
-  document.getElementById('sillon-live-card').style.display    = 'none';
-  document.getElementById('sillon-export-card').style.display  = 'none';
-  sillonSetStatusBar('', 'EN ATTENTE', 'var(--muted)', false);
-  const lbl = document.getElementById('sillon-status-label');
-  if(lbl) { lbl.style.color = 'var(--muted)'; }
-  const sub = document.getElementById('sillon-status-sub');
-  if(sub) sub.textContent = "Configurez et démarrez l'apprentissage";
-  sillonInitView();
-  toast('🔄 Prêt pour un nouveau parcours');
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ══ GESTION PAYSAGE (LANDSCAPE) ══════════════════════════════════════════════
-let landscapeForced = false;
-
-function landscapeApply(isLandscape) {
-  const body = document.body;
-  if(isLandscape) {
-    body.classList.add('landscape');
-    // En paysage, forcer le mode INEO (plus lisible)
-    const cl = document.getElementById('mode-classique');
-    const in_ = document.getElementById('mode-ineo');
-    if(cl && in_ && cl.style.display !== 'none') {
-      cl.style.display  = 'none';
-      in_.style.display = 'block';
-    }
-    // Redessiner la carte si elle est ouverte
-    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
-    // Mettre à jour la classe map-open si la carte est ouverte
-    const ov = document.getElementById('map-overlay');
-    if(ov && ov.classList.contains('open')) body.classList.add('map-open');
-  } else {
-    body.classList.remove('landscape');
-    body.classList.remove('map-open');
-    // Réappliquer la nav/header
-    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
-  }
-}
-
-function landscapeCheck() {
-  if(landscapeForced) return; // déjà forcé manuellement
-  const isLandscape = window.matchMedia('(orientation: landscape)').matches;
-  landscapeApply(isLandscape);
-}
-
-function landscapeForce(on) {
-  landscapeForced = on;
-  landscapeApply(on);
-  const btn = document.getElementById('landscape-force-btn');
-  if(btn) {
-    btn.textContent    = on ? 'ON' : 'OFF';
-    btn.style.color    = on ? 'var(--green)' : 'var(--muted)';
-    btn.style.borderColor = on ? 'var(--green)' : 'var(--border)';
-    btn.style.background  = on ? 'rgba(39,174,96,.2)' : 'rgba(255,255,255,.06)';
-  }
-  toast(on ? '📐 Mode paysage forcé' : '📐 Paysage auto');
-}
-
-function landscapeToggleForce() {
-  landscapeForce(!landscapeForced);
-}
-
-// Écouteurs orientation
-window.matchMedia('(orientation: landscape)').addEventListener('change', e => {
-  if(!landscapeForced) landscapeApply(e.matches);
-});
-window.addEventListener('resize', () => {
-  if(!landscapeForced) landscapeCheck();
-  // Redessiner canvas si visible
-  if(mapVisible) setTimeout(() => { mapDraw(); }, 50);
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ══ BOOT ═════════════════════════════════════════════════════
+// Recalibrer la carte Leaflet lors d'un changement d'orientation
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
+screen.orientation?.addEventListener('change', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
 initTheme();
 initDB();
 applyLiveMode();
 
 installPreloadedGPS();
-heuresInit();
 updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
 gdriveInit();
-landscapeCheck(); // vérifier l'orientation au démarrage
 </script>
 </body>
 </html>
