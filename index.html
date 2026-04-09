@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🚌 ChronoLigne PRO</title>
 
 <!-- PWA -->
@@ -13,7 +13,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0e1a">
 <meta name="description" content="Assistant timing chauffeur de bus — Réseau Cergy-Pontoise">
-<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%2C%22orientation%22%3A%22any%22%7D">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -6251,6 +6251,21 @@ function sillonReset() {
 // ══ GESTION PAYSAGE (LANDSCAPE) ══════════════════════════════════════════════
 let landscapeForced = false;
 
+// Détection fiable de l'orientation
+// Utilise 3 méthodes en cascade pour couvrir tous les navigateurs/OS
+function isLandscapeNow() {
+  // Méthode 1 : screen.orientation API (la plus fiable sur Android/iOS récent)
+  if(screen.orientation && screen.orientation.type) {
+    return screen.orientation.type.includes('landscape');
+  }
+  // Méthode 2 : window.orientation (ancien API, degrés)
+  if(typeof window.orientation === 'number') {
+    return Math.abs(window.orientation) === 90;
+  }
+  // Méthode 3 : dimensions fenêtre (fallback universel)
+  return window.innerWidth > window.innerHeight;
+}
+
 function landscapeApply(isLandscape) {
   const body = document.body;
   if(isLandscape) {
@@ -6262,23 +6277,20 @@ function landscapeApply(isLandscape) {
       cl.style.display  = 'none';
       in_.style.display = 'block';
     }
-    // Redessiner la carte si elle est ouverte
-    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
     // Mettre à jour la classe map-open si la carte est ouverte
     const ov = document.getElementById('map-overlay');
     if(ov && ov.classList.contains('open')) body.classList.add('map-open');
+    if(liveMapVisible && liveMap) setTimeout(() => { liveMap.invalidateSize(); }, 150);
   } else {
     body.classList.remove('landscape');
     body.classList.remove('map-open');
-    // Réappliquer la nav/header
-    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
+    if(liveMapVisible && liveMap) setTimeout(() => { liveMap.invalidateSize(); }, 150);
   }
 }
 
 function landscapeCheck() {
-  if(landscapeForced) return; // déjà forcé manuellement
-  const isLandscape = window.matchMedia('(orientation: landscape)').matches;
-  landscapeApply(isLandscape);
+  if(landscapeForced) return;
+  landscapeApply(isLandscapeNow());
 }
 
 function landscapeForce(on) {
@@ -6286,8 +6298,8 @@ function landscapeForce(on) {
   landscapeApply(on);
   const btn = document.getElementById('landscape-force-btn');
   if(btn) {
-    btn.textContent    = on ? 'ON' : 'OFF';
-    btn.style.color    = on ? 'var(--green)' : 'var(--muted)';
+    btn.textContent       = on ? 'ON' : 'OFF';
+    btn.style.color       = on ? 'var(--green)' : 'var(--muted)';
     btn.style.borderColor = on ? 'var(--green)' : 'var(--border)';
     btn.style.background  = on ? 'rgba(39,174,96,.2)' : 'rgba(255,255,255,.06)';
   }
@@ -6298,14 +6310,25 @@ function landscapeToggleForce() {
   landscapeForce(!landscapeForced);
 }
 
-// Écouteurs orientation
-window.matchMedia('(orientation: landscape)').addEventListener('change', e => {
-  if(!landscapeForced) landscapeApply(e.matches);
+// ── Écouteurs d'orientation — 4 mécanismes en parallèle ──────────────────────
+// 1. screen.orientation API (Chrome Android, Safari iOS 16+)
+if(screen.orientation) {
+  screen.orientation.addEventListener('change', () => {
+    if(!landscapeForced) setTimeout(() => landscapeApply(isLandscapeNow()), 100);
+  });
+}
+// 2. window.orientationchange (iOS < 16, Android WebView)
+window.addEventListener('orientationchange', () => {
+  if(!landscapeForced) setTimeout(() => landscapeApply(isLandscapeNow()), 200);
 });
+// 3. matchMedia change (Desktop + fallback)
+window.matchMedia('(orientation: landscape)').addEventListener('change', e => {
+  if(!landscapeForced) setTimeout(() => landscapeApply(isLandscapeNow()), 50);
+});
+// 4. resize (ultra-fiable, couvre tous les cas)
 window.addEventListener('resize', () => {
-  if(!landscapeForced) landscapeCheck();
-  // Redessiner canvas si visible
-  if(mapVisible) setTimeout(() => { mapDraw(); }, 50);
+  if(!landscapeForced) landscapeApply(isLandscapeNow());
+  if(liveMapVisible && liveMap) setTimeout(() => { liveMap.invalidateSize(); }, 50);
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7065,18 +7088,11 @@ function liveMapRefreshStopColors() {
 }
 
 // ══ BOOT ═════════════════════════════════════════════════════
-// Recalibrer la carte Leaflet lors d'un changement d'orientation
+// Recalibrage Leaflet + paysage intégré dans les écouteurs ci-dessus
+// (orientationchange et screen.orientation déjà gérés dans le bloc landscape)
+// Leaflet invalidateSize au cas où :
 window.addEventListener('orientationchange', () => {
-  setTimeout(() => {
-    if(liveMap) liveMap.invalidateSize();
-    mapDraw();
-  }, 300);
-});
-screen.orientation?.addEventListener('change', () => {
-  setTimeout(() => {
-    if(liveMap) liveMap.invalidateSize();
-    mapDraw();
-  }, 300);
+  setTimeout(() => { if(liveMap) liveMap.invalidateSize(); }, 350);
 });
 initTheme();
 initDB();
