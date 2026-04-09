@@ -130,17 +130,16 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
-/* ══ PANNEAU CARTE FLOTTANT ══ */
+/* ══ PANNEAU CARTE ══ */
 #map-overlay {
   display: none;
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 70px; /* au-dessus de la nav */
+  top: 0; left: 0; right: 0; bottom: 70px;
   z-index: 150;
   pointer-events: none;
 }
-#map-overlay.open {
-  display: block;
-}
+#map-overlay.open { display: block; }
+
 #map-panel {
   position: absolute;
   bottom: 12px; left: 12px; right: 12px;
@@ -150,15 +149,16 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,.6);
   pointer-events: all;
-  animation: mapSlideUp .25s ease;
+  animation: mapSlideUp .22s ease;
 }
 @keyframes mapSlideUp {
   from { transform: translateY(30px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+
 #map-toggle-btn {
   position: fixed;
-  bottom: 82px; /* juste au-dessus de la nav */
+  bottom: 82px;
   right: 14px;
   z-index: 160;
   width: 44px; height: 44px;
@@ -168,7 +168,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   color: var(--text);
   font-size: 20px;
   cursor: pointer;
-  display: none; /* affiché seulement sur view-live */
+  display: none;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(0,0,0,.4);
@@ -179,203 +179,125 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   border-color: var(--accent);
 }
 
-/* ══ MULTI-LIGNES & VARIANTES ══ */
-#ligne-selector { display:flex; flex-direction:column; gap:10px; }
-#ligne-badge {
-  display:none; align-items:center; gap:8px;
-  padding:8px 14px; background:var(--card); border-bottom:1px solid var(--border);
-  font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700;
+/* ══ PAYSAGE (LANDSCAPE) ══ */
+
+/* Cacher header/nav pour maximiser l'espace */
+body.landscape #header { display: none; }
+body.landscape nav     { display: none; }
+body.landscape #app    { padding-bottom: 0; }
+body.landscape .view   { padding: 0; gap: 0; }
+
+/* Bouton retour portrait fixe */
+#landscape-exit-btn {
+  display: none;
+  position: fixed;
+  top: 6px; left: 6px;
+  z-index: 400;
+  background: rgba(0,0,0,.6);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
-#ligne-badge .badge-num {
-  padding:3px 10px; border-radius:6px; color:#fff; font-size:18px; font-weight:700;
+body.landscape #landscape-exit-btn { display: block; }
+
+/* ── Landscape : carte cachée — INEO plein écran ── */
+body.landscape #view-live {
+  display: flex !important;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
-#ligne-badge .badge-dest { color:var(--accent); flex:1; }
-
-/* Sélecteur 2 niveaux */
-.sel-ligne-wrap { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
-.sel-ligne-row { display:flex; gap:8px; }
-.sel-ligne-row select { flex:1; padding:9px 10px; font-size:15px; font-weight:600; }
-
-/* Variante chips */
-#variant-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
-.variant-chip {
-  padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700;
-  border:1px solid var(--border); background:rgba(255,255,255,.05);
-  color:var(--muted); cursor:pointer; transition:all .2s; white-space:nowrap;
+body.landscape #mode-classique { display: none !important; }
+body.landscape #mode-ineo {
+  display: flex !important;
+  flex: 1;
+  height: 100%;
 }
-.variant-chip.active { background:var(--accent); color:#000; border-color:var(--accent); }
-.variant-chip.aller  { border-color:rgba(0,212,255,.4); }
-.variant-chip.retour { border-color:rgba(39,174,96,.4); }
-
-/* ══ SPLIT-SCREEN HORIZONTAL ══ */
-@media (orientation: landscape) and (max-height: 600px) {
-  body { overflow: hidden; }
-  #app { padding-bottom: 0 !important; }
-  nav { display:none !important; }
-  #header { padding:4px 10px; }
-  #clock-header { font-size:clamp(28px,6vh,44px) !important; }
-
-  #view-live {
-    flex-direction:row !important;
-    padding:6px !important;
-    gap:6px !important;
-    height: calc(100vh - 48px);
-    overflow: hidden;
-  }
-
-  /* Panneau gauche INEO */
-  #ineo-panel-left {
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    gap:5px;
-    overflow-y:auto;
-    min-width:0;
-  }
-
-  /* Panneau droit Carte */
-  #ineo-panel-right {
-    width:45%;
-    flex-shrink:0;
-    display:flex;
-    flex-direction:column;
-  }
-  #ineo-panel-right.hidden { display:none !important; }
-  #ineo-panel-left.full-width { flex:1 !important; width:100% !important; }
-
-  /* Carte intégrée en paysage */
-  #map-inline {
-    flex:1;
-    background:#1a2035;
-    border-radius:10px;
-    overflow:hidden;
-    position:relative;
-    min-height:0;
-  }
-  #map-canvas-inline { width:100%; height:100%; display:block; }
-
-  /* Réduire les paddings en paysage */
-  #mode-ineo .card, #mode-classique .card { padding:6px 10px !important; }
-  #mode-ineo [style*="padding:28px"] { padding:10px 12px !important; }
-  #mode-ineo [style*="padding:36px"] { padding:12px 12px !important; }
-  #mode-ineo [style*="padding:30px"] { padding:10px 12px !important; }
-  #mode-ineo [style*="font-size:clamp(20px"] { font-size:clamp(14px,2.5vw,20px) !important; }
-  #mode-ineo [style*="font-size:clamp(36px"] { font-size:clamp(22px,3.5vw,32px) !important; }
-  #mode-ineo [style*="font-size:clamp(48px"] { font-size:clamp(28px,4vw,36px) !important; }
-  #mode-ineo [style*="font-size:clamp(26px"] { font-size:clamp(18px,3vw,24px) !important; }
-  .live-block { padding:6px 10px !important; }
-
-  /* Nav horizontale mini en bas */
-  #landscape-nav {
-    display:flex !important;
-    position:fixed; bottom:0; left:0; right:0;
-    background:var(--card); border-top:1px solid var(--border);
-    height:36px; z-index:200; gap:0;
-  }
-  #landscape-nav button {
-    flex:1; background:none; border:none; border-right:1px solid var(--border);
-    color:var(--muted); font-size:10px; font-weight:700; cursor:pointer; padding:0 4px;
-  }
-  #landscape-nav button.active { color:var(--accent); background:rgba(0,212,255,.05); }
-  #app { padding-bottom:36px; }
-
-  /* Cacher le map overlay flottant en paysage (on utilise le inline) */
-  #map-overlay { display:none !important; }
-  #map-toggle-btn { display:none !important; }
+body.landscape #mode-ineo > .card,
+body.landscape #mode-ineo > div > .card {
+  flex: 1;
+  border-radius: 0;
+  border: none;
+  height: 100%;
 }
 
-@media (orientation: portrait) {
-  #ineo-panel-left, #ineo-panel-right { display:contents; }
-  #landscape-nav { display:none !important; }
-  #map-inline { display:none !important; }
+/* Textes INEO agrandis en paysage sans carte */
+body.landscape:not(.map-open) #ineo-ln-hh,
+body.landscape:not(.map-open) #ineo-ln-mm {
+  font-size: clamp(72px, 18vw, 110px) !important;
+}
+body.landscape:not(.map-open) #ineo-ln-name {
+  font-size: clamp(40px, 8vw, 64px) !important;
+}
+body.landscape:not(.map-open) #ineo-la-time {
+  font-size: clamp(48px, 10vw, 72px) !important;
+}
+body.landscape:not(.map-open) #ineo-la-name {
+  font-size: clamp(32px, 6vw, 52px) !important;
+}
+body.landscape:not(.map-open) #ineo-lb-time,
+body.landscape:not(.map-open) #ineo-lb-name {
+  font-size: clamp(24px, 4vw, 36px) !important;
 }
 
-/* ══ BOUTON CARTE FANTÔME ══ */
-#ghost-map-btn {
-  position:fixed;
-  bottom:82px; right:14px;
-  z-index:160;
-  width:44px; height:44px;
-  border-radius:50%;
-  background:var(--card);
-  border:1px solid var(--border);
-  color:var(--text);
-  font-size:20px;
-  cursor:pointer;
-  display:none; /* affiché seulement sur view-live portrait */
-  align-items:center;
-  justify-content:center;
-  box-shadow:0 4px 12px rgba(0,0,0,.4);
-  transition:background .2s, border-color .2s;
+/* ── Landscape : carte ouverte — split 50/50 ── */
+body.landscape.map-open #map-overlay {
+  display: block !important;
+  position: fixed;
+  top: 0; right: 0; left: 50%;
+  bottom: 0;
+  z-index: 10;
+  pointer-events: all;
 }
-#ghost-map-btn.active {
-  background:rgba(0,212,255,.2);
-  border-color:var(--accent);
+body.landscape.map-open #map-panel {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  bottom: 0; left: 0; right: 0; top: 0;
+  animation: none;
 }
-
-/* ══ SILLON — SÉLECTEUR LIGNE + VARIANTE ══ */
-#sillon-variant-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-.sillon-variant-btn {
-  flex:1; min-width:120px; padding:10px 12px; font-size:13px; font-weight:700;
-  border-radius:10px; cursor:pointer; transition:.2s; text-align:center;
+body.landscape.map-open #map-container {
+  height: calc(100vh - 44px) !important;
 }
-#sillon-start-btn:disabled {
-  opacity:.4; cursor:not-allowed;
-  background:rgba(255,255,255,.1) !important;
-  color:var(--muted) !important;
+body.landscape.map-open #view-live {
+  width: 50%;
+}
+body.landscape.map-open #mode-ineo {
+  width: 100%;
 }
 
+/* Banières GPS en paysage : compactes */
+body.landscape #gps-record-banner,
+body.landscape #gps-auto-banner,
+body.landscape #gps-lost-banner {
+  border-radius: 0;
+  padding: 6px 10px;
+}
 
-/* ══ MODE PAYSAGE ══════════════════════════════════════════════ */
-@media screen and (orientation: landscape) {
-  body { overflow-x: hidden; }
-  #app {
-    display: flex !important;
-    flex-direction: row !important;
-    height: calc(100vh - 56px) !important;
-    overflow: hidden !important;
-  }
-  /* Vue Sillon : INEO à gauche, carte à droite */
-  #view-sillon {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
-  }
-  #sillon-left-panel {
-    width: 42% !important;
-    height: 100% !important;
-    overflow-y: auto !important;
-    flex-shrink: 0 !important;
-    border-right: 2px solid rgba(255,255,255,.1) !important;
-  }
-  #sillon-map-panel {
-    flex: 1 !important;
-    height: 100% !important;
-    overflow: hidden !important;
-  }
-  /* Vue Live en paysage */
-  #view-live {
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-  }
-  #sae-card {
-    flex: 1 !important;
-    min-width: 0 !important;
-  }
-  /* Nav en bas toujours visible */
-  #nav {
-    position: fixed !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    z-index: 200 !important;
-  }
+/* Bouton carte en paysage */
+body.landscape #map-toggle-btn {
+  display: flex !important;
+  bottom: 8px;
+  right: 8px;
+  width: 38px; height: 38px;
+  font-size: 17px;
+  z-index: 420;
+}
+body.landscape.map-open #map-toggle-btn {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: 8px;
 }
 </style>
 </head>
 <body>
 <div id="toast"></div>
+<button id="landscape-exit-btn" onclick="landscapeForce(false)">⬆ Portrait</button>
 
 <!-- HEADER -->
 <div id="header">
@@ -386,14 +308,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
     <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
   </div>
-</div>
-
-
-<!-- Badge Ligne > Destination (affiché quand trajet actif) -->
-<div id="ligne-badge">
-  <div class="badge-num" id="badge-num-text" style="background:#888">—</div>
-  <div class="badge-dest" id="badge-dest-text">Aucun trajet</div>
-  <button onclick="showView('view-lines')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px">✎</button>
 </div>
 
 <!-- Bouton toggle carte — fixe, visible seulement sur EN DIRECT -->
@@ -431,7 +345,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- ══ VIEW: EN DIRECT ══ -->
 <div class="view active" id="view-live">
-<div id="ineo-panel-left">
 
   <!-- Bannière GPS mode enregistrement -->
   <div id="gps-record-banner" style="display:none;background:rgba(255,165,0,.15);border:2px solid orange;border-radius:12px;padding:12px 14px">
@@ -708,23 +621,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div id="gps-count-info"></div>
     </div>
   </div>
-
-</div><!-- #ineo-panel-left -->
-<div id="ineo-panel-right" class="hidden">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--card);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
-    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
-    <div style="display:flex;gap:4px">
-      <button onclick="mapInlineCenterBus()" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer">📍</button>
-      <button onclick="toggleInlineMap()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">✕</button>
-    </div>
-  </div>
-  <div id="map-inline" style="flex:1;background:#1a2035;border-radius:0 0 10px 10px;border:1px solid var(--border);overflow:hidden;position:relative">
-    <canvas id="map-canvas-inline"></canvas>
-    <div id="map-info-inline" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
-      En attente GPS...
-    </div>
-  </div>
-</div><!-- #ineo-panel-right -->
 
 </div>
 
@@ -1112,6 +1008,21 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Retard toléré (sec)</div>
       <input type="number" id="set-tolerance-late" value="120" min="0" max="300" style="width:100%;padding:8px;font-size:16px">
     </div>
+    <hr style="margin:14px 0">
+
+    <!-- Forcer mode paysage -->
+    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:600">📐 Mode paysage</div>
+        <div style="font-size:11px;color:var(--muted)">Forcer l'affichage horizontal</div>
+      </div>
+      <button id="landscape-force-btn" onclick="landscapeToggleForce()"
+        style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+               background:rgba(255,255,255,.06);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer">
+        OFF
+      </button>
+    </div>
+
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
   <div class="card">
@@ -1142,7 +1053,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <button onclick="gdriveSignIn()" class="btn" style="width:100%;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;font-weight:700;font-size:14px;border:none;padding:12px">
         🔑 Connecter Google Drive
       </button>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Sync automatique PC VERS Téléphone</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Sync automatique PC ↔ Téléphone</div>
     </div>
     <div id="gdrive-connected" style="display:none">
       <div id="gdrive-user" style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px"></div>
@@ -1184,30 +1095,35 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   <!-- Configuration -->
   <div class="card" id="sillon-config-card">
-    <div class="card-title">⚙ Configuration Apprentissage</div>
+    <div class="card-title">⚙ Configuration</div>
 
-    <!-- Niveau 1 : Sélecteur ligne -->
-    <div style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px">① LIGNE</div>
-      <select id="sillon-line-sel" onchange="sillonLineChanged()" style="width:100%;padding:9px 10px;font-size:15px;font-weight:700;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+    <!-- Sélecteur ligne -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ligne</div>
+      <select id="sillon-line-sel" style="width:100%;padding:8px 10px;font-size:14px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
         <option value="">— Choisir une ligne —</option>
       </select>
     </div>
 
-    <!-- Niveau 2 : Variantes (chips) — affiché après sélection ligne -->
-    <div id="sillon-variant-section" style="display:none;margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">② DESTINATION / VARIANTE</div>
-      <div id="sillon-variant-row"></div>
+    <!-- Sélecteur sens -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sens</div>
+      <div style="display:flex;gap:8px">
+        <button id="sillon-btn-aller" onclick="sillonSetDir('aller')"
+          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
+                 border:2px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08);color:var(--accent);transition:.2s">
+          ↗ ALLER
+        </button>
+        <button id="sillon-btn-retour" onclick="sillonSetDir('retour')"
+          style="flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;
+                 border:2px solid rgba(39,174,96,.3);background:rgba(39,174,96,.05);color:var(--muted);transition:.2s">
+          ↙ RETOUR
+        </button>
+      </div>
     </div>
 
-    <!-- Résumé sélection -->
-    <div id="sillon-selection-summary" style="display:none;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);border-radius:10px;padding:10px 14px;margin-bottom:14px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">TRAJET SÉLECTIONNÉ</div>
-      <div id="sillon-sel-text" style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--accent)">—</div>
-    </div>
-
-    <!-- Bouton démarrer — désactivé jusqu'à sélection complète -->
-    <button id="sillon-start-btn" onclick="sillonStart()" disabled
+    <!-- Bouton démarrer -->
+    <button id="sillon-start-btn" onclick="sillonStart()"
       style="width:100%;padding:14px;font-size:16px;font-weight:700;
              background:linear-gradient(135deg,rgba(231,76,60,.8),rgba(192,57,43,.9));
              color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:1px">
@@ -1671,28 +1587,28 @@ let svcFilter = 'semaine';
 
 // ══ LIGNES RÉELLES ════════════════════════════════════════════
 const REAL_LINES = [
-  { num:'1201', name:'Gare Pontoise VERS Gare Cergy-Le Haut', color:'#9b59b6' },
-  { num:'1202', name:'Gare Cergy-Préfecture VERS Les Beurriers', color:'#e67e22' },
-  { num:'1203', name:'Gare Cergy-Le Haut VERS Gare Neuville-Université', color:'#f1c40f' },
-  { num:'1206', name:'Gare Pontoise VERS Gare Cergy-Le Haut', color:'#27ae60' },
-  { num:'1207', name:'Cergy Les Plants VERS Jouy le Moutier Ecancourt', color:'#e74c3c' },
-  { num:'1208', name:'Gare Cergy-Préfecture VERS Gare Neuville-Université', color:'#16a085' },
-  { num:'1223', name:'Gare Pontoise VERS Osny Les Patis', color:'#8e44ad' },
-  { num:'1224', name:'Gare Cergy-Préfecture VERS Gare Cergy-Saint-Christophe', color:'#2980b9' },
-  { num:'1226', name:'Gare Cergy Préfecture VERS Gare de Méry sur Oise', color:'#795548' },
-  { num:'1228', name:'Gare Cergy-Préfecture VERS Saint-Ouen l\'Aumône Rue de L\'équerre', color:'#00bcd4' },
-  { num:'1229', name:'Gare Neuville-Université VERS Gare Pontoise Canrobert', color:'#26c6da' },
-  { num:'1230', name:'Gare Pontoise VERS Cergy Les Plants via Les Touleuses', color:'#f48fb1' },
-  { num:'1232', name:'Gare Cergy-Préfecture VERS Saint-Ouen l\'Aumône Lycée Jean Perrin', color:'#2e7d32' },
-  { num:'1233', name:'Gare Neuville-Université VERS Gare Pontoise Gal de Gaulle', color:'#388e3c' },
-  { num:'1235', name:'Gare Pontoise Canrobert VERS ZAC de Puiseux', color:'#c0392b' },
-  { num:'1236', name:'Gare Pontoise VERS Courdimanche Les Croizettes', color:'#7b1fa2' },
-  { num:'1237', name:'Vauréal La Bussie VERS Gare Conflans-Fin d\'Oise', color:'#4e342e' },
-  { num:'1238', name:'Cergy Les Plants VERS Menucourt La Taillette', color:'#d32f2f' },
-  { num:'1239', name:'Gare Cergy-Saint-Christophe VERS Menucourt Croix du Jubilé', color:'#1a237e' },
-  { num:'1240', name:'Vauréal VERS Gare Cergy-Saint-Christophe', color:'#1565c0' },
-  { num:'1241', name:'Gare Cergy-Préfecture VERS Saint-Ouen l\'Aumône Fond de Vaux', color:'#ad1457' },
-  { num:'1242', name:'Gare Cergy-Préfecture VERS Osny Clinique Sainte Marie', color:'#c62828' },
+  { num:'1201', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#9b59b6' },
+  { num:'1202', name:'Gare Cergy-Préfecture → Les Beurriers', color:'#e67e22' },
+  { num:'1203', name:'Gare Cergy-Le Haut → Gare Neuville-Université', color:'#f1c40f' },
+  { num:'1206', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#27ae60' },
+  { num:'1207', name:'Cergy Les Plants → Jouy le Moutier Ecancourt', color:'#e74c3c' },
+  { num:'1208', name:'Gare Cergy-Préfecture → Gare Neuville-Université', color:'#16a085' },
+  { num:'1223', name:'Gare Pontoise → Osny Les Patis', color:'#8e44ad' },
+  { num:'1224', name:'Gare Cergy-Préfecture → Gare Cergy-Saint-Christophe', color:'#2980b9' },
+  { num:'1226', name:'Gare Cergy Préfecture → Gare de Méry sur Oise', color:'#795548' },
+  { num:'1228', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Rue de L\'équerre', color:'#00bcd4' },
+  { num:'1229', name:'Gare Neuville-Université → Gare Pontoise Canrobert', color:'#26c6da' },
+  { num:'1230', name:'Gare Pontoise → Cergy Les Plants via Les Touleuses', color:'#f48fb1' },
+  { num:'1232', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Lycée Jean Perrin', color:'#2e7d32' },
+  { num:'1233', name:'Gare Neuville-Université → Gare Pontoise Gal de Gaulle', color:'#388e3c' },
+  { num:'1235', name:'Gare Pontoise Canrobert → ZAC de Puiseux', color:'#c0392b' },
+  { num:'1236', name:'Gare Pontoise → Courdimanche Les Croizettes', color:'#7b1fa2' },
+  { num:'1237', name:'Vauréal La Bussie → Gare Conflans-Fin d\'Oise', color:'#4e342e' },
+  { num:'1238', name:'Cergy Les Plants → Menucourt La Taillette', color:'#d32f2f' },
+  { num:'1239', name:'Gare Cergy-Saint-Christophe → Menucourt Croix du Jubilé', color:'#1a237e' },
+  { num:'1240', name:'Vauréal → Gare Cergy-Saint-Christophe', color:'#1565c0' },
+  { num:'1241', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Fond de Vaux', color:'#ad1457' },
+  { num:'1242', name:'Gare Cergy-Préfecture → Osny Clinique Sainte Marie', color:'#c62828' },
 ];
 
 // ══ TRAJETS PRÉCHARGÉS ════════════════════════════════════════
@@ -1757,7 +1673,7 @@ function installPreloadedServices() {
 const PRELOADED_TRIPS = {
   '1201': [
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Jules Verne (21 arrêts, 28 min)',
+      direction: 'aller', label: 'Gare de Pontoise → Jules Verne (21 arrêts, 28 min)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:2},
         {name:'Avenue du Premier Dragon', intervalAfter:3},
@@ -1783,7 +1699,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Jules Verne VERS Gare de Pontoise (21 arrêts, 30 min)',
+      direction: 'retour', label: 'Jules Verne → Gare de Pontoise (21 arrêts, 30 min)',
       stops: [
         {name:'Jules Verne', intervalAfter:1},
         {name:'Puiseux', intervalAfter:2},
@@ -1809,7 +1725,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Saint-Christophe (14 arrêts)',
+      direction: 'aller', label: 'Gare de Pontoise → Saint-Christophe (14 arrêts)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:2},
         {name:'Avenue du Premier Dragon', intervalAfter:3},
@@ -1828,7 +1744,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Saint-Christophe VERS Gare de Pontoise (14 arrêts)',
+      direction: 'retour', label: 'Saint-Christophe → Gare de Pontoise (14 arrêts)',
       stops: [
         {name:'Gare de Cergy Saint-Christophe RER', intervalAfter:1},
         {name:'Rue du Chemin de Fer', intervalAfter:2},
@@ -1847,7 +1763,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Moulin à Vent (16 arrêts)',
+      direction: 'aller', label: 'Gare de Pontoise → Moulin à Vent (16 arrêts)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:2},
         {name:'Avenue du Premier Dragon', intervalAfter:3},
@@ -1868,7 +1784,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Moulin à Vent VERS Gare de Pontoise (16 arrêts)',
+      direction: 'retour', label: 'Moulin à Vent → Gare de Pontoise (16 arrêts)',
       stops: [
         {name:'Moulin à Vent', intervalAfter:2},
         {name:'La Constellation', intervalAfter:1},
@@ -1891,7 +1807,7 @@ const PRELOADED_TRIPS = {
   ],
   '1202': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Les Beurriers (13 arrêts, 22 min)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Les Beurriers (13 arrêts, 22 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:2},
         {name:'Les Marjoberts', intervalAfter:2},
@@ -1909,7 +1825,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Les Beurriers VERS Gare Cergy-Préfecture (13 arrêts, 21 min)',
+      direction: 'retour', label: 'Les Beurriers → Gare Cergy-Préfecture (13 arrêts, 21 min)',
       stops: [
         {name:'Les Beurriers', intervalAfter:2},
         {name:'Maison de Retraite', intervalAfter:2},
@@ -1929,7 +1845,7 @@ const PRELOADED_TRIPS = {
   ],
   '1203': [
     {
-      direction: 'aller', label: 'Cergy Le Haut VERS Gare de Neuville Université (20 arrêts, 28 min)',
+      direction: 'aller', label: 'Cergy Le Haut → Gare de Neuville Université (20 arrêts, 28 min)',
       stops: [
         {name:'Gare de Cergy Le Haut RER', intervalAfter:2},
         {name:"L'Orangerie", intervalAfter:2},
@@ -1954,7 +1870,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare de Neuville Université VERS Cergy Le Haut (20 arrêts, 28 min)',
+      direction: 'retour', label: 'Gare de Neuville Université → Cergy Le Haut (20 arrêts, 28 min)',
       stops: [
         {name:'Gare de Neuville Université', intervalAfter:1},
         {name:'Gay Lussac', intervalAfter:1},
@@ -1979,7 +1895,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: '☀️ DIMANCHE — Cergy Le Haut VERS Neuville (25 arrêts)',
+      direction: 'aller', label: '☀️ DIMANCHE — Cergy Le Haut → Neuville (25 arrêts)',
       stops: [
         {name:'Gare de Cergy Le Haut RER', intervalAfter:2},
         {name:'L\'Orangerie', intervalAfter:2},
@@ -2009,7 +1925,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: '☀️ DIMANCHE — Neuville VERS Cergy Le Haut (25 arrêts)',
+      direction: 'retour', label: '☀️ DIMANCHE — Neuville → Cergy Le Haut (25 arrêts)',
       stops: [
         {name:'Gare de Neuville Université', intervalAfter:1},
         {name:'Gay Lussac', intervalAfter:1},
@@ -2041,7 +1957,7 @@ const PRELOADED_TRIPS = {
   ],
   '1206': [
     {
-      direction: 'aller', label: 'Cergy Le Haut VERS Stade Christian Léon (22 arrêts, 32 min)',
+      direction: 'aller', label: 'Cergy Le Haut → Stade Christian Léon (22 arrêts, 32 min)',
       stops: [
         {name:'Gare de Cergy Le Haut RER', intervalAfter:2},
         {name:'Hérons', intervalAfter:1},
@@ -2068,7 +1984,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Stade Christian Léon VERS Cergy Le Haut (22 arrêts, 32 min)',
+      direction: 'retour', label: 'Stade Christian Léon → Cergy Le Haut (22 arrêts, 32 min)',
       stops: [
         {name:'Stade Christian Léon', intervalAfter:1},
         {name:'Jean Jaurès', intervalAfter:1},
@@ -2095,7 +2011,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Gare de Cergy-le-Haut (37 arrêts, 51 min)',
+      direction: 'aller', label: 'Gare de Pontoise → Gare de Cergy-le-Haut (37 arrêts, 51 min)',
       stops: [
         {name:'Gare de Pontoise', intervalAfter:2},
         {name:'Hôtel Dieu', intervalAfter:2},
@@ -2137,7 +2053,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare de Cergy-le-Haut VERS Gare de Pontoise (37 arrêts, 51 min)',
+      direction: 'retour', label: 'Gare de Cergy-le-Haut → Gare de Pontoise (37 arrêts, 51 min)',
       stops: [
         {name:'Cergy Le Haut RER', intervalAfter:2},
         {name:'Hérons', intervalAfter:1},
@@ -2182,7 +2098,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Demi Lieue (22 arrêts)',
+      direction: 'aller', label: 'Gare de Pontoise → Demi Lieue (22 arrêts)',
       stops: [
         {name:'Gare de Pontoise', intervalAfter:2},
         {name:'Hôtel Dieu', intervalAfter:2},
@@ -2211,7 +2127,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Demi Lieue VERS Gare de Pontoise (22 arrêts)',
+      direction: 'retour', label: 'Demi Lieue → Gare de Pontoise (22 arrêts)',
       stops: [
         {name:'Demi Lieue', intervalAfter:1},
         {name:'Oseraie', intervalAfter:1},
@@ -2242,7 +2158,7 @@ const PRELOADED_TRIPS = {
   ],
   '1207': [
     {
-      direction: 'aller', label: 'Les Toupets VERS Gare Cergy-Préfecture Quai L (29 arrêts, 25 min)',
+      direction: 'aller', label: 'Les Toupets → Gare Cergy-Préfecture Quai L (29 arrêts, 25 min)',
       stops: [
         {name:'Les Toupets', intervalAfter:1},
         {name:'Mendès France', intervalAfter:1},
@@ -2275,7 +2191,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Cergy-Préfecture VERS Les Toupets (28 arrêts, 25 min)',
+      direction: 'retour', label: 'Gare Cergy-Préfecture → Les Toupets (28 arrêts, 25 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:1},
         {name:'Les Plants', intervalAfter:1},
@@ -2305,7 +2221,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Les Toupets (25 arrêts)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Les Toupets (25 arrêts)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:1},
         {name:'Les Plants', intervalAfter:1},
@@ -2335,7 +2251,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Les Toupets VERS Gare Cergy-Préfecture (25 arrêts)',
+      direction: 'retour', label: 'Les Toupets → Gare Cergy-Préfecture (25 arrêts)',
       stops: [
         {name:'Les Toupets', intervalAfter:1},
         {name:'Mendès France', intervalAfter:1},
@@ -2364,7 +2280,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Ecancourt (14 arrêts)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Ecancourt (14 arrêts)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:1},
         {name:'Les Plants', intervalAfter:1},
@@ -2387,7 +2303,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Ecancourt VERS Gare Cergy-Préfecture (18 arrêts)',
+      direction: 'retour', label: 'Ecancourt → Gare Cergy-Préfecture (18 arrêts)',
       stops: [
         {name:'Ecancourt', intervalAfter:1},
         {name:'Gabriel Faure', intervalAfter:1},
@@ -2411,7 +2327,7 @@ const PRELOADED_TRIPS = {
   ],
   '1208': [
     {
-      direction: 'aller', label: 'Gare Neuville Université VERS Gare Cergy-Préfecture (19 arrêts, 30 min)',
+      direction: 'aller', label: 'Gare Neuville Université → Gare Cergy-Préfecture (19 arrêts, 30 min)',
       stops: [
         {name:'Gare de Neuville Université', intervalAfter:6},
         {name:'Éragny - Neuville Gare', intervalAfter:3},
@@ -2435,7 +2351,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Cergy-Préfecture VERS Gare Neuville Université (19 arrêts, 33 min)',
+      direction: 'retour', label: 'Gare Cergy-Préfecture → Gare Neuville Université (19 arrêts, 33 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai E', intervalAfter:1},
         {name:'Oise Hautil', intervalAfter:1},
@@ -2461,7 +2377,7 @@ const PRELOADED_TRIPS = {
   ],
   '1223': [
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Les Pâtis (15 arrêts, 17 min)',
+      direction: 'aller', label: 'Gare de Pontoise → Les Pâtis (15 arrêts, 17 min)',
       stops: [
         {name:'Gare de Pontoise', intervalAfter:1},
         {name:'Place Notre Dame', intervalAfter:1},
@@ -2481,7 +2397,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Les Pâtis VERS Gare de Pontoise (14 arrêts, 14 min)',
+      direction: 'retour', label: 'Les Pâtis → Gare de Pontoise (14 arrêts, 14 min)',
       stops: [
         {name:'Les Pâtis', intervalAfter:1},
         {name:'La Ravinière', intervalAfter:1},
@@ -2502,7 +2418,7 @@ const PRELOADED_TRIPS = {
   ],
   '1224': [
     {
-      direction: 'aller', label: 'Gare Cergy Saint-Christophe VERS Gare Cergy-Préfecture (22 arrêts, 27 min)',
+      direction: 'aller', label: 'Gare Cergy Saint-Christophe → Gare Cergy-Préfecture (22 arrêts, 27 min)',
       stops: [
         {name:'Gare de Cergy Saint-Christophe RER', intervalAfter:1},
         {name:'La Constellation', intervalAfter:1},
@@ -2529,7 +2445,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Cergy-Préfecture VERS Gare Cergy Saint-Christophe (21 arrêts, 26 min)',
+      direction: 'retour', label: 'Gare Cergy-Préfecture → Gare Cergy Saint-Christophe (21 arrêts, 26 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai H', intervalAfter:1},
         {name:'Les Marjoberts', intervalAfter:1},
@@ -2557,7 +2473,7 @@ const PRELOADED_TRIPS = {
   ],
   '1226': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Gare de Méry-Sur-Oise (27 arrêts, 40 min)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Gare de Méry-Sur-Oise (27 arrêts, 40 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:2},
         {name:'Oise Hautil', intervalAfter:1},
@@ -2589,7 +2505,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare de Méry-Sur-Oise VERS Gare Cergy-Préfecture (27 arrêts, 37 min)',
+      direction: 'retour', label: 'Gare de Méry-Sur-Oise → Gare Cergy-Préfecture (27 arrêts, 37 min)',
       stops: [
         {name:'Gare de Méry-Sur-Oise / Méry Gare Sncf', intervalAfter:1},
         {name:'Méry-Sur-Oise / Camille Plaquet', intervalAfter:1},
@@ -2623,7 +2539,7 @@ const PRELOADED_TRIPS = {
   ],
   '1228': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Équerre (21 arrêts, 32 min)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Équerre (21 arrêts, 32 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:2},
         {name:'Oise Hautil', intervalAfter:1},
@@ -2649,7 +2565,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Équerre VERS Gare Cergy-Préfecture (21 arrêts, 33 min)',
+      direction: 'retour', label: 'Équerre → Gare Cergy-Préfecture (21 arrêts, 33 min)',
       stops: [
         {name:'Équerre', intervalAfter:2},
         {name:'Les Béthunes', intervalAfter:1},
@@ -2677,7 +2593,7 @@ const PRELOADED_TRIPS = {
   ],
   '1229': [
     {
-      direction: 'aller', label: 'Pontoise Gare VERS Gare Neuville Université (10 arrêts, 23 min) — Sam/Dim',
+      direction: 'aller', label: 'Pontoise Gare → Gare Neuville Université (10 arrêts, 23 min) — Sam/Dim',
       stops: [
         {name:'Pontoise Gare', intervalAfter:2},
         {name:'Plateau Saint-Martin', intervalAfter:3},
@@ -2692,7 +2608,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Neuville Université VERS Pontoise Gare (10 arrêts, 22 min) — Sam/Dim',
+      direction: 'retour', label: 'Gare Neuville Université → Pontoise Gare (10 arrêts, 22 min) — Sam/Dim',
       stops: [
         {name:'Gare de Neuville Université', intervalAfter:2},
         {name:'Le Pont', intervalAfter:2},
@@ -2709,7 +2625,7 @@ const PRELOADED_TRIPS = {
   ],
   '1230': [
     {
-      direction: 'aller', label: '📅 Circuit 34 min — Pontoise VERS Pontoise (semaine)',
+      direction: 'aller', label: '📅 Circuit 34 min — Pontoise → Pontoise (semaine)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:2},
         {name:'Avenue du Premier Dragon', intervalAfter:1},
@@ -2736,7 +2652,7 @@ const PRELOADED_TRIPS = {
   ],
   '1232': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Lycée Jean Perrin (26 arrêts, 42 min)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Lycée Jean Perrin (26 arrêts, 42 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai K', intervalAfter:2},
         {name:'Oise Hautil', intervalAfter:1},
@@ -2767,7 +2683,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Lycée Jean Perrin VERS Gare Cergy-Préfecture (26 arrêts, 40 min)',
+      direction: 'retour', label: 'Lycée Jean Perrin → Gare Cergy-Préfecture (26 arrêts, 40 min)',
       stops: [
         {name:'Lycée Jean Perrin', intervalAfter:2},
         {name:'Château D\'Eau / Les Sablons', intervalAfter:2},
@@ -2800,7 +2716,7 @@ const PRELOADED_TRIPS = {
   ],
   '1233': [
     {
-      direction: 'aller', label: 'Gare de Pontoise VERS Gare Neuville Université (18 arrêts, 31 min)',
+      direction: 'aller', label: 'Gare de Pontoise → Gare Neuville Université (18 arrêts, 31 min)',
       stops: [
         {name:'Gare de Pontoise', intervalAfter:2},
         {name:'Hôtel Dieu', intervalAfter:2},
@@ -2823,7 +2739,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Neuville Université VERS Gare de Pontoise (18 arrêts, 31 min)',
+      direction: 'retour', label: 'Gare Neuville Université → Gare de Pontoise (18 arrêts, 31 min)',
       stops: [
         {name:'Gare de Neuville Université', intervalAfter:2},
         {name:'Pincevents', intervalAfter:2},
@@ -2848,7 +2764,7 @@ const PRELOADED_TRIPS = {
   ],
   '1235': [
     {
-      direction: 'aller', label: 'Pontoise VERS Zac de Puiseux (12 arrêts)',
+      direction: 'aller', label: 'Pontoise → Zac de Puiseux (12 arrêts)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:2},
         {name:'Coubertin', intervalAfter:2},
@@ -2865,7 +2781,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Zac de Puiseux VERS Pontoise (12 arrêts)',
+      direction: 'retour', label: 'Zac de Puiseux → Pontoise (12 arrêts)',
       stops: [
         {name:'Zac de Puiseux', intervalAfter:2},
         {name:'Moulin À Vent', intervalAfter:2},
@@ -2884,7 +2800,7 @@ const PRELOADED_TRIPS = {
   ],
   '1236': [
     {
-      direction: 'aller', label: 'Les Croizettes VERS Gare de Pontoise (21 arrêts)',
+      direction: 'aller', label: 'Les Croizettes → Gare de Pontoise (21 arrêts)',
       stops: [
         {name:'Les Croizettes', intervalAfter:1},
         {name:'Rond Point du Miroir', intervalAfter:1},
@@ -2910,7 +2826,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare de Pontoise VERS Les Croizettes (21 arrêts)',
+      direction: 'retour', label: 'Gare de Pontoise → Les Croizettes (21 arrêts)',
       stops: [
         {name:'Gare de Pontoise Canrobert', intervalAfter:1},
         {name:'Plateau Saint-Martin', intervalAfter:1},
@@ -2938,7 +2854,7 @@ const PRELOADED_TRIPS = {
   ],
   '1237': [
     {
-      direction: 'aller', label: 'Gare de Conflans VERS Georges Brassens (23 arrêts, 37 min)',
+      direction: 'aller', label: 'Gare de Conflans → Georges Brassens (23 arrêts, 37 min)',
       stops: [
         {name:'Gare de Conflans Fin d\'Oise', intervalAfter:1},
         {name:'Passerelle', intervalAfter:1},
@@ -2967,7 +2883,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Georges Brassens VERS Gare de Conflans (23 arrêts, 37 min)',
+      direction: 'retour', label: 'Georges Brassens → Gare de Conflans (23 arrêts, 37 min)',
       stops: [
         {name:'Georges Brassens', intervalAfter:1},
         {name:'Mendès France', intervalAfter:1},
@@ -2998,7 +2914,7 @@ const PRELOADED_TRIPS = {
   ],
   '1238': [
     {
-      direction: 'aller', label: 'Lozier VERS Gare de Cergy Préfecture (9 arrêts)',
+      direction: 'aller', label: 'Lozier → Gare de Cergy Préfecture (9 arrêts)',
       stops: [
         {name:'Lozier', intervalAfter:2},
         {name:'Le Grand Hunier', intervalAfter:2},
@@ -3012,7 +2928,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare de Cergy Préfecture VERS Lozier (9 arrêts)',
+      direction: 'retour', label: 'Gare de Cergy Préfecture → Lozier (9 arrêts)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai L', intervalAfter:2},
         {name:'Les Plants', intervalAfter:1},
@@ -3026,7 +2942,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'aller', label: 'La Taillette VERS Gare Cergy-Préfecture (20 arrêts, 39 min)',
+      direction: 'aller', label: 'La Taillette → Gare Cergy-Préfecture (20 arrêts, 39 min)',
       stops: [
         {name:'La Taillette', intervalAfter:1},
         {name:'Grande Pièce', intervalAfter:1},
@@ -3051,7 +2967,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Cergy-Préfecture VERS La Taillette (21 arrêts, 39 min)',
+      direction: 'retour', label: 'Gare Cergy-Préfecture → La Taillette (21 arrêts, 39 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai I', intervalAfter:1},
         {name:'Les Plants', intervalAfter:3},
@@ -3079,7 +2995,7 @@ const PRELOADED_TRIPS = {
   ],
   '1239': [
     {
-      direction: 'aller', label: 'La Taillette VERS Gare Cergy Saint-Christophe (21 arrêts, 26 min)',
+      direction: 'aller', label: 'La Taillette → Gare Cergy Saint-Christophe (21 arrêts, 26 min)',
       stops: [
         {name:'La Taillette', intervalAfter:1},
         {name:'Clef Des Champs', intervalAfter:1},
@@ -3105,7 +3021,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Gare Cergy Saint-Christophe VERS La Taillette (21 arrêts, 26 min)',
+      direction: 'retour', label: 'Gare Cergy Saint-Christophe → La Taillette (21 arrêts, 26 min)',
       stops: [
         {name:'Gare de Cergy Saint-Christophe RER', intervalAfter:1},
         {name:'La Constellation', intervalAfter:1},
@@ -3133,7 +3049,7 @@ const PRELOADED_TRIPS = {
   ],
   '1240': [
     {
-      direction: 'aller', label: 'La Siaule VERS Cergy Saint-Christophe RER (20 arrêts, 27 min)',
+      direction: 'aller', label: 'La Siaule → Cergy Saint-Christophe RER (20 arrêts, 27 min)',
       stops: [
         {name:'La Siaule', intervalAfter:1},
         {name:'Les Valanchards', intervalAfter:2},
@@ -3158,7 +3074,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Cergy Saint-Christophe RER VERS La Siaule (20 arrêts, 26 min)',
+      direction: 'retour', label: 'Cergy Saint-Christophe RER → La Siaule (20 arrêts, 26 min)',
       stops: [
         {name:'Cergy Saint-Christophe RER', intervalAfter:1},
         {name:'Mondétour', intervalAfter:2},
@@ -3185,7 +3101,7 @@ const PRELOADED_TRIPS = {
   ],
   '1241': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Fond de Vaux (15 arrêts, 27 min) — Lun-Ven',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Fond de Vaux (15 arrêts, 27 min) — Lun-Ven',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai F', intervalAfter:2},
         {name:'Oise Hautil', intervalAfter:1},
@@ -3205,7 +3121,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Fond de Vaux VERS Gare Cergy-Préfecture (15 arrêts, 28 min) — Lun-Ven',
+      direction: 'retour', label: 'Fond de Vaux → Gare Cergy-Préfecture (15 arrêts, 28 min) — Lun-Ven',
       stops: [
         {name:'Fond de Vaux', intervalAfter:2},
         {name:'Les Sablons', intervalAfter:2},
@@ -3227,7 +3143,7 @@ const PRELOADED_TRIPS = {
   ],
   '1242': [
     {
-      direction: 'aller', label: 'Gare Cergy-Préfecture VERS Clinique Sainte Marie (17 arrêts, 23 min)',
+      direction: 'aller', label: 'Gare Cergy-Préfecture → Clinique Sainte Marie (17 arrêts, 23 min)',
       stops: [
         {name:'Gare de Cergy Préfecture - Quai H', intervalAfter:4},
         {name:'Les Marjoberts', intervalAfter:2},
@@ -3249,7 +3165,7 @@ const PRELOADED_TRIPS = {
       ]
     },
     {
-      direction: 'retour', label: 'Clinique Sainte Marie VERS Gare Cergy-Préfecture (18 arrêts, 22 min)',
+      direction: 'retour', label: 'Clinique Sainte Marie → Gare Cergy-Préfecture (18 arrêts, 22 min)',
       stops: [
         {name:'Clinique Sainte Marie', intervalAfter:1},
         {name:'Lycée Paul-Emile Victor', intervalAfter:1},
@@ -5453,17 +5369,7 @@ function exportHeuresPDF() {
     <div class="sig-box">Signature employeur</div>
   </div>
   <script>window.onload=()=>window.print()<\/script>
-  
-<!-- Nav mini paysage -->
-<div id="landscape-nav" style="display:none">
-  <button onclick="showView('view-live')" data-lnav="view-live" class="active">⏱ DIRECT</button>
-  <button onclick="showView('view-lines')" data-lnav="view-lines">🚌 TRAJET</button>
-  <button onclick="showView('view-roadmap')" data-lnav="view-roadmap">🗺 SERVICE</button>
-  <button onclick="showView('view-sillon')" data-lnav="view-sillon">🔴 SILLON</button>
-  <button onclick="showView('view-settings')" data-lnav="view-settings">⚙ OPTIONS</button>
-</div>
-
-</body></html>`;
+  </body></html>`;
 
   // Ouvrir dans un nouvel onglet → Ctrl+P pour imprimer/sauvegarder en PDF
   const newTab = window.open('', '_blank');
@@ -6152,10 +6058,11 @@ function startGpsAuto() {
   startGpsWatch(
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
-      odoStep(coords);              // ← odométrie + recalage PK en 1er
+      odoStep(coords);              // ← odométrie + recalage PK (carte arrière-plan OK)
       checkGpsAutoDetect(coords);  // ← détection d'arrêt
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
+      // carte : mapDraw est appelé dans odoStep uniquement si mapVisible=true
     },
     () => toast('Erreur GPS')
   );
@@ -6353,9 +6260,8 @@ function odoStep(coords) {
     }
   }
 
-  // ── 4. Rafraîchir la carte si ouverte ───────────────────────────────────
-  const overlay = document.getElementById('map-overlay');
-  if(overlay && overlay.classList.contains('open')) {
+  // ── 4. Rafraîchir la carte si ouverte (mapDraw ignore si mapVisible=false)
+  if(mapVisible) {
     if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
     mapDraw();
   }
@@ -7177,6 +7083,8 @@ document.addEventListener('click', function(e) {
 
 // ══ CARTE GPS EN TEMPS RÉEL ════════════════════════════════════
 let mapShowStops = true;
+let mapVisible   = false;  // true seulement si le panneau carte est ouvert
+let mapDrawThrottle = null; // throttle pour ne pas dessiner si carte cachée
 let mapCentered = true;
 let mapZoom = 16; // zoom initial
 let mapOffsetX = 0, mapOffsetY = 0; // offset pan
@@ -7207,6 +7115,8 @@ function mapLatLonToXY(lat, lon, centerLat, centerLon, zoom, w, h) {
 }
 
 function mapDraw() {
+  // Performance : ne pas dessiner si la carte est cachée (arrière-plan actif)
+  if(!mapVisible) return;
   const canvas = document.getElementById('map-canvas');
   if(!canvas) return;
   const container = document.getElementById('map-container');
@@ -7405,11 +7315,20 @@ function mapTogglePanel() {
   const overlay = document.getElementById('map-overlay');
   const btn     = document.getElementById('map-toggle-btn');
   if(!overlay) return;
+
+  const isLandscape = document.body.classList.contains('landscape');
   const isOpen = overlay.classList.toggle('open');
+
   if(btn) btn.classList.toggle('active', isOpen);
+  if(isLandscape) document.body.classList.toggle('map-open', isOpen);
+
   if(isOpen) {
-    // Init canvas une seule fois
+    mapVisible = true;
     setTimeout(() => { mapSetupEvents(); mapDraw(); }, 80);
+  } else {
+    mapVisible = false;
+    // Quand fermée en paysage, enlever la classe map-open
+    if(isLandscape) document.body.classList.remove('map-open');
   }
 }
 
@@ -7755,384 +7674,67 @@ function sillonReset() {
 
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ══ GESTION PAYSAGE (LANDSCAPE) ══════════════════════════════════════════════
+let landscapeForced = false;
 
-// ══════════════════════════════════════════════════════════════
-// MODULE MULTI-LIGNES & VARIANTES
-// ══════════════════════════════════════════════════════════════
-
-// Base de données réseau : chaque ligne avec ses variantes nommées
-const baseDeDonneesReseau = {};
-
-function buildReseauDB() {
-  // Construire depuis db.lines (PRELOADED_TRIPS)
-  db.lines.forEach(line => {
-    if(!line.trips || !line.trips.length) return;
-    baseDeDonneesReseau[line.num] = {
-      num:      line.num,
-      name:     line.name,
-      color:    line.color,
-      variantes: line.trips.map((t, i) => ({
-        idx:       i,
-        label:     t.label,
-        direction: t.direction || 'aller',
-        shortLabel: buildShortLabel(t)
-      }))
-    };
-  });
-}
-
-function buildShortLabel(trip) {
-  // Extraire la destination depuis le label
-  const m = trip.label.match(/→\s*(.+?)(?:\s*\(|$)/);
-  if(m) return (trip.direction === 'retour' ? '↙ ' : '↗ ') + m[1].trim();
-  return trip.label.replace(/^Ligne \S+ — /, '').split('(')[0].trim();
-}
-
-// Peupler le select ligne dans view-lines (remplacement du renderLineGrid)
-function renderLineSelector() {
-  const grid = document.getElementById('line-grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-  buildReseauDB();
-  db.lines.forEach((line, i) => {
-    const chip = document.createElement('div');
-    chip.className = 'line-chip' + (activeLine === i ? ' selected' : '');
-    chip.innerHTML = `
-      <div style="background:${line.color||'#00d4ff'};color:#fff;border-radius:6px;padding:2px 6px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif">${line.num}</div>
-      <div style="font-size:9px;margin-top:3px;color:var(--muted)">${(line.name||'').split('→')[0].trim()}</div>`;
-    chip.onclick = () => selectLine(i);
-    grid.appendChild(chip);
-  });
-}
-
-// Mise à jour du badge Ligne > Destination
-function updateLigneBadge() {
-  const badge = document.getElementById('ligne-badge');
-  const numEl  = document.getElementById('badge-num-text');
-  const destEl = document.getElementById('badge-dest-text');
-  if(!badge) return;
-  if(!activeTrip) {
-    badge.style.display = 'none';
-    return;
-  }
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!line || !trip) { badge.style.display='none'; return; }
-  badge.style.display = 'flex';
-  numEl.style.background = line.color || '#888';
-  numEl.textContent = 'L' + line.num;
-  const shortDest = buildShortLabel(trip);
-  destEl.textContent = shortDest;
-}
-
-// ══ CARTE INLINE PAYSAGE ══════════════════════════════════════
-let mapInlineSetup = false;
-let mapInlineZoom = 16;
-let mapInlineOffX = 0, mapInlineOffY = 0;
-let mapInlineCentered = true;
-
-function drawMapInline() {
-  const canvas = document.getElementById('map-canvas-inline');
-  if(!canvas) return;
-  const container = document.getElementById('map-inline');
-  if(!container) return;
-  canvas.width  = container.offsetWidth  || 300;
-  canvas.height = container.offsetHeight || 200;
-  const w = canvas.width, h = canvas.height;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#1a2035';
-  ctx.fillRect(0, 0, w, h);
-  // Grille
-  ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.lineWidth=1;
-  for(let gx=0;gx<w;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,h);ctx.stroke();}
-  for(let gy=0;gy<h;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
-
-  if(!gpsCoords){
-    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='12px monospace'; ctx.textAlign='center';
-    ctx.fillText('En attente GPS...', w/2, h/2); return;
-  }
-  const cLat=gpsCoords.lat, cLon=gpsCoords.lon;
-
-  // Arrêts et tracé
-  if(activeTrip) {
-    const line = db.lines[activeTrip.lineIdx];
-    const trip = line?.trips?.[activeTrip.tripIdx];
-    if(trip) {
-      ctx.strokeStyle='rgba(192,57,43,.5)'; ctx.lineWidth=2; ctx.beginPath();
-      let fp=true;
-      trip.stops.forEach((s,idx)=>{
-        const key=gpsCoordKey(line.num,activeTrip.tripIdx,idx);
-        const c=gpsCoordsDB[key]; if(!c) return;
-        const p=mapLatLonToXY(c.lat,c.lon,cLat,cLon,mapInlineZoom+mapInlineOffX,w,h);
-        if(fp){ctx.moveTo(p.x,p.y);fp=false;}else ctx.lineTo(p.x,p.y);
-      });
-      ctx.stroke();
-      trip.stops.forEach((s,idx)=>{
-        const key=gpsCoordKey(line.num,activeTrip.tripIdx,idx);
-        const c=gpsCoordsDB[key]; if(!c) return;
-        const p=mapLatLonToXY(c.lat,c.lon,cLat,cLon,mapInlineZoom,w,h);
-        const isCur=idx===gpsAutoNextIdx, isPast=idx<gpsAutoNextIdx;
-        ctx.beginPath(); ctx.arc(p.x,p.y,isCur?7:4,0,2*Math.PI);
-        ctx.fillStyle=isCur?'#c0392b':isPast?'rgba(39,174,96,.6)':'rgba(255,255,255,.35)';
-        ctx.fill();
-        if(isCur){
-          ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-          ctx.fillStyle='#ff9500'; ctx.font='bold 9px sans-serif'; ctx.textAlign='left';
-          const lbl=s.name.length>16?s.name.substring(0,16)+'…':s.name;
-          ctx.fillText(lbl,p.x+9,p.y+3);
-        }
-      });
-    }
-  }
-  // Bus
-  const bp=mapLatLonToXY(cLat,cLon,cLat,cLon,mapInlineZoom,w,h);
-  ctx.beginPath(); ctx.arc(bp.x,bp.y,6,0,2*Math.PI);
-  ctx.fillStyle='#00d4ff'; ctx.fill();
-  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-
-  const infoEl=document.getElementById('map-info-inline');
-  if(infoEl && activeTrip){
-    const line=db.lines[activeTrip.lineIdx];
-    const trip=line?.trips?.[activeTrip.tripIdx];
-    const stop=trip?.stops?.[gpsAutoNextIdx];
-    infoEl.textContent=stop?`→ ${stop.name}`:'GPS actif';
-  }
-}
-
-function mapInlineCenterBus() { mapInlineCentered=true; mapInlineOffX=0; mapInlineOffY=0; drawMapInline(); }
-
-function setupMapInline() {
-  if(mapInlineSetup) return;
-  const canvas = document.getElementById('map-canvas-inline');
-  if(!canvas) return;
-  mapInlineSetup = true;
-  canvas.addEventListener('wheel', e=>{
-    e.preventDefault();
-    mapInlineZoom=Math.max(13,Math.min(19,mapInlineZoom-Math.sign(e.deltaY)));
-    drawMapInline();
-  },{passive:false});
-  let lastT=null;
-  canvas.addEventListener('touchstart',e=>{if(e.touches.length===1)lastT={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
-  canvas.addEventListener('touchmove',e=>{
-    if(e.touches.length===1&&lastT){
-      mapInlineOffX+=e.touches[0].clientX-lastT.x;
-      mapInlineOffY+=e.touches[0].clientY-lastT.y;
-      lastT={x:e.touches[0].clientX,y:e.touches[0].clientY};
-      mapInlineCentered=false; drawMapInline();
-    }
-  },{passive:true});
-  canvas.addEventListener('touchend',()=>lastT=null);
-}
-
-function toggleInlineMap() {
-  const right = document.getElementById('ineo-panel-right');
-  const left  = document.getElementById('ineo-panel-left');
-  if(!right) return;
-  const hidden = right.classList.toggle('hidden');
-  if(left) left.classList.toggle('full-width', hidden);
-  if(!hidden) { setTimeout(()=>{ setupMapInline(); drawMapInline(); },80); }
-}
-
-// Détection orientation → split screen
-function handleOrientation() {
-  const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 500;
-  const right  = document.getElementById('ineo-panel-right');
-  const left   = document.getElementById('ineo-panel-left');
-  const lNav   = document.getElementById('landscape-nav');
-  const mapBtn = document.getElementById('map-toggle-btn');
-  const ghostBtn = document.getElementById('ghost-map-btn');
-
+function landscapeApply(isLandscape) {
+  const body = document.body;
   if(isLandscape) {
-    // Mode paysage : show right panel + draw
-    if(right) right.classList.remove('hidden');
-    if(left) left.classList.remove('full-width');
-    if(lNav) lNav.style.display = 'flex';
-    if(mapBtn) mapBtn.style.display = 'none';
-    if(ghostBtn) ghostBtn.style.display = 'none';
-    setTimeout(()=>{ setupMapInline(); drawMapInline(); }, 100);
+    body.classList.add('landscape');
+    // En paysage, forcer le mode INEO (plus lisible)
+    const cl = document.getElementById('mode-classique');
+    const in_ = document.getElementById('mode-ineo');
+    if(cl && in_ && cl.style.display !== 'none') {
+      cl.style.display  = 'none';
+      in_.style.display = 'block';
+    }
+    // Redessiner la carte si elle est ouverte
+    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
+    // Mettre à jour la classe map-open si la carte est ouverte
+    const ov = document.getElementById('map-overlay');
+    if(ov && ov.classList.contains('open')) body.classList.add('map-open');
   } else {
-    // Mode portrait : hide right panel, show ghost btn
-    if(right) right.classList.add('hidden');
-    if(left) left.classList.remove('full-width');
-    if(lNav) lNav.style.display = 'none';
-    if(mapBtn) mapBtn.style.display = 'flex';
-  }
-  // Sync landscape nav active state
-  syncLandscapeNav();
-}
-
-function syncLandscapeNav() {
-  document.querySelectorAll('[data-lnav]').forEach(btn => {
-    const target = btn.getAttribute('data-lnav');
-    const isActive = document.getElementById(target)?.classList.contains('active');
-    btn.classList.toggle('active', !!isActive);
-  });
-}
-
-window.addEventListener('resize', handleOrientation);
-window.addEventListener('orientationchange', ()=>setTimeout(handleOrientation, 200));
-
-// ══ SILLON — SÉLECTEUR 2 NIVEAUX ════════════════════════════
-let sillonSelectedVariantIdx = null;
-
-function sillonLineChanged() {
-  const sel = document.getElementById('sillon-line-sel');
-  sillonLineNum = sel ? sel.value : '';
-  sillonLineName = sel ? (sel.options[sel.selectedIndex]?.text || '') : '';
-  sillonSelectedVariantIdx = null;
-
-  const varSection = document.getElementById('sillon-variant-section');
-  const summary    = document.getElementById('sillon-selection-summary');
-  const startBtn   = document.getElementById('sillon-start-btn');
-  const row        = document.getElementById('sillon-variant-row');
-
-  if(!sillonLineNum) {
-    if(varSection) varSection.style.display='none';
-    if(summary)    summary.style.display='none';
-    if(startBtn)   startBtn.disabled=true;
-    return;
-  }
-
-  // Trouver les variantes de la ligne
-  const lineObj = db.lines.find(l => l.num === sillonLineNum);
-  if(!lineObj || !lineObj.trips.length) {
-    if(varSection) varSection.style.display='none';
-    return;
-  }
-
-  // Créer les chips variantes
-  if(row) {
-    row.innerHTML = lineObj.trips.map((t, i) => {
-      const isRet = (t.direction||'aller') === 'retour';
-      const dest = buildShortLabel(t);
-      return `<button class="sillon-variant-btn ${isRet?'retour':'aller'}" 
-        style="border:2px solid ${isRet?'rgba(39,174,96,.4)':'rgba(0,212,255,.4)'};
-               background:${isRet?'rgba(39,174,96,.05)':'rgba(0,212,255,.05)'};
-               color:${isRet?'var(--green)':'var(--accent)'};"
-        onclick="sillonSelectVariant(${i},'${dest.replace(/'/g,"\'")}')">
-        ${dest}
-      </button>`;
-    }).join('');
-  }
-
-  if(varSection) varSection.style.display='block';
-  if(summary)    summary.style.display='none';
-  if(startBtn)   startBtn.disabled=true;
-}
-
-function sillonSelectVariant(idx, dest) {
-  sillonSelectedVariantIdx = idx;
-  const lineObj = db.lines.find(l => l.num === sillonLineNum);
-  if(lineObj) {
-    const trip = lineObj.trips[idx];
-    sillonDirection = trip.direction || 'aller';
-  }
-
-  // Mettre à jour le visuel chips
-  document.querySelectorAll('#sillon-variant-row .sillon-variant-btn').forEach((btn, i) => {
-    const isActive = (i === idx);
-    btn.style.background = isActive
-      ? (sillonDirection==='retour'?'rgba(39,174,96,.25)':'rgba(0,212,255,.25)')
-      : (sillonDirection==='retour'?'rgba(39,174,96,.05)':'rgba(0,212,255,.05)');
-    btn.style.fontWeight = isActive ? '900' : '700';
-    btn.style.transform  = isActive ? 'scale(1.02)' : '';
-  });
-
-  // Afficher résumé
-  const summary = document.getElementById('sillon-selection-summary');
-  const selText = document.getElementById('sillon-sel-text');
-  const lineObj2 = db.lines.find(l => l.num === sillonLineNum);
-  if(summary) summary.style.display='block';
-  if(selText && lineObj2) {
-    selText.innerHTML = `<span style="background:${lineObj2.color||'#888'};color:#fff;padding:1px 8px;border-radius:5px;margin-right:8px">L${sillonLineNum}</span>${dest}`;
-  }
-
-  // Activer le bouton démarrer
-  const startBtn = document.getElementById('sillon-start-btn');
-  if(startBtn) {
-    startBtn.disabled = false;
-    startBtn.style.background = 'linear-gradient(135deg,rgba(231,76,60,.9),rgba(192,57,43,1))';
-    startBtn.style.color = '#fff';
+    body.classList.remove('landscape');
+    body.classList.remove('map-open');
+    // Réappliquer la nav/header
+    if(mapVisible) setTimeout(() => { mapDraw(); }, 100);
   }
 }
 
-// Override sillonStart pour utiliser la variante sélectionnée
-const _origSillonStart = sillonStart;
-sillonStart = function() {
-  if(!sillonLineNum) { toast("⚠ Sélectionnez une ligne d'abord"); return; }
-  if(sillonSelectedVariantIdx === null) { toast("⚠ Sélectionnez une variante/destination"); return; }
-  // Centrer sur premier arrêt si coords dispo
-  _origSillonStart();
-  // Après démarrage, center la carte sur la position GPS
-  if(gpsCoords) { mapInlineCenterBus(); mapCenterOnBus(); }
-};
+function landscapeCheck() {
+  if(landscapeForced) return; // déjà forcé manuellement
+  const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+  landscapeApply(isLandscape);
+}
 
-// Override sillonInitView pour utiliser la nouvelle UI
-const _origSillonInitView = sillonInitView;
-sillonInitView = function() {
-  const sel = document.getElementById('sillon-line-sel');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
-    db.lines.filter(l => l.trips && l.trips.length > 0)
-    .map(l => `<option value="${l.num}">L${l.num} — ${l.name||''}</option>`).join('');
-  // Reset état
-  sillonSelectedVariantIdx = null;
-  const varSection = document.getElementById('sillon-variant-section');
-  const summary    = document.getElementById('sillon-selection-summary');
-  const startBtn   = document.getElementById('sillon-start-btn');
-  if(varSection) varSection.style.display='none';
-  if(summary)    summary.style.display='none';
-  if(startBtn)   startBtn.disabled=true;
-  sillonSetDir(sillonDirection);
-};
+function landscapeForce(on) {
+  landscapeForced = on;
+  landscapeApply(on);
+  const btn = document.getElementById('landscape-force-btn');
+  if(btn) {
+    btn.textContent    = on ? 'ON' : 'OFF';
+    btn.style.color    = on ? 'var(--green)' : 'var(--muted)';
+    btn.style.borderColor = on ? 'var(--green)' : 'var(--border)';
+    btn.style.background  = on ? 'rgba(39,174,96,.2)' : 'rgba(255,255,255,.06)';
+  }
+  toast(on ? '📐 Mode paysage forcé' : '📐 Paysage auto');
+}
 
-// Override sillonTerminus pour inclure lineId + variantName dans JSON
-const _origSillonTerminus = sillonTerminus;
-sillonTerminus = function() {
-  _origSillonTerminus();
-  // Enrichir le JSON exporté avec lineId et variantName
-  const ta = document.getElementById('sillon-export-json');
-  if(!ta || !ta.value) return;
-  try {
-    const obj = JSON.parse(ta.value);
-    const lineObj = db.lines.find(l => l.num === sillonLineNum);
-    const trip = lineObj?.trips?.[sillonSelectedVariantIdx ?? 0];
-    obj.meta.lineId = sillonLineNum;
-    obj.meta.variantIdx = sillonSelectedVariantIdx ?? 0;
-    obj.meta.variantName = trip ? trip.label : sillonLineName;
-    obj.meta.lineColor   = lineObj?.color || '#888';
-    ta.value = JSON.stringify(obj, null, 2);
-  } catch(e) {}
-};
+function landscapeToggleForce() {
+  landscapeForce(!landscapeForced);
+}
 
-// Override showView pour mettre à jour la nav paysage et badge
-const _origShowView = showView;
-showView = function(id) {
-  _origShowView(id);
-  syncLandscapeNav();
-  updateLigneBadge();
-  if(id === 'view-sillon') { sillonInitView(); }
-  // Bouton ghost map : visible sur view-live portrait
-  const ghostBtn = document.getElementById('ghost-map-btn');
-  if(ghostBtn) ghostBtn.style.display = (id==='view-live') ? 'flex' : 'none';
-};
+// Écouteurs orientation
+window.matchMedia('(orientation: landscape)').addEventListener('change', e => {
+  if(!landscapeForced) landscapeApply(e.matches);
+});
+window.addEventListener('resize', () => {
+  if(!landscapeForced) landscapeCheck();
+  // Redessiner canvas si visible
+  if(mapVisible) setTimeout(() => { mapDraw(); }, 50);
+});
 
-// Override activateTrip pour badge
-const _origActivateTrip = activateTrip;
-activateTrip = function(lineIdx, tripIdx) {
-  _origActivateTrip(lineIdx, tripIdx);
-  updateLigneBadge();
-};
-
-// Carte inline : mise à jour en même temps que la carte principale
-const _origMapDraw = mapDraw;
-mapDraw = function() {
-  _origMapDraw();
-  drawMapInline();
-};
-
-// ══ BOOT additions ═════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 
 // ══ BOOT ═════════════════════════════════════════════════════
 initTheme();
@@ -8145,36 +7747,7 @@ updateClock();
 setInterval(updateClock, 1000);
 requestWakeLock();
 gdriveInit();
-buildReseauDB();
-handleOrientation();
-updateLigneBadge();
-// Refresh carte inline toutes les 2s si GPS actif
-setInterval(()=>{ if(gpsCoords) drawMapInline(); }, 2000);
-
-// ══ DÉTECTION ORIENTATION PAYSAGE ═══════════════════════════
-function handleOrientation() {
-  const isLandscape = window.innerWidth > window.innerHeight;
-  const sillonView = document.getElementById('view-sillon');
-  
-  if(isLandscape && sillonView) {
-    // S'assurer que les panels existent
-    const leftPanel = document.getElementById('sillon-left-panel');
-    const mapPanel = document.getElementById('sillon-map-panel');
-    if(leftPanel && mapPanel) {
-      // Forcer le redimensionnement de la carte
-      if(typeof sillonMap !== 'undefined' && sillonMap) {
-        setTimeout(() => sillonMap.invalidateSize(), 200);
-      }
-    }
-  }
-}
-window.addEventListener('orientationchange', () => {
-  setTimeout(handleOrientation, 300);
-});
-window.addEventListener('resize', handleOrientation);
-// Appel initial
-setTimeout(handleOrientation, 500);
-
+landscapeCheck(); // vérifier l'orientation au démarrage
 </script>
 </body>
 </html>
