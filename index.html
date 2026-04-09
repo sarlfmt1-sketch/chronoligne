@@ -16,6 +16,8 @@
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22ChronoLigne%20PRO%22%2C%22short_name%22%3A%22ChronoLigne%22%2C%22description%22%3A%22Assistant%20timing%20chauffeur%20de%20bus%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e1a%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520100%2520100%2527%253E%253Ctext%2520y%253D%2527.9em%2527%2520font-size%253D%252790%2527%253E%25F0%259F%259A%258C%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -129,55 +131,6 @@ input:focus, select:focus { outline:none; border-color:var(--accent); }
 #gps-status-icon.gps-retry { background:rgba(255,165,0,.2); border-color:orange; animation:gpsRetry 1s infinite; }
 
 hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
-
-/* ══ PANNEAU CARTE FLOTTANT ══ */
-#map-overlay {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 70px; /* au-dessus de la nav */
-  z-index: 150;
-  pointer-events: none;
-}
-#map-overlay.open {
-  display: block;
-}
-#map-panel {
-  position: absolute;
-  bottom: 12px; left: 12px; right: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,.6);
-  pointer-events: all;
-  animation: mapSlideUp .25s ease;
-}
-@keyframes mapSlideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-#map-toggle-btn {
-  position: fixed;
-  bottom: 82px; /* juste au-dessus de la nav */
-  right: 14px;
-  z-index: 160;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 20px;
-  cursor: pointer;
-  display: none; /* affiché seulement sur view-live */
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,.4);
-  transition: background .2s, border-color .2s;
-}
-#map-toggle-btn.active {
-  background: rgba(0,212,255,.2);
-  border-color: var(--accent);
-}
 </style>
 </head>
 <body>
@@ -191,37 +144,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <button onclick="toggleTheme()" id="theme-btn" title="Thème clair/sombre"
       style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 9px;font-size:16px;cursor:pointer">🌙</button>
     <button class="btn btn-sm btn-danger" onclick="confirmTerminus()" id="terminus-btn" style="display:none">🏁 TERMINUS</button>
-  </div>
-</div>
-
-<!-- Bouton toggle carte — fixe, visible seulement sur EN DIRECT -->
-<button id="map-toggle-btn" onclick="mapTogglePanel()" title="Carte GPS">🗺</button>
-
-<!-- Overlay panneau carte flottant -->
-<div id="map-overlay">
-  <div id="map-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">🗺 Carte GPS</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:11px;padding:4px 8px">📍</button>
-        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:11px;padding:4px 8px">🔴 Arrêts</button>
-        <button onclick="mapTogglePanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
-      </div>
-    </div>
-    <div id="map-container" style="width:100%;height:260px;background:#1a2035;position:relative;overflow:hidden">
-      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
-      <div id="map-info" style="position:absolute;bottom:6px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-family:monospace">
-        En attente GPS...
-      </div>
-      <div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:5px 7px;font-size:9px;color:#fff">
-        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;flex-shrink:0"></div> Position</div>
-        <div style="display:flex;align-items:center;gap:3px;margin-bottom:2px"><div style="width:8px;height:8px;border-radius:50%;background:#c0392b;flex-shrink:0"></div> Arrêt courant</div>
-        <div style="display:flex;align-items:center;gap:3px"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0"></div> Autres arrêts</div>
-      </div>
-    </div>
-    <div id="map-coords" style="padding:5px 14px;font-size:10px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
-      Lat: — | Lon: — | Précision: —
-    </div>
   </div>
 </div>
 
@@ -504,6 +426,18 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div id="gps-btns">
       <div id="gps-count-info"></div>
     </div>
+  </div>
+
+  <!-- ══ CARTE LEAFLET EN DIRECT ══ -->
+  <div class="card" style="padding:0;overflow:hidden" id="live-map-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px">
+      <div class="card-title" style="margin:0">🗺 Carte du trajet</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="liveMapCenter()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="liveMapToggle()" id="live-map-toggle-btn" class="btn btn-sm btn-ghost" style="font-size:12px">▼ Réduire</button>
+      </div>
+    </div>
+    <div id="live-map" style="height:300px;width:100%;z-index:10"></div>
   </div>
 
 </div>
@@ -863,6 +797,34 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
+
+  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
+      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
+      </div>
+    </div>
+    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
+      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
+      <!-- Info position -->
+      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
+        En attente GPS...
+      </div>
+      <!-- Légende -->
+      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
+      </div>
+    </div>
+    <!-- Coords détaillées -->
+    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
+      Lat: — | Lon: — | Précision: —
+    </div>
+  </div>
 
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
@@ -2994,19 +2956,9 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') { loadSettings(); }
-  // Bouton carte visible seulement sur EN DIRECT
-  const mapBtn = document.getElementById('map-toggle-btn');
-  if(mapBtn) mapBtn.style.display = (id === 'view-live') ? 'flex' : 'none';
-  // Fermer le panneau carte si on quitte EN DIRECT
-  if(id !== 'view-live') {
-    const ov = document.getElementById('map-overlay');
-    if(ov) ov.classList.remove('open');
-    const btn = document.getElementById('map-toggle-btn');
-    if(btn) btn.classList.remove('active');
-  }
+  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
   if(id === 'view-heures') heuresRender();
-  if(id === 'view-prime') { calcRegularite(); renderGpsStats(); renderPrimeHistorique(); }
+  if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
 }
 
 // ══ CLOCK ════════════════════════════════════════════════════
@@ -3507,8 +3459,6 @@ function activateTrip(lineIdx, tripIdx) {
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: undefined };
-  // Reconstruire la table des PK si le mode auto est déjà actif
-  if(gpsMode === 'auto') odoReset();
   const col = line.color || '#00d4ff';
   document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
   document.getElementById('terminus-btn').style.display = '';
@@ -3518,6 +3468,8 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
+  // Rafraîchir la carte Leaflet
+  setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 300);
 }
 
 function showStartFromStop() {
@@ -5261,32 +5213,6 @@ function exportPrimePDF() {
 
 
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
-// ══ PK OFFICIELS PAR LIGNE ═══════════════════════════════════════════════════
-// Format : { 'lineNum': { 'tripLabel_substring_ou_direction': { 'NomArrêt': pkMetres } } }
-// La clé de trajet est comparée via includes() sur le label ou la direction.
-// Mettre 'aller' pour tous les trajets aller d'une ligne, ou un label exact.
-// Si un arrêt n'est pas dans la table, buildPkTable() interpolera depuis ses voisins.
-const OFFICIAL_PK = {
-  '1202': {
-    // Sens Cergy Préfecture → Les Beurriers (aller)
-    aller: {
-      'Gare de Cergy Préfecture - Quai K': 0,
-      'Les Marjoberts':                     821,
-      'Marcouville':                        2100,
-      'Croix Saint Siméon':                 4040,
-      'Normandie':                          4330,
-      'Place de la Paix':                   4720,
-      'Boblingen':                          5100,
-      'Alsace Bretagne':                    5360,
-      'Hôpital René Dubos':                 5720,
-      'Hôpital Administration':             6180,
-      'Maison de Retraite':                 6400,
-      'Paul Cézanne':                       6580,
-      'Les Beurriers':                      6800,
-    },
-  },
-};
-
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
 const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
@@ -5299,17 +5225,6 @@ let gpsRecStopIdx = 0;
 let gpsCoordsDB = {}; // { 'lineNum_tripIdx_stopIdx': {lat,lon} }
 let gpsAutoNextIdx = 0;
 let gpsSession = []; // [{stopName, planned, actual, diff}]
-
-// ── ODOMÉTRIE ────────────────────────────────────────────────────────────────
-// pkStops[]  : tableau des PK (mètres depuis départ) de chaque arrêt du trajet actif
-// pkBus      : position kilométrique courante du bus sur l'itinéraire théorique (m)
-// pkPrevCoords: dernière position GPS connue pour le calcul du delta
-// pkRecaled  : true si un recalage vient d'avoir lieu (pour log/debug)
-let pkStops     = [];       // PK de chaque arrêt (index = stopIdx)
-let pkBus       = 0;        // PK courant du bus (mètres depuis 1er arrêt)
-let pkPrevCoords = null;    // dernière position GPS pour calculer le delta odo
-let pkRecaled   = false;    // indicateur de recalage
-const PK_SNAP_DIST = 30;    // mètres — seuil de recalage automatique sur un arrêt
 
 // ── WATCHDOG GPS ─────────────────────────────────────────────
 const GPS_WATCHDOG_TIMEOUT = 15000; // ms sans signal → alerte
@@ -5800,7 +5715,6 @@ function startGpsAuto() {
   gpsAutoNextIdx = 0;
   gpsSession = [];
   gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
-  odoReset();           // ← réinitialiser l'odométrie
   cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
   updateGpsIcon('auto');
   document.getElementById('gps-auto-banner').style.display = 'block';
@@ -5808,10 +5722,17 @@ function startGpsAuto() {
   startGpsWatch(
     coords => {
       document.getElementById('gps-auto-acc').textContent = `±${coords.acc}m`;
-      odoStep(coords);              // ← odométrie + recalage PK en 1er
-      checkGpsAutoDetect(coords);  // ← détection d'arrêt
+      checkGpsAutoDetect(coords);
       gpsUpdatePrediction(coords);
       updateIneoBarGps(coords);
+      liveMapUpdateBus();
+      // Carte OPTIONS
+      const settingsView = document.getElementById('view-settings');
+      if(settingsView && settingsView.classList.contains('active')) {
+        if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
+        mapSetupEvents();
+        mapDraw();
+      }
     },
     () => toast('Erreur GPS')
   );
@@ -5832,198 +5753,6 @@ function bearingTo(lat1, lon1, lat2, lon2) {
 function angleDiff(a, b) {
   let d = ((b - a) + 540) % 360 - 180;
   return d;
-}
-
-// ── ODOMÉTRIE : Construction de la table des PK ─────────────────────────────
-// Calcule la distance cumulée de chaque arrêt depuis le 1er arrêt du trajet.
-// On utilise les coordonnées GPS réelles enregistrées dans gpsCoordsDB.
-// Si un arrêt n'a pas de coords, on interpole linéairement depuis les voisins.
-function buildPkTable() {
-  pkStops = [];
-  if(!activeTrip) return;
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-  const n = trip.stops.length;
-  pkStops = new Array(n).fill(null);
-
-  // ── PRIORITÉ 1 : PK officiels définis dans OFFICIAL_PK ─────────────────
-  const officialLine = OFFICIAL_PK[line.num];
-  if(officialLine) {
-    // Trouver la bonne entrée : chercher par direction d'abord, puis par label
-    let officialMap = null;
-    const dir = trip.direction || 'aller';
-    if(officialLine[dir]) {
-      officialMap = officialLine[dir];
-    } else {
-      // Chercher par substring du label
-      for(const key of Object.keys(officialLine)) {
-        if(trip.label && trip.label.toLowerCase().includes(key.toLowerCase())) {
-          officialMap = officialLine[key];
-          break;
-        }
-      }
-    }
-
-    if(officialMap) {
-      let officialCount = 0;
-      trip.stops.forEach((s, i) => {
-        // Cherche le nom exact, puis insensible à la casse, puis normalisé
-        let pk = officialMap[s.name];
-        if(pk === undefined) {
-          // Recherche souple (sans accents ni casse)
-          const normalize = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-          const norm = normalize(s.name);
-          for(const [k, v] of Object.entries(officialMap)) {
-            if(normalize(k) === norm) { pk = v; break; }
-          }
-        }
-        if(pk !== undefined) { pkStops[i] = pk; officialCount++; }
-      });
-
-      // Si tous les arrêts sont couverts par les PK officiels → terminé
-      if(officialCount === n) {
-        console.log(`[ODO] PK officiels 100% — ligne ${line.num} ${dir} (${n} arrêts)`);
-        return;
-      }
-      console.log(`[ODO] PK officiels partiels — ${officialCount}/${n} arrêts, interpolation pour le reste`);
-    }
-  }
-
-  // ── PRIORITÉ 2 : PK calculés depuis les coords GPS enregistrées ─────────
-  const known = [];
-  trip.stops.forEach((s, i) => {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
-    const c = gpsCoordsDB[key];
-    // N'utiliser les coords GPS que si ce PK n'est pas déjà fixé par les officiels
-    if(c && pkStops[i] === null) known.push({ idx: i, lat: c.lat, lon: c.lon });
-    else if(c) known.push({ idx: i, lat: c.lat, lon: c.lon, locked: true });
-  });
-
-  if(known.length >= 2) {
-    // Calculer cumul haversine pour les arrêts sans PK officiel
-    // Ancre de départ : premier PK officiel connu, ou 0
-    let anchorIdx  = 0, anchorPk = 0;
-    for(let i = 0; i < n; i++) {
-      if(pkStops[i] !== null) { anchorIdx = i; anchorPk = pkStops[i]; break; }
-    }
-
-    // Calculer les distances entre arrêts GPS consécutifs connus
-    let cumul = anchorPk;
-    let prevGps = null;
-    for(const kp of known) {
-      if(kp.idx < anchorIdx) continue; // ignorer avant l'ancre
-      if(prevGps !== null) {
-        cumul += haversine(prevGps.lat, prevGps.lon, kp.lat, kp.lon);
-      }
-      // Ne pas écraser un PK officiel déjà fixé
-      if(pkStops[kp.idx] === null) pkStops[kp.idx] = cumul;
-      else cumul = pkStops[kp.idx]; // se recaler sur le PK officiel
-      prevGps = kp;
-    }
-  }
-
-  // ── PRIORITÉ 3 : Interpolation linéaire pour les trous restants ─────────
-  for(let i = 0; i < n; i++) {
-    if(pkStops[i] !== null) continue;
-    let prevK = null, nextK = null;
-    for(let k = i-1; k >= 0; k--) { if(pkStops[k] !== null) { prevK = k; break; } }
-    for(let k = i+1; k < n; k++) { if(pkStops[k] !== null) { nextK = k; break; } }
-    if(prevK !== null && nextK !== null) {
-      const frac = (i - prevK) / (nextK - prevK);
-      pkStops[i] = pkStops[prevK] + frac * (pkStops[nextK] - pkStops[prevK]);
-    } else if(prevK !== null) {
-      pkStops[i] = pkStops[prevK] + (i - prevK) * 300;
-    } else if(nextK !== null) {
-      pkStops[i] = pkStops[nextK] - (nextK - i) * 300;
-      if(pkStops[i] < 0) pkStops[i] = 0;
-    } else {
-      pkStops[i] = i * 300; // aucune info : espacement uniforme
-    }
-  }
-
-  // Garantir PK strictement croissants
-  for(let i = 1; i < n; i++) {
-    if(pkStops[i] <= pkStops[i-1]) pkStops[i] = pkStops[i-1] + 1;
-  }
-
-  if(console) console.log('[ODO] PK table built:', pkStops.map((v,i) => `${trip.stops[i]?.name}: ${Math.round(v)}m`));
-}
-
-// ── ODOMÉTRIE : Mise à jour à chaque position GPS ───────────────────────────
-// Appelée à chaque tick GPS. Avance pkBus du delta haversine, puis
-// vérifie si on est à ≤ PK_SNAP_DIST d'un arrêt pour se recaler.
-function odoStep(coords) {
-  if(!activeTrip || gpsMode !== 'auto') return;
-  if(pkStops.length === 0) buildPkTable();
-
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-
-  // ── 1. Delta odométrique ─────────────────────────────────────────────────
-  if(pkPrevCoords) {
-    const delta = haversine(pkPrevCoords.lat, pkPrevCoords.lon, coords.lat, coords.lon);
-    // Filtrer les sauts aberrants (> 150m entre deux positions = erreur GPS)
-    if(delta < 150) {
-      pkBus += delta;
-    }
-  }
-  pkPrevCoords = coords;
-
-  // ── 2. Recalage automatique sur un arrêt réel ────────────────────────────
-  // Vérifier TOUS les arrêts du trajet (pas seulement le suivant)
-  // pour caler le bus exactement sur son PK si on passe à ≤ 30m
-  let snapDone = false;
-  for(let i = gpsAutoNextIdx; i < Math.min(gpsAutoNextIdx + 8, trip.stops.length); i++) {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, i);
-    const c = gpsCoordsDB[key];
-    if(!c) continue;
-    const distToStop = haversine(coords.lat, coords.lon, c.lat, c.lon);
-    if(distToStop <= PK_SNAP_DIST && pkStops[i] !== null) {
-      // Recalage : aligner pkBus exactement sur le PK de cet arrêt
-      pkBus = pkStops[i];
-      pkRecaled = true;
-      snapDone = true;
-      break; // un seul recalage par tick
-    }
-  }
-
-  // ── 3. Mise à jour de l'index d'arrêt basé sur le PK ────────────────────
-  // Trouver quel est le prochain arrêt dont le PK est > pkBus
-  // (on ne change gpsAutoNextIdx que si l'avance est cohérente)
-  if(!snapDone) {
-    for(let i = gpsAutoNextIdx; i < trip.stops.length; i++) {
-      if(pkStops[i] !== null && pkStops[i] > pkBus) {
-        // gpsAutoNextIdx pointe vers le prochain arrêt à venir
-        if(i > gpsAutoNextIdx) {
-          // Le PK indique qu'on a dépassé gpsAutoNextIdx → avancer
-          // (uniquement si la détection principale ne l'a pas déjà fait)
-          // On ne saute qu'un arrêt à la fois pour éviter les faux positifs
-          gpsAutoNextIdx = Math.min(i, gpsAutoNextIdx + 1);
-          if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
-          updateLive();
-        }
-        break;
-      }
-    }
-  }
-
-  // ── 4. Rafraîchir la carte si ouverte ───────────────────────────────────
-  const overlay = document.getElementById('map-overlay');
-  if(overlay && overlay.classList.contains('open')) {
-    if(mapCentered) { mapOffsetX = 0; mapOffsetY = 0; }
-    mapDraw();
-  }
-}
-
-// Réinitialiser l'odométrie (appelé au démarrage d'un nouveau trajet)
-function odoReset() {
-  pkBus       = 0;
-  pkPrevCoords = null;
-  pkStops     = [];
-  pkRecaled   = false;
-  buildPkTable();
 }
 
 function checkGpsAutoDetect(coords) {
@@ -6996,9 +6725,7 @@ function mapDraw() {
     const line = db.lines[activeTrip.lineIdx];
     const trip = line?.trips?.[activeTrip.tripIdx];
     const stop = trip?.stops?.[gpsAutoNextIdx];
-    const pkStr = pkBus > 0 ? ` · PK ${pkBus >= 1000 ? (pkBus/1000).toFixed(2)+'km' : Math.round(pkBus)+'m'}${pkRecaled ? ' 📌' : ''}` : '';
-    mapInfoEl.textContent = stop ? `→ ${stop.name}${pkStr}` : `GPS actif${pkStr}`;
-    pkRecaled = false; // reset indicateur recalage après affichage
+    mapInfoEl.textContent = stop ? `→ ${stop.name}` : 'GPS actif';
   }
 }
 
@@ -7055,18 +6782,173 @@ function mapSetupEvents() {
   canvas.addEventListener('touchend', () => { lastTouch = null; lastPinchDist = null; });
 }
 
-// (carte déplacée dans le panneau flottant EN DIRECT)
+// Rafraîchir la carte quand on arrive sur l'onglet OPTIONS
+const _origShowView = typeof showView === 'function' ? showView : null;
 
-function mapTogglePanel() {
-  const overlay = document.getElementById('map-overlay');
-  const btn     = document.getElementById('map-toggle-btn');
-  if(!overlay) return;
-  const isOpen = overlay.classList.toggle('open');
-  if(btn) btn.classList.toggle('active', isOpen);
-  if(isOpen) {
-    // Init canvas une seule fois
-    setTimeout(() => { mapSetupEvents(); mapDraw(); }, 80);
+// ══ CARTE LEAFLET EN DIRECT ════════════════════════════════════
+let liveMap = null;
+let liveMapBusMarker = null;
+let liveMapPolyline = null;
+let liveMapStopMarkers = [];
+let liveMapVisible = true;
+let liveMapInitialized = false;
+
+function liveMapToggle() {
+  const mapEl = document.getElementById('live-map');
+  const btn = document.getElementById('live-map-toggle-btn');
+  if(!mapEl) return;
+  liveMapVisible = !liveMapVisible;
+  mapEl.style.height = liveMapVisible ? '300px' : '0';
+  if(btn) btn.textContent = liveMapVisible ? '▼ Réduire' : '▶ Agrandir';
+  if(liveMapVisible && liveMap) setTimeout(() => liveMap.invalidateSize(), 100);
+}
+
+function liveMapCenter() {
+  if(!liveMap) return;
+  if(gpsCoords) {
+    liveMap.setView([gpsCoords.lat, gpsCoords.lon], 16);
+  } else if(liveMapPolyline) {
+    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [20, 20]});
   }
+}
+
+function liveMapInit() {
+  if(liveMapInitialized || typeof L === 'undefined') return;
+  const mapEl = document.getElementById('live-map');
+  if(!mapEl) return;
+
+  liveMap = L.map('live-map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([49.04, 2.07], 13);
+
+  // Tuiles OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(liveMap);
+
+  // Attribution discrète
+  L.control.attribution({prefix: false}).addTo(liveMap);
+
+  liveMapInitialized = true;
+  liveMapRefresh();
+}
+
+function liveMapRefresh() {
+  if(!liveMap || !liveMapInitialized) return;
+
+  // Supprimer anciens éléments
+  if(liveMapPolyline) { liveMap.removeLayer(liveMapPolyline); liveMapPolyline = null; }
+  liveMapStopMarkers.forEach(m => liveMap.removeLayer(m));
+  liveMapStopMarkers = [];
+
+  if(!activeTrip) return;
+
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  // Construire les points de la polyline
+  const coords = [];
+  const stopPoints = [];
+
+  trip.stops.forEach((stop, idx) => {
+    const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
+    const c = gpsCoordsDB[key];
+    if(c) {
+      coords.push([c.lat, c.lon]);
+      stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
+    }
+  });
+
+  if(coords.length < 2) return;
+
+  // Tracer la polyline du trajet
+  liveMapPolyline = L.polyline(coords, {
+    color: line.color || '#c0392b',
+    weight: 5,
+    opacity: 0.85
+  }).addTo(liveMap);
+
+  // Icônes arrêts
+  stopPoints.forEach(sp => {
+    const isCurrent = sp.idx === gpsAutoNextIdx;
+    const isPassed  = sp.idx < gpsAutoNextIdx;
+    const isRef     = sp.isRef;
+
+    const size    = isCurrent ? 16 : isRef ? 12 : 8;
+    const color   = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
+    const border  = isCurrent ? '#fff' : '#333';
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+             background:${color};border:2px solid ${border};
+             box-shadow:0 0 4px rgba(0,0,0,.5);
+             ${isCurrent ? 'animation:pulse 1s infinite' : ''}"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+
+    const marker = L.marker([sp.lat, sp.lon], {icon})
+      .bindPopup(`<b>${sp.name}</b>${sp.time ? `<br>⏱ ${sp.time}` : ''}${isRef ? '<br>🔴 Arrêt régulation' : ''}`)
+      .addTo(liveMap);
+
+    liveMapStopMarkers.push(marker);
+  });
+
+  // Centrer sur le trajet
+  liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [20, 20]});
+}
+
+function liveMapUpdateBus() {
+  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
+
+  // Icône bus
+  const busIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;
+           background:#00d4ff;border:3px solid #fff;
+           display:flex;align-items:center;justify-content:center;
+           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  if(liveMapBusMarker) {
+    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
+  } else {
+    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
+      .addTo(liveMap);
+  }
+
+  // Mettre à jour les couleurs des pastilles
+  liveMapRefreshStopColors();
+}
+
+function liveMapRefreshStopColors() {
+  if(!activeTrip || !liveMap) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  liveMapStopMarkers.forEach((marker, idx) => {
+    const stop = trip.stops[idx];
+    if(!stop) return;
+    const isCurrent = idx === gpsAutoNextIdx;
+    const isPassed  = idx < gpsAutoNextIdx;
+    const isRef     = stop.isRef;
+    const size  = isCurrent ? 16 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
+    const border = isCurrent ? '#fff' : '#333';
+    marker.setIcon(L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    }));
+  });
 }
 
 // ══ BOOT ═════════════════════════════════════════════════════
