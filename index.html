@@ -3133,7 +3133,7 @@ function updateLive() {
   let nextIdx = startFrom;
   const hasRealTimes = trip.stops.some(s => s.time && s.time !== '00:00');
 
-  if(activeTrip.validatedStopIdx !== undefined) {
+  if(activeTrip.validatedStopIdx !== undefined && activeTrip.validatedStopIdx !== null) {
     // Priorité absolue au validatedStopIdx (bouton manuel ou GPS auto)
     nextIdx = Math.min(activeTrip.validatedStopIdx, trip.stops.length - 1);
   } else if(hasRealTimes) {
@@ -3590,7 +3590,7 @@ function activateTrip(lineIdx, tripIdx) {
   if(!line) { toast('❌ Ligne introuvable'); return; }
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
-  activeTrip = { lineIdx, tripIdx, validatedStopIdx: 0 };
+  activeTrip = { lineIdx, tripIdx, validatedStopIdx: null };
   gpsAutoNextIdx = 0;
   gpsSession = [];
   cancelAutoAdvance();
@@ -5418,7 +5418,7 @@ function checkGpsAutoDetect(coords) {
     saveGpsSession();
     gpsAutoMinDist = Infinity;
     gpsAutoNextIdx++;
-    if(activeTrip) activeTrip.validatedStopIdx = gpsAutoNextIdx;
+    activeTrip.validatedStopIdx = gpsAutoNextIdx;
 
     // ── RECALAGE AUTOMATIQUE ─────────────────────────────────────
     // Après validation, chercher l'arrêt le plus proche parmi les suivants
@@ -5602,7 +5602,7 @@ function goToPrevStop() {
   if(!line) return;
   const trip = line.trips?.[activeTrip.tripIdx];
   if(!trip) return;
-  const currentIdx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : 0;
+  const currentIdx = (activeTrip.validatedStopIdx !== undefined && activeTrip.validatedStopIdx !== null) ? activeTrip.validatedStopIdx : 0;
   if(currentIdx <= 0) { toast('⚠️ Déjà au premier arrêt'); return; }
   activeTrip.validatedStopIdx = currentIdx - 1;
   gpsAutoNextIdx = activeTrip.validatedStopIdx;
@@ -5618,7 +5618,7 @@ function validateStopManual() {
   if(!line) return;
   const trip = line.trips?.[activeTrip.tripIdx];
   if(!trip) return;
-  const currentIdx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : (() => {
+  const currentIdx = (activeTrip.validatedStopIdx !== undefined && activeTrip.validatedStopIdx !== null) ? activeTrip.validatedStopIdx : (() => {
     const now = new Date();
     const nowMin = now.getHours()*60 + now.getMinutes();
     let idx = trip.stops.length - 1;
@@ -5649,7 +5649,7 @@ function scheduleAutoAdvance() {
   const line = db.lines[activeTrip.lineIdx];
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
-  const idx = activeTrip.validatedStopIdx !== undefined ? activeTrip.validatedStopIdx : 0;
+  const idx = (activeTrip.validatedStopIdx !== undefined && activeTrip.validatedStopIdx !== null) ? activeTrip.validatedStopIdx : 0;
   const stop = trip.stops[idx];
   if(!stop || idx >= trip.stops.length - 1) return;
 
