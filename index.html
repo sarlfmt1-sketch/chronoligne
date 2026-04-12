@@ -1281,6 +1281,31 @@ const PRELOADED_GPS = {
       'La Siaule (Terminus Vauréal)':      { lat: 49.02099073013078,  lon: 2.016891680690493  },
     },
   },
+  '1230': {
+    // Circuit en boucle : format tableau indexé (stopIdx → coords)
+    aller_indexed: [
+      { lat: 49.04630, lon: 2.09330 },  // 0  Gare de Pontoise Canrobert
+      { lat: 49.04204, lon: 2.09019 },  // 1  Avenue du Premier Dragon
+      { lat: 49.04252, lon: 2.08737 },  // 2  Escadrons
+      { lat: 49.04344, lon: 2.08404 },  // 3  Plateau Saint-Martin
+      { lat: 49.03692, lon: 2.08001 },  // 4  Gare de Cergy Préfecture - Quai D
+      { lat: 49.03443, lon: 2.08332 },  // 5  Oise Hautil - Préfecture RER
+      { lat: 49.03355, lon: 2.08797 },  // 6  Palette
+      { lat: 49.03249, lon: 2.08865 },  // 7  Les Larris
+      { lat: 49.02857, lon: 2.08553 },  // 8  Les Bocages
+      { lat: 49.03036, lon: 2.08413 },  // 9  Ecole des Maradas
+      { lat: 49.03065, lon: 2.08214 },  // 10 Marché des Touleuses
+      { lat: 49.03074, lon: 2.07961 },  // 11 Les Touleuses
+      { lat: 49.03080, lon: 2.07597 },  // 12 Château Saint-Sylvère
+      { lat: 49.03189, lon: 2.07507 },  // 13 Conseil Départemental
+      { lat: 49.03355, lon: 2.08117 },  // 14 Les Plants - Préfecture RER
+      { lat: 49.03626, lon: 2.08055 },  // 15 Gare de Cergy Préfecture - Quai G
+      { lat: 49.04334, lon: 2.08430 },  // 16 Plateau Saint-Martin (retour boucle)
+      { lat: 49.04244, lon: 2.08753 },  // 17 Escadrons (retour boucle)
+      { lat: 49.04293, lon: 2.09071 },  // 18 Avenue du Premier Dragon (retour boucle)
+      { lat: 49.04654, lon: 2.09235 },  // 19 Gare de Pontoise Canrobert (retour boucle)
+    ],
+  },
   '1206': {
     aller: {
       'Gare de Pontoise':                        { lat: 49.047183, lon: 2.095953 },
@@ -1421,6 +1446,22 @@ function installPreloadedGPS() {
       let dir = trip.direction || 'aller';
       if(trip.label && trip.label.includes('DIMANCHE') && dir === 'aller') dir = 'dimanche_aller';
       if(trip.label && trip.label.includes('DIMANCHE') && dir === 'retour') dir = 'dimanche_retour';
+
+      // Format tableau indexé (circuits en boucle avec arrêts en double)
+      const indexedKey = dir + '_indexed';
+      if(lineGPS[indexedKey]) {
+        const arr = lineGPS[indexedKey];
+        trip.stops.forEach((stop, stopIdx) => {
+          const key = gpsCoordKey(line.num, tripIdx, stopIdx);
+          if(!gpsCoordsDB[key] && arr[stopIdx]) {
+            gpsCoordsDB[key] = { lat: arr[stopIdx].lat, lon: arr[stopIdx].lon, name: stop.name };
+            added++;
+          }
+        });
+        return;
+      }
+
+      // Format dictionnaire par nom (standard)
       // Pas de fallback sur aller si direction=retour : chaque sens garde ses propres coords
       const coords = lineGPS[dir] || (dir === 'aller' ? lineGPS : null);
       if(!coords) return;
