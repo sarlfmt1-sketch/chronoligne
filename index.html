@@ -926,34 +926,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
 <!-- ══ VIEW: OPTIONS ══ -->
 <div class="view" id="view-settings">
 
-  <!-- ══ CARTE GPS EN TEMPS RÉEL ══ -->
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 14px">
-      <div class="card-title" style="margin:0">🗺 Carte GPS</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="mapCenterOnBus()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
-        <button onclick="mapToggleStops()" class="btn btn-sm btn-ghost" id="map-stops-btn" style="font-size:12px">🔴 Arrêts</button>
-      </div>
-    </div>
-    <div id="map-container" style="width:100%;height:320px;background:#1a2035;position:relative;overflow:hidden">
-      <canvas id="map-canvas" style="width:100%;height:100%"></canvas>
-      <!-- Info position -->
-      <div id="map-info" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;font-family:monospace">
-        En attente GPS...
-      </div>
-      <!-- Légende -->
-      <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border-radius:6px;padding:6px 8px;font-size:10px;color:#fff">
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div> Position</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div> Arrêt courant</div>
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)"></div> Autres arrêts</div>
-      </div>
-    </div>
-    <!-- Coords détaillées -->
-    <div id="map-coords" style="padding:8px 14px;font-size:11px;color:var(--muted);font-family:monospace;border-top:1px solid var(--border)">
-      Lat: — | Lon: — | Précision: —
-    </div>
-  </div>
-
   <!-- Bouton installation PWA -->
   <button id="pwa-install-btn" onclick="pwaInstall()" style="display:none;width:100%;margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px">
     📱 Installer ChronoLigne sur ce téléphone
@@ -1449,7 +1421,9 @@ function installPreloadedGPS() {
       let dir = trip.direction || 'aller';
       if(trip.label && trip.label.includes('DIMANCHE') && dir === 'aller') dir = 'dimanche_aller';
       if(trip.label && trip.label.includes('DIMANCHE') && dir === 'retour') dir = 'dimanche_retour';
-      const coords = lineGPS[dir] || lineGPS.aller || lineGPS;
+      // Pas de fallback sur aller si direction=retour : chaque sens garde ses propres coords
+      const coords = lineGPS[dir] || (dir === 'aller' ? lineGPS : null);
+      if(!coords) return;
       trip.stops.forEach((stop, stopIdx) => {
         const key = gpsCoordKey(line.num, tripIdx, stopIdx);
         if(!gpsCoordsDB[key]) {
@@ -3138,7 +3112,7 @@ function showView(id) {
   if(v) v.classList.add('active');
   if(id === 'view-lines') renderLineGrid();
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
-  if(id === 'view-settings') { loadSettings(); setTimeout(() => { mapSetupEvents(); mapDraw(); }, 100); }
+  if(id === 'view-settings') { loadSettings(); }
   if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
   if(id === 'view-sillon') { sillonInitView(); }
 }
