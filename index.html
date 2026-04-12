@@ -3624,7 +3624,7 @@ function renderLineDetail(idx) {
       : `<span style="font-size:10px;color:var(--muted)">📍 —</span>`;
 
     // Vérifier si un tracé existe pour ce trajet
-    const traceKey = `${line.num}_${t.direction||'aller'}`;
+    const traceKey = `${line.num}_${i}_${t.direction||'aller'}`;
     const hasTrace = traceLibraryHas(traceKey);
     const mapBtnStyle = hasTrace
       ? 'background:rgba(0,212,255,.2);border:1px solid var(--accent);color:var(--accent);'
@@ -5385,7 +5385,7 @@ function startGpsAuto() {
   // Vérifier qu'on a des coords d'arrêts OU un tracé KML
   const hasCoords = trip.stops.some((s,i) => gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, i)]);
   const traceDir  = trip.direction || 'aller';
-  const hasTrace  = !!traceLibraryGet(line.num, traceDir);
+  const hasTrace  = !!traceLibraryGet(line.num, traceDir, activeTrip.tripIdx);
 
   if(!hasCoords && !hasTrace) {
     toast('⚠️ Aucun GPS ni tracé MAP — importez un KML ou enregistrez les arrêts');
@@ -5510,7 +5510,7 @@ function checkGpsAutoDetect(coords) {
   // compare le PK de la projection au PK de l'arrêt cible
   let passedByTrace = false;
   const traceDir = trip.direction || 'aller';
-  const trace = traceLibraryGet(line.num, traceDir);
+  const trace = traceLibraryGet(line.num, traceDir, activeTrip.tripIdx);
   if(trace && trace.length > 1) {
     const pkBus  = gpsProjectOnTrace(coords.lat, coords.lon, trace);
     const pkStop = gpsProjectOnTrace(stopCoords.lat, stopCoords.lon, trace);
@@ -5587,7 +5587,7 @@ function gpsProjectOnTrace(lat, lon, trace) {
 // ── Recalage par tracé KML ────────────────────────────────────
 function gpsTraceRecaler(coords, trip, line) {
   const traceDir = trip.direction || 'aller';
-  const trace = traceLibraryGet(line.num, traceDir);
+  const trace = traceLibraryGet(line.num, traceDir, activeTrip.tripIdx);
   if(!trace || trace.length < 2) return;
 
   const pkBus = gpsProjectOnTrace(coords.lat, coords.lon, trace);
@@ -5623,7 +5623,7 @@ function gpsAutoRecaler(coords, trip, line) {
 
   // Priorité : recalage par tracé si disponible
   const traceDir = trip.direction || 'aller';
-  const trace = traceLibraryGet(line.num, traceDir);
+  const trace = traceLibraryGet(line.num, traceDir, activeTrip.tripIdx);
   if(trace && trace.length > 1) {
     gpsTraceRecaler(coords, trip, line);
     return;
@@ -6497,24 +6497,38 @@ function traceLibrarySave(lib) {
 }
 function traceLibraryHas(key) {
   const lib = traceLibraryLoad();
-  // Vérifier aussi dans PRELOADED_TRACES
-  const [num, dir] = key.split('_');
-  return !!lib[key] || !!PRELOADED_TRACES?.[num]?.[dir];
+  if(lib[key]) return true;
+  // Fallback PRELOADED_TRACES : clé legacy lineNum_dir (sans tripIdx)
+  const parts = key.split('_');
+  const num = parts[0];
+  const dir = parts[parts.length - 1];
+  return !!PRELOADED_TRACES?.[num]?.[dir];
 }
-function traceLibraryGet(lineNum, dir) {
+function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  const key = `${lineNum}_${dir}`;
-  // Priorité : localStorage > PRELOADED_TRACES
-  return lib[key] || PRELOADED_TRACES?.[lineNum]?.[dir] || null;
+  // Clé précise avec tripIdx (nouveau format)
+  if(tripIdx !== undefined && tripIdx !== null) {
+    const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
+    if(lib[keyPrecise]) return lib[keyPrecise];
+  }
+  // Fallback clé legacy lineNum_dir
+  const keyLegacy = `${lineNum}_${dir}`;
+  return lib[keyLegacy] || PRELOADED_TRACES?.[lineNum]?.[dir] || null;
 }
-function traceLibrarySet(lineNum, dir, points) {
+function traceLibrarySet(lineNum, dir, points, tripIdx) {
   const lib = traceLibraryLoad();
-  lib[`${lineNum}_${dir}`] = points;
+  const key = (tripIdx !== undefined && tripIdx !== null)
+    ? `${lineNum}_${tripIdx}_${dir}`
+    : `${lineNum}_${dir}`;
+  lib[key] = points;
   traceLibrarySave(lib);
 }
-function traceLibraryDelete(lineNum, dir) {
+function traceLibraryDelete(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  delete lib[`${lineNum}_${dir}`];
+  const key = (tripIdx !== undefined && tripIdx !== null)
+    ? `${lineNum}_${tripIdx}_${dir}`
+    : `${lineNum}_${dir}`;
+  delete lib[key];
   traceLibrarySave(lib);
 }
 
@@ -6534,7 +6548,7 @@ function traceLibraryLongPressEnd() {
 function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
   if(_traceLongPressTimer) return; // éviter déclenchement si appui long
 
-  const trace = traceLibraryGet(lineNum, dir);
+  const trace = traceLibraryGet(lineNum, dir, tripIdx);
   if(!trace) {
     toast('⚠️ Aucun tracé — appui long pour importer un KML');
     return;
@@ -6627,7 +6641,7 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
 
 // ── Menu édition (appui long) ─────────────────────────────────
 function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
-  const hasTrace = traceLibraryHas(`${lineNum}_${dir}`);
+  const hasTrace = traceLibraryHas(`${lineNum}_${tripIdx}_${dir}`);
 
   const overlay = document.createElement('div');
   overlay.id = 'trace-edit-overlay';
@@ -6650,7 +6664,7 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
       </label>
 
       ${hasTrace ? `
-      <button onclick="traceLibraryDeleteConfirm('${lineNum}','${dir}',${lineIdx})"
+      <button onclick="traceLibraryDeleteConfirm('${lineNum}','${dir}',${lineIdx},${tripIdx})"
         style="width:100%;padding:12px;font-size:14px;font-weight:700;
                background:rgba(231,76,60,.15);border:1px solid var(--red);color:var(--red);
                border-radius:10px;cursor:pointer;margin-bottom:8px">
@@ -6709,7 +6723,7 @@ function traceLibraryImport(event, lineNum, dir, lineIdx, tripIdx) {
 
     if(!points || points.length < 2) { toast('❌ Tracé invalide ou vide'); return; }
 
-    traceLibrarySet(lineNum, dir, points);
+    traceLibrarySet(lineNum, dir, points, tripIdx);
     toast(`✅ Tracé importé — ${points.length} points (${lineNum} ${dir})`);
 
     // Rafraîchir le bouton MAP
@@ -6724,9 +6738,9 @@ function traceLibraryImport(event, lineNum, dir, lineIdx, tripIdx) {
 }
 
 // ── Supprimer un tracé ────────────────────────────────────────
-function traceLibraryDeleteConfirm(lineNum, dir, lineIdx) {
+function traceLibraryDeleteConfirm(lineNum, dir, lineIdx, tripIdx) {
   document.getElementById('trace-edit-overlay')?.remove();
-  traceLibraryDelete(lineNum, dir);
+  traceLibraryDelete(lineNum, dir, tripIdx);
   toast(`🗑 Tracé ${lineNum} ${dir} supprimé`);
   renderLineDetail(lineIdx);
 }
@@ -7411,7 +7425,7 @@ function liveMapRefresh() {
   }
 
   // ── Tracé : bibliothèque locale en priorité, sinon OSRM ──────
-  const kmlTrace = traceLibraryGet(line.num, activeTrip.direction || (line.trips[activeTrip.tripIdx]?.direction) || 'aller');
+  const kmlTrace = traceLibraryGet(line.num, activeTrip.direction || (line.trips[activeTrip.tripIdx]?.direction) || 'aller', activeTrip.tripIdx);
 
   // Tracé KML disponible → affichage immédiat, pas de requête réseau
   if(kmlTrace && kmlTrace.length > 2) {
