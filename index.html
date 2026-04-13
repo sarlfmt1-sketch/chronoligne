@@ -395,52 +395,66 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div id="ineo-status" style="display:none;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 12px;border-radius:20px;letter-spacing:.5px"></div>
       </div>
 
-      <!-- Corps nouveau layout : chaque arrêt sur une ligne horizontale -->
+      <!-- Corps INEO : hauteurs fixes pour que la barre et les pastilles ne bougent jamais -->
+      <style>
+        @keyframes ineo-scroll { 0%,15%{transform:translateX(0)} 85%,100%{transform:translateX(var(--scroll-dist,0px))} }
+        .ineo-name-scroll { display:inline-block; white-space:nowrap; }
+        .ineo-name-scroll.scrolling { animation: ineo-scroll 6s ease-in-out infinite alternate; }
+      </style>
       <div style="position:relative;padding:0">
 
         <!-- Barre rouge verticale pleine hauteur -->
-        <div style="position:absolute;left:50%;top:0;bottom:0;width:7px;background:#c0392b;transform:translateX(-50%);z-index:1"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:7px;background:#c0392b;transform:translateX(-50%);z-index:1;pointer-events:none"></div>
         <!-- Progression verte -->
-        <div id="ineo-bar-progress" style="position:absolute;left:50%;bottom:0;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:2"></div>
+        <div id="ineo-bar-progress" style="position:absolute;left:50%;bottom:0;width:7px;background:#27ae60;transform:translateX(-50%);height:0%;transition:height .6s ease;z-index:2;pointer-events:none"></div>
 
-        <!-- LIGNE +2 -->
-        <div style="position:relative;display:flex;align-items:center;padding:28px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
-          <div style="flex:1;text-align:right;padding-right:20px">
-            <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(20px,5vw,28px);font-weight:700;color:rgba(255,255,255,.25);line-height:1">--</div>
-            <div style="font-size:9px;color:rgba(255,255,255,.2);letter-spacing:1px;margin-top:2px">+2</div>
+        <!-- LIGNE +2 — hauteur fixe 80px -->
+        <div style="height:80px;position:relative;display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);box-sizing:border-box">
+          <div style="width:calc(50% - 14px);text-align:right;padding-right:16px;overflow:hidden;flex-shrink:0">
+            <div id="ineo-lb-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(32px,9vw,48px);font-weight:700;color:#ffffff;line-height:1">--</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1px;margin-top:2px">+2</div>
           </div>
-          <div style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:2px solid rgba(255,255,255,.4);flex-shrink:0;z-index:3;position:relative"></div>
-          <div style="flex:1;padding-left:20px">
-            <div id="ineo-lb-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:rgba(255,255,255,.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+          <div style="width:28px;flex-shrink:0;display:flex;justify-content:center;z-index:3;position:relative">
+            <div style="width:20px;height:20px;border-radius:50%;background:#c0392b;border:2px solid rgba(255,255,255,.4)"></div>
+          </div>
+          <div style="flex:1;padding-left:12px;overflow:hidden;min-width:0">
+            <div style="overflow:hidden">
+              <div id="ineo-lb-name" class="ineo-name-scroll" style="font-family:'Rajdhani',sans-serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:#ffffff">—</div>
+            </div>
           </div>
         </div>
 
-        <!-- LIGNE PROCHAIN -->
-        <div style="position:relative;display:flex;align-items:center;padding:36px 16px;border-bottom:1px solid rgba(0,212,255,.15);background:rgba(0,212,255,.04)">
-          <div style="flex:1;text-align:right;padding-right:16px">
+        <!-- LIGNE PROCHAIN — hauteur fixe 110px -->
+        <div style="height:110px;position:relative;display:flex;align-items:center;border-bottom:1px solid rgba(0,212,255,.15);background:rgba(0,212,255,.04);box-sizing:border-box">
+          <div style="width:calc(50% - 17px);text-align:right;padding-right:12px;overflow:hidden;flex-shrink:0">
             <div id="ineo-la-time" style="font-family:'Rajdhani',sans-serif;font-size:clamp(36px,10vw,52px);font-weight:700;color:var(--accent);line-height:1">--</div>
             <div style="font-size:9px;color:rgba(0,212,255,.7);letter-spacing:1px;margin-top:2px;font-weight:700">PROCHAIN</div>
           </div>
-          <button id="btn-validate-stop-ineo" onclick="validateStopManual()"
-            style="width:30px;height:30px;border-radius:50%;background:#c0392b;border:3px solid #fff;
-                   box-shadow:0 0 0 3px rgba(255,255,255,.2);cursor:pointer;padding:0;flex-shrink:0;z-index:3;position:relative">
-          </button>
-          <div style="flex:1;padding-left:16px">
-            <div id="ineo-la-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+          <div style="width:34px;flex-shrink:0;display:flex;justify-content:center;z-index:3;position:relative">
+            <button id="btn-validate-stop-ineo" onclick="validateStopManual()"
+              style="width:34px;height:34px;border-radius:50%;background:#c0392b;border:3px solid #fff;
+                     box-shadow:0 0 0 3px rgba(255,255,255,.2);cursor:pointer;padding:0;display:block">
+            </button>
+          </div>
+          <div style="flex:1;padding-left:12px;overflow:hidden;min-width:0">
+            <div style="overflow:hidden">
+              <div id="ineo-la-name" class="ineo-name-scroll" style="font-family:'Rajdhani',sans-serif;font-size:clamp(22px,6vw,34px);font-weight:700;color:var(--accent)">—</div>
+            </div>
           </div>
         </div>
 
-        <!-- BLOC ACTUEL — heure + nom centré + triangle -->
-        <div style="position:relative;padding:30px 16px 20px 16px;text-align:center;background:rgba(231,76,60,.06)">
-          <!-- heure -->
-          <div style="line-height:1;margin-bottom:10px">
+        <!-- BLOC ACTUEL — hauteur fixe 180px -->
+        <div style="height:180px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(231,76,60,.06);box-sizing:border-box;overflow:hidden">
+          <div style="line-height:1;margin-bottom:8px;z-index:3;position:relative">
             <span id="ineo-ln-hh" style="font-family:'Share Tech Mono',monospace;font-size:clamp(48px,13vw,68px);font-weight:700;opacity:.7;color:#ff9500">--:</span><span id="ineo-ln-mm" style="font-family:'Share Tech Mono',monospace;font-size:clamp(48px,13vw,68px);font-weight:700;color:#ff9500;line-height:1">--:--</span>
           </div>
-          <!-- nom -->
-          <div id="ineo-ln-name" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,40px);font-weight:700;color:#fff;word-break:break-word;line-height:1.1">—</div>
-          <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:4px;font-weight:700">ACTUEL</div>
-          <!-- Triangle vert — menu -->
-          <div id="ineo-triangle" style="display:flex;justify-content:center;margin-top:16px;position:relative;z-index:3;transition:margin .6s ease">
+          <div style="width:100%;padding:0 14px;overflow:hidden;z-index:3;position:relative;text-align:center;box-sizing:border-box">
+            <div style="overflow:hidden;display:flex;justify-content:center">
+              <div id="ineo-ln-name" class="ineo-name-scroll" style="font-family:'Rajdhani',sans-serif;font-size:clamp(26px,7vw,40px);font-weight:700;color:#fff;line-height:1.1">—</div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:rgba(231,76,60,.8);letter-spacing:1px;margin-top:4px;font-weight:700;z-index:3;position:relative">ACTUEL</div>
+          <div id="ineo-triangle" style="display:flex;justify-content:center;margin-top:10px;position:relative;z-index:3">
             <div style="position:relative">
               <button onclick="toggleIneoMenu()" id="ineo-menu-btn"
                 style="background:none;border:none;padding:0;cursor:pointer;display:block">
@@ -448,7 +462,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
                   <polygon points="12,2 22,22 12,17 2,22" fill="#27ae60" stroke="#0a0e1a" stroke-width="1.5" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <!-- Menu déroulant -->
               <div id="ineo-menu" style="display:none;position:absolute;bottom:42px;left:50%;transform:translateX(-50%);
                    background:var(--card);border:1px solid var(--border);border-radius:14px;
                    padding:8px;z-index:300;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -475,7 +488,6 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
             </div>
           </div>
         </div>
-
         <!-- Colonne barre cachée pour compatibilité JS -->
         <div id="ineo-bar-col" style="display:none"></div>
 
@@ -3427,7 +3439,7 @@ function updateLive() {
   if(liveMode === 'ineo') {
     const el = (id) => document.getElementById(id);
     // Arrêt actuel
-    if(el('ineo-ln-name')) el('ineo-ln-name').textContent = s0?.name || '—';
+    if(el('ineo-ln-name')) { el('ineo-ln-name').textContent = s0?.name || '—'; ineoActivateScroll('ineo-ln-name'); }
     if(el('ineo-ln-hh') && s0?.time) el('ineo-ln-hh').textContent = s0.time.substring(0,2)+':';
     if(el('ineo-ln-mm') && s0?.time) {
       const mm = s0.time.substring(3,5);
@@ -3435,10 +3447,10 @@ function updateLive() {
       el('ineo-ln-mm').textContent = mm+':'+ss;
     }
     // Prochain arrêt
-    if(el('ineo-la-name')) el('ineo-la-name').textContent = s1?.name || '—';
+    if(el('ineo-la-name')) { el('ineo-la-name').textContent = s1?.name || '—'; ineoActivateScroll('ineo-la-name'); }
     if(el('ineo-la-time')) el('ineo-la-time').textContent = s1?.time ? s1.time.substring(3,5) : '--';
     // +2
-    if(el('ineo-lb-name')) el('ineo-lb-name').textContent = s2?.name || '—';
+    if(el('ineo-lb-name')) { el('ineo-lb-name').textContent = s2?.name || '—'; ineoActivateScroll('ineo-lb-name'); }
     if(el('ineo-lb-time')) el('ineo-lb-time').textContent = s2?.time ? s2.time.substring(3,5) : '--';
     // Header ligne
     const line2 = db.lines[activeTrip.lineIdx];
@@ -7506,6 +7518,26 @@ function planSetDay(dateKey, num) {
 
 
 // ══ MENU TRIANGLE VERT ═══════════════════════════════════════
+// ── Défilement automatique des noms trop longs dans le mode INEO ──
+function ineoActivateScroll(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const parent = el.parentElement;
+  if(!parent) return;
+  // Mesurer après un tick pour que le DOM soit à jour
+  requestAnimationFrame(() => {
+    const overflow = el.scrollWidth - parent.clientWidth;
+    if(overflow > 4) {
+      // Nom plus large que son conteneur : activer le défilement
+      el.style.setProperty('--scroll-dist', `-${overflow}px`);
+      if(!el.classList.contains('scrolling')) el.classList.add('scrolling');
+    } else {
+      el.style.removeProperty('--scroll-dist');
+      el.classList.remove('scrolling');
+    }
+  });
+}
+
 function toggleIneoMenu() {
   const m = document.getElementById('ineo-menu');
   if(!m) return;
