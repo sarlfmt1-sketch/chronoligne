@@ -3598,6 +3598,14 @@ function updateLive() {
     if(nowMin > lh2*60+lm2 + 2 && !activeTrip._nextProposed) {
       activeTrip._nextProposed = true;
       if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
+        const wasAuto = (gpsMode === 'auto');
+        if(wasAuto) {
+          saveGpsSession();
+          stopGpsWatch();
+          document.getElementById('gps-auto-banner').style.display = 'none';
+          gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+          gpsMode = 'auto'; // conserver pour que activateRoadmapTrip redémarre
+        }
         roadmapCursor++;
         activateRoadmapTrip();
       }
@@ -3633,17 +3641,30 @@ function applyLiveMode() {
 
 
 function confirmTerminus() {
-  if(gpsMode === 'auto') stopGpsAuto();
-  if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
+  const wasGpsAuto = (gpsMode === 'auto');
 
-  // Si on est dans une feuille de service, passer au trajet suivant automatiquement
+  // Si on est dans une feuille de service avec un trajet suivant :
+  // on garde le GPS auto actif pour la continuité
   if(roadmapCursor >= 0 && roadmapCursor < currentRoadmap.length - 1) {
+    if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
+    // GPS auto : on coupe le watch proprement mais on indique qu'il faut redémarrer
+    if(wasGpsAuto) {
+      // Sauvegarder la session de ce trajet
+      saveGpsSession();
+      stopGpsWatch();
+      document.getElementById('gps-auto-banner').style.display = 'none';
+      gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+    }
     roadmapCursor++;
+    // Forcer prevGpsMode à 'auto' pour que activateRoadmapTrip redémarre le GPS
+    if(wasGpsAuto) gpsMode = 'auto';
     activateRoadmapTrip();
-    const next = currentRoadmap[roadmapCursor];
-    toast(`⏭ Trajet suivant : ${next.label}`);
     return;
   }
+
+  // Dernier trajet ou pas de feuille → arrêt complet
+  if(gpsMode === 'auto') stopGpsAuto();
+  if(gpsMode === 'record') { stopGpsWatch(); document.getElementById('gps-record-banner').style.display='none'; }
 
   // Dernier trajet ou pas de feuille → arrêt complet
   activeTrip = null;
@@ -4943,12 +4964,24 @@ function activateRoadmapTrip() {
 
   activateTrip(lineIdx, tripIdx);
 
+  // ── GPS auto automatique sur tous les trajets de la feuille ──
+  const line2 = db.lines[lineIdx];
+  const trip2 = line2?.trips?.[tripIdx];
+  const hasCoords2 = trip2?.stops.some((s,i) => gpsCoordsDB[gpsCoordKey(line2.num, tripIdx, i)]);
+  const hasTrace2  = !!traceLibraryGet(line2?.num, trip2?.direction || 'aller', tripIdx);
+
   if(prevGpsMode === 'auto') {
+    // GPS était déjà actif → reset session, continue sans coupure
     gpsAutoNextIdx = 0;
     gpsSession = [];
-    toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} — GPS auto continue`);
+    gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
+    toast(`🚗 Trajet ${roadmapCursor+1}/${currentRoadmap.length} — GPS auto continue`);
+  } else if(hasCoords2 || hasTrace2) {
+    // Démarrer le GPS auto automatiquement
+    setTimeout(() => startGpsAuto(), 400);
+    toast(`🚗 Trajet ${roadmapCursor+1}/${currentRoadmap.length} — GPS auto démarré`);
   } else {
-    toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} activé`);
+    toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} activé — pas de GPS (aucun point enregistré)`);
   }
   renderRoadmapActive();
 }
