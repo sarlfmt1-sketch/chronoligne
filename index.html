@@ -93,7 +93,7 @@ nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--
 .stop-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,.03); vertical-align:middle; }
 
 /* TOAST */
-#toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#1e293b; border:1px solid var(--accent); color:var(--text); padding:10px 20px; border-radius:20px; font-size:13px; font-weight:600; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; }
+#toast { position:fixed; top:140px; left:50%; transform:translateX(-50%); background:#1e293b; border:1px solid var(--accent); color:var(--text); padding:10px 20px; border-radius:20px; font-size:13px; font-weight:600; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; max-width:calc(100vw - 32px); text-align:center; }
 #toast.show { opacity:1; }
 
 /* PROGRESS */
@@ -656,9 +656,14 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   <div class="card" id="editor-stops-card">
     <div class="card-title">📍 Arrêts</div>
     <div id="editor-stops-list"></div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <input type="text" id="editor-new-stop" placeholder="Nom du nouvel arrêt" style="flex:1;padding:7px 10px;font-size:13px">
-      <button class="btn btn-sm" onclick="editorAddStop()" style="background:var(--green);color:#000;font-weight:700">+ Ajouter</button>
+    <div style="margin-top:10px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px">ARRÊTS DISPONIBLES — cliquer pour ajouter</div>
+      <div id="editor-stop-picker" style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;padding:4px 0"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;margin-bottom:4px">OU SAISIR UN NOM MANUELLEMENT</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="editor-new-stop" placeholder="Nouveau nom d'arrêt..." style="flex:1;padding:7px 10px;font-size:13px">
+        <button class="btn btn-sm" onclick="editorAddStopManual()" style="background:var(--green);color:#000;font-weight:700">+ Ajouter</button>
+      </div>
     </div>
   </div>
 
@@ -3539,7 +3544,9 @@ function updateLive() {
 
     // Afficher depuis terminus jusqu'à 3 min avant le prochain départ
     const secsToNextDepart = nextDepartSec !== null ? nextDepartSec - nowSec2 : null;
-    const shouldShow = secsToTerminus <= 30 && secsToTerminus > -600 &&
+    // Disparaît si on a avancé d'au moins 1 arrêt sur le trajet suivant
+    const busEnRoute = (gpsAutoNextIdx > 0);
+    const shouldShow = !busEnRoute && secsToTerminus <= 30 && secsToTerminus > -600 &&
                        (secsToNextDepart === null || secsToNextDepart > 180);
 
     if(shouldShow && nextT && pauseBanner) {
@@ -3763,9 +3770,19 @@ function renderLineDetail(idx) {
         style="${mapBtnStyle}padding:6px 8px;font-size:13px;border-radius:8px;cursor:pointer"
         title="${mapBtnTitle}">🗺</button>
       <button class="btn btn-sm btn-ghost" onclick="openTripEditor(${idx},${i})" style="font-size:12px">✏</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteTripFromList(${idx},${i})" style="font-size:12px;padding:6px 8px" title="Supprimer ce trajet">🗑</button>
       <button class="btn btn-sm" onclick="activateTrip(${idx},${i})" style="background:var(--green);color:#000;font-weight:700">▶</button>
     </div>`;
   }).join('');
+
+  // Bouton + Nouveau trajet
+  list.innerHTML += `
+    <div style="margin-top:12px">
+      <button class="btn" onclick="addNewTripToLine(${idx})"
+        style="width:100%;background:rgba(39,174,96,.15);border:2px dashed var(--green);color:var(--green);font-weight:700;font-size:14px;padding:12px">
+        ＋ Nouveau trajet
+      </button>
+    </div>`;
 
   // Peupler le sélecteur GPS avec les trajets numérotés et nommés
   const sel = document.getElementById('gps-import-trip');
@@ -3778,6 +3795,40 @@ function renderLineDetail(idx) {
         return `<option value="${i}">Trajet ${i+1} · ${icon} ${t.direction||'aller'} · ${firstStop} → ${lastStop} (${t.stops.length} arrêts)</option>`;
       }).join('');
   }
+}
+
+// ── Supprimer un trajet depuis la liste ──────────────────────
+function deleteTripFromList(lineIdx, tripIdx) {
+  const line = db.lines[lineIdx];
+  if(!line) return;
+  const trip = line.trips[tripIdx];
+  if(!trip) return;
+  if(!confirm(`Supprimer le trajet "${trip.label}" ?
+Cette action est irréversible.`)) return;
+  line.trips.splice(tripIdx, 1);
+  saveDB();
+  toast(`🗑 Trajet supprimé`);
+  renderLineDetail(lineIdx);
+}
+
+// ── Ajouter un nouveau trajet vide à la ligne ─────────────
+function addNewTripToLine(lineIdx) {
+  const line = db.lines[lineIdx];
+  if(!line) return;
+  // Créer un trajet vide avec les mêmes arrêts que le premier trajet si dispo
+  const template = line.trips[0];
+  const newTrip = {
+    label: `Trajet ${line.trips.length + 1}`,
+    direction: 'aller',
+    stops: template
+      ? template.stops.map(s => ({ name: s.name, time: '00:00', isRef: s.isRef || false }))
+      : []
+  };
+  line.trips.push(newTrip);
+  saveDB();
+  // Ouvrir directement l'éditeur sur ce nouveau trajet
+  openTripEditor(lineIdx, line.trips.length - 1);
+  toast('✅ Nouveau trajet créé — modifiez les horaires');
 }
 
 function activateTrip(lineIdx, tripIdx) {
@@ -3955,6 +4006,31 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
+// Toast de recalage — s'affiche dans la bannière GPS auto si active, sinon toast normal
+let toastRecalageTimer = null;
+function toastRecalage(msg) {
+  const banner = document.getElementById('gps-auto-banner');
+  if(banner && banner.style.display !== 'none' && gpsMode === 'auto') {
+    // Injecter dans la bannière GPS — toujours visible au-dessus de la carte
+    const accEl = document.getElementById('gps-auto-acc');
+    if(accEl) {
+      const prev = accEl.textContent;
+      accEl.style.color = '#ffc107';
+      accEl.style.fontWeight = '700';
+      accEl.style.fontSize = '11px';
+      accEl.textContent = msg;
+      clearTimeout(toastRecalageTimer);
+      toastRecalageTimer = setTimeout(() => {
+        accEl.style.color = '';
+        accEl.style.fontWeight = '';
+        accEl.style.fontSize = '';
+      }, 3000);
+    }
+  } else {
+    toast(msg);
+  }
+}
+
 // ══ CONFIRM ══════════════════════════════════════════════════
 function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
 
@@ -4105,6 +4181,7 @@ function openTripEditor(lineIdx, tripIdx) {
   const applied = applyStoredIntervals(line.num, trip.label, editorStops);
   if(applied > 0) toast(`⏱ ${applied} intervalle(s) mémorisé(s) restaurés`);
   renderEditorStops();
+  renderEditorStopPicker();
   showView('view-editor');
 }
 
@@ -4154,21 +4231,58 @@ function editorRecalcAll() {
   toast('✓ Horaires recalculés');
 }
 
-function editorAddStop() {
-  const name = document.getElementById('editor-new-stop').value.trim();
-  if(!name) { toast('Entrez un nom d\'arrêt'); return; }
+function editorNextTime() {
   const last = editorStops[editorStops.length-1];
-  let time = '00:00';
-  if(last?.time) {
-    const [h,m] = last.time.split(':').map(Number);
-    const interval = parseInt(document.getElementById('editor-interval').value)||1;
-    const curMin = h*60+m+interval;
-    time = `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
-  }
-  editorStops.push({name, time, intervalAfter:1});
-  document.getElementById('editor-new-stop').value='';
-  renderEditorStops();
+  if(!last?.time) return '00:00';
+  const [h,m] = last.time.split(':').map(Number);
+  const interval = parseInt(document.getElementById('editor-interval').value)||1;
+  const curMin = h*60+m+interval;
+  return `${String(Math.floor(curMin/60)%24).padStart(2,'0')}:${String(curMin%60).padStart(2,'0')}`;
 }
+
+function editorAddStop(name) {
+  if(!name) return;
+  name = name.trim();
+  if(!name) return;
+  editorStops.push({ name, time: editorNextTime(), intervalAfter:1 });
+  renderEditorStops();
+  renderEditorStopPicker();
+}
+
+function editorAddStopManual() {
+  const inp = document.getElementById('editor-new-stop');
+  const name = inp.value.trim();
+  if(!name) { toast("Entrez un nom d'arrêt"); return; }
+  editorAddStop(name);
+  inp.value = '';
+}
+
+function renderEditorStopPicker() {
+  const picker = document.getElementById('editor-stop-picker');
+  if(!picker) return;
+  const line = db.lines[editorLineIdx];
+  const allNames = new Set();
+  if(line) {
+    line.trips.forEach((t, ti) => {
+      t.stops.forEach(s => { if(s.name) allNames.add(s.name); });
+    });
+  }
+  const already = new Set(editorStops.map(s => s.name));
+  const available = [...allNames].filter(n => !already.has(n)).sort();
+  if(!available.length) {
+    picker.innerHTML = '<span style="font-size:11px;color:var(--muted);font-style:italic">Aucun arrêt disponible sur cette ligne — saisir manuellement</span>';
+    return;
+  }
+  picker.innerHTML = available.map(n =>
+    `<button onclick="editorAddStop(${JSON.stringify(n)})"
+      style="padding:5px 10px;font-size:12px;font-weight:600;border-radius:20px;
+             border:1px solid var(--border);background:rgba(0,212,255,.08);
+             color:var(--text);cursor:pointer;white-space:nowrap"
+      onmouseover="this.style.background='rgba(0,212,255,.2)'"
+      onmouseout="this.style.background='rgba(0,212,255,.08)'">${n}</button>`
+  ).join('');
+}
+
 
 function editorRemoveStop(i) {
   editorStops.splice(i,1);
@@ -5014,7 +5128,7 @@ function renderRoadmapActive() {
 // ══ SYSTÈME GPS ═══════════════════════════════════════════════
 const GPS_COORDS_KEY = 'chronoligne_gps_coords';
 const GPS_SESSIONS_KEY = 'chronoligne_gps_sessions';
-const GPS_DETECT_DIST = 40; // mètres — rayon de détection d'approche
+const GPS_DETECT_DIST = 60; // mètres — rayon de détection d'approche (bus ≠ point exact)
 let gpsAutoMinDist = Infinity; // distance minimale atteinte sur l'arrêt courant
 
 let gpsCoords = null;
@@ -5614,7 +5728,7 @@ function checkGpsAutoDetect(coords) {
      && !isNaN(coords.heading) && dist < 100) {
     const bear = bearingTo(coords.lat, coords.lon, stopCoords.lat, stopCoords.lon);
     passedByHeading = Math.abs(angleDiff(coords.heading, bear)) > 110
-                      && gpsAutoMinDist < 60;
+                      && gpsAutoMinDist < 80;
   }
 
   // ── MÉTHODE 2 : Proximité puis éloignement ───────────────────
@@ -5643,7 +5757,27 @@ function checkGpsAutoDetect(coords) {
     }
   }
 
-  if(passedByHeading || passedByProximity || passedByDirection || passedByTrace) {
+  // ── MÉTHODE 5 : Recalage horaire — bus à l'arrêt, à l'heure ou en retard ──
+  // Conditions cumulatives :
+  //   a) on est proche de l'arrêt (< 80m)
+  //   b) on a atteint le point le plus proche (gpsAutoMinDist stabilisé = on ne se rapproche plus)
+  //      → dist > gpsAutoMinDist + 8m  (on repart ou on est stabiliié)
+  //   c) l'heure programmée est dépassée (à l'heure ou en retard, même de 1 seconde)
+  let passedByTime = false;
+  if(stop.time && stop.time !== '00:00') {
+    const nowT = new Date();
+    const nowSec5 = nowT.getHours()*3600 + nowT.getMinutes()*60 + nowT.getSeconds();
+    const [sh, sm] = stop.time.split(':').map(Number);
+    const stopSec = sh*3600 + sm*60;
+    const atStop      = dist < 80 && gpsAutoMinDist < 80;        // on est (ou a été) proche
+    const notApproach = dist > gpsAutoMinDist + 8;               // on ne se rapproche plus
+    const timeReached = nowSec5 >= stopSec;                      // heure atteinte ou dépassée
+    if(atStop && notApproach && timeReached) {
+      passedByTime = true;
+    }
+  }
+
+  if(passedByHeading || passedByProximity || passedByDirection || passedByTrace || passedByTime) {
     const now    = new Date();
     const nowMin = now.getHours()*60 + now.getMinutes();
     const [ph, pm] = (stop.time||'00:00').split(':').map(Number);
@@ -5731,8 +5865,8 @@ function gpsTraceRecaler(coords, trip, line) {
 
   if(bestIdx !== gpsAutoNextIdx && bestDiff < 300) {
     const skipped = bestIdx - gpsAutoNextIdx;
-    if(skipped > 0) toast(`📍 Recalage tracé : +${skipped} arrêt(s)`);
-    else if(skipped < 0) toast(`📍 Recalage tracé : retour ${-skipped} arrêt(s)`);
+    if(skipped > 0) toastRecalage(`📍 Recalage +${skipped} arrêt(s)`);
+    else if(skipped < 0) toastRecalage(`📍 Recalage retour ${-skipped} arrêt(s)`);
     gpsAutoNextIdx = bestIdx;
     activeTrip.validatedStopIdx = gpsAutoNextIdx;
     gpsAutoMinDist = Infinity;
@@ -5763,7 +5897,7 @@ function gpsAutoRecaler(coords, trip, line) {
     if(d < bestDist) { bestDist = d; bestIdx = k; }
   }
   if(bestIdx > gpsAutoNextIdx && bestDist < 200) {
-    toast(`📍 Recalage : +${bestIdx - gpsAutoNextIdx} arrêt(s)`);
+    toastRecalage(`📍 Recalage +${bestIdx - gpsAutoNextIdx} arrêt(s)`);
     gpsAutoNextIdx = bestIdx;
     activeTrip.validatedStopIdx = gpsAutoNextIdx;
   }
@@ -8070,6 +8204,3 @@ gdriveInit();
 </script>
 </body>
 </html>
-,
-
-,
