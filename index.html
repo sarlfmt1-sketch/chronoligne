@@ -5026,43 +5026,40 @@ function buildTripFromRef(lineNum, refStops, direction) {
 
   const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
 
-  // Détection automatique de la direction si non fournie
-  // On regarde si le 1er arrêt INEO correspond plutôt à un arrêt de début aller ou retour
-  let autoDirection = direction || 'aller';
-  if(dbLine.trips.length >= 2) {
-    const firstRefNorm = refNorm[0].norm;
-    const lastRefNorm  = refNorm[refNorm.length-1].norm;
-    let scoreAller = 0, scoreRetour = 0;
-    dbLine.trips.forEach(trip => {
-      const tripNorms = trip.stops.map(s => normalize(s.name));
-      // Chercher la position du 1er et dernier arrêt INEO dans ce trajet
-      const posFirst = tripNorms.findIndex(n => n.includes(firstRefNorm) || firstRefNorm.includes(n));
-      const posLast  = tripNorms.findIndex(n => n.includes(lastRefNorm)  || lastRefNorm.includes(n));
-      if(posFirst >= 0 && posLast >= 0 && posFirst < posLast) {
-        // L'ordre est cohérent avec ce trajet
-        if(trip.direction === 'aller') scoreAller += 10;
-        else scoreRetour += 10;
-      }
-      let matches = 0;
-      refNorm.forEach(ref => {
-        if(tripNorms.some(n => n.includes(ref.norm) || ref.norm.includes(n))) matches++;
-      });
-      if(trip.direction === 'aller') scoreAller += matches;
-      else scoreRetour += matches;
-    });
-    autoDirection = scoreRetour > scoreAller ? 'retour' : 'aller';
-  }
-
-  // Trouver le bon trajet dans la ligne
+  // Trouver le meilleur trajet en vérifiant l'ORDRE des arrêts INEO dans chaque trajet
+  // C'est la clé pour les trajets intermédiaires (ex: Cergy Le Haut → La Siaule sur la 1240)
   let bestTrip = null, bestScore = -1;
   dbLine.trips.forEach(trip => {
-    let matches = 0;
+    const tripNorms = trip.stops.map(s => normalize(s.name));
+
+    // Compter les arrêts INEO trouvés dans ce trajet + vérifier l'ordre
+    let matchPositions = [];
     refNorm.forEach(ref => {
-      if(trip.stops.some(s => normalize(s.name).includes(ref.norm) || ref.norm.includes(normalize(s.name)))) matches++;
+      let bestIdx = -1, bestMatch = 0;
+      tripNorms.forEach((tn, idx) => {
+        const score = tn.includes(ref.norm) || ref.norm.includes(tn) ? Math.min(tn.length, ref.norm.length) : 0;
+        if(score > bestMatch) { bestMatch = score; bestIdx = idx; }
+      });
+      if(bestIdx >= 0 && bestMatch > 2) matchPositions.push(bestIdx);
     });
-    if(trip.direction === autoDirection) matches += 100;
-    if(matches > bestScore) { bestScore = matches; bestTrip = trip; }
+
+    const matchCount = matchPositions.length;
+    if(matchCount === 0) return;
+
+    // Vérifier que les positions sont dans le bon ordre (arrêts se suivent dans le même sens)
+    let orderedCount = 0;
+    for(let k = 1; k < matchPositions.length; k++) {
+      if(matchPositions[k] > matchPositions[k-1]) orderedCount++;
+    }
+    const orderScore = matchPositions.length > 1 ? orderedCount / (matchPositions.length - 1) : 1;
+
+    // Score final : nb de matches * respect de l'ordre (poids fort sur l'ordre)
+    const score = matchCount * (1 + orderScore * 3);
+    if(score > bestScore) { bestScore = score; bestTrip = trip; }
   });
+
+  // Direction déduite du trajet choisi
+  const autoDirection = bestTrip?.direction || direction || 'aller';
 
   const sourceTrip = bestTrip || dbLine.trips[0];
   if(!sourceTrip) return null;
@@ -7285,6 +7282,40 @@ window.addEventListener('resize', () => {
 const TRACE_LIBRARY_KEY = 'chronoligne_traces';
 let _traceLongPressTimer = null;
 
+// ── Génère un MapID unique : LineNum_Sens_Terminus ────────────
+// Exemple : 1201_A_GareCergy  ou  1201_R_Pontoise
+// Le sens est déduit de trip.direction ('aller' → 'A', 'retour' → 'R', sinon 'X')
+// Le terminus est le dernier arrêt du trajet, normalisé (sans accents, espaces → underscores)
+function buildMapId(lineNum, dir, tripIdx) {
+  // Sens : A = aller, R = retour, X = autre
+  const sensMap = { aller: 'A', retour: 'R' };
+  const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
+
+  // Chercher le dernier arrêt du trajet dans la DB
+  let terminus = '';
+  try {
+    const line = db.lines.find(l => String(l.num) === String(lineNum));
+    if(line && tripIdx !== undefined && tripIdx !== null) {
+      const trip = line.trips?.[tripIdx];
+      if(trip && trip.stops && trip.stops.length > 0) {
+        terminus = trip.stops[trip.stops.length - 1].name || '';
+      }
+    }
+    // Normaliser : supprimer accents, remplacer espaces/tirets/points par _
+    if(terminus) {
+      terminus = terminus
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accents
+        .replace(/[^a-zA-Z0-9]+/g, '_')                  // tout ce qui n'est pas alphanum
+        .replace(/^_+|_+$/g, '')                          // underscores en début/fin
+        .substring(0, 30);                                // max 30 chars
+    }
+  } catch(e) {}
+
+  if(terminus) return `${lineNum}_${sens}_${terminus}`;
+  // Fallback si terminus indisponible : format avec tripIdx
+  return `${lineNum}_${sens}_t${tripIdx !== undefined && tripIdx !== null ? tripIdx : 0}`;
+}
+
 function traceLibraryLoad() {
   try { return JSON.parse(localStorage.getItem(TRACE_LIBRARY_KEY) || '{}'); } catch(e) { return {}; }
 }
@@ -7302,35 +7333,50 @@ function traceLibraryHas(key) {
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  // 1. Clé précise tripIdx : priorité absolue
+
+  // 1. MapID unique Ligne_Sens_Terminus (nouvelle logique) : priorité absolue
+  if(tripIdx !== undefined && tripIdx !== null) {
+    const mapId = buildMapId(lineNum, dir, tripIdx);
+    if(lib[mapId]) return lib[mapId];
+  }
+
+  // 2. Clé précise tripIdx (format legacy v2) : compatibilité descendante
   if(tripIdx !== undefined && tripIdx !== null) {
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
     if(lib[keyPrecise]) return lib[keyPrecise];
   }
-  // 2. Fallback legacy UNIQUEMENT si tripIdx est 0 ou non fourni
+
+  // 3. Fallback legacy lineNum_dir UNIQUEMENT si tripIdx est 0 ou non fourni
   //    → évite que la variante 2 charge la carte de la variante 0
   if(tripIdx === undefined || tripIdx === null || tripIdx === 0) {
     const keyLegacy = `${lineNum}_${dir}`;
     if(lib[keyLegacy]) return lib[keyLegacy];
   }
-  // 3. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
+
+  // 4. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
   if(!tripIdx) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
   return null;
 }
 function traceLibrarySet(lineNum, dir, points, tripIdx) {
   const lib = traceLibraryLoad();
+  // Toujours sauvegarder sous le MapID unique Ligne_Sens_Terminus
   const key = (tripIdx !== undefined && tripIdx !== null)
-    ? `${lineNum}_${tripIdx}_${dir}`
+    ? buildMapId(lineNum, dir, tripIdx)
     : `${lineNum}_${dir}`;
   lib[key] = points;
   traceLibrarySave(lib);
 }
 function traceLibraryDelete(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  const key = (tripIdx !== undefined && tripIdx !== null)
-    ? `${lineNum}_${tripIdx}_${dir}`
-    : `${lineNum}_${dir}`;
-  delete lib[key];
+  // Supprimer toutes les formes de clé connues pour ce trajet
+  if(tripIdx !== undefined && tripIdx !== null) {
+    const mapId = buildMapId(lineNum, dir, tripIdx);
+    delete lib[mapId];
+    const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
+    delete lib[keyPrecise];
+  }
+  const keyLegacy = `${lineNum}_${dir}`;
+  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) delete lib[keyLegacy];
   traceLibrarySave(lib);
 }
 
@@ -7443,7 +7489,7 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
 
 // ── Menu édition (appui long) ─────────────────────────────────
 function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
-  const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
+  const keyPrecise = buildMapId(lineNum, dir, tripIdx);
   const hasTrace = traceLibraryHas(keyPrecise);
 
   // Lister toutes les cartes disponibles pour cette ligne (tous tripIdx confondus)
@@ -7456,18 +7502,10 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
   // Construire les boutons "Utiliser cette carte" pour les autres tracés disponibles
   const dbLine = db.lines.find(l => l.num === lineNum);
   function traceLabelFor(key) {
-    const parts = key.split('_');
-    // Format: lineNum_tripIdx_dir  ou  lineNum_dir (legacy)
-    if(parts.length === 3) {
-      const tIdx = parseInt(parts[1]);
-      const tDir = parts[2];
-      const tripLabel = dbLine?.trips?.[tIdx]?.label || `Trajet ${tIdx + 1}`;
-      const pts = lib[key]?.length || 0;
-      return `Trajet ${tIdx + 1} (${tDir}) — ${tripLabel.replace(/^Ligne \S+ — /,'')} · ${pts} pts`;
-    }
-    // Legacy
     const pts = lib[key]?.length || 0;
-    return `Carte legacy (${parts[parts.length-1]}) · ${pts} pts`;
+    // Nouveau format MapID : 1201_A_GareCergy
+    // On affiche directement la clé (déjà lisible) + nb points
+    return `${key} · ${pts} pts`;
   }
 
   const copyBtns = otherTraces.map(k => `
@@ -7486,8 +7524,11 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
                 padding:20px;width:90%;max-width:380px;margin-top:20px">
       <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;
                   color:var(--accent);margin-bottom:2px">🗺 Carte GPS — Ligne ${lineNum}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Trajet ${tripIdx + 1} · ${dir.toUpperCase()} · ${hasTrace ? '✅ Carte associée' : '❌ Aucune carte'}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:2px">
+        MapID : <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${keyPrecise}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">
+        ${hasTrace ? '✅ Carte associée' : '❌ Aucune carte'}
       </div>
 
       <!-- Importer une nouvelle carte -->
@@ -7532,11 +7573,11 @@ function traceLibraryCopyFrom(sourceKey, lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
   const points = lib[sourceKey];
   if(!points || !points.length) { toast('❌ Carte source introuvable'); return; }
-  const destKey = `${lineNum}_${tripIdx}_${dir}`;
+  const destKey = buildMapId(lineNum, dir, tripIdx);
   lib[destKey] = points;
   traceLibrarySave(lib);
   document.getElementById('trace-edit-overlay')?.remove();
-  toast(`✅ Carte copiée pour le trajet ${tripIdx + 1}`);
+  toast(`✅ Carte copiée → ${destKey}`);
   renderLineDetail(db.lines.findIndex(l => l.num === lineNum));
 }
 
