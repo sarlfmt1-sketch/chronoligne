@@ -742,7 +742,10 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       </button>
       <div id="ineo-import-panel" style="display:none;margin-bottom:10px">
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Collez le texte complet de votre feuille INEO :</div>
-        <textarea id="ineo-text" rows="8" placeholder="Collez ici le contenu de votre feuille INEO (PRISE DE SERVICE, HLP, ITINERAIRE...)"
+        <textarea id="ineo-text" rows="8" placeholder="Format 1 (ancien) : ITINERAIRE / --> ARRÊT
+Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
+05:41 > LA BONNEVILLE - 362 [LA BONNEVILL]
+..."
           style="width:100%;padding:8px;font-size:11px;font-family:monospace;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;resize:vertical;box-sizing:border-box"></textarea>
         <button onclick="parseIneoFeuille()" class="btn" style="width:100%;margin-top:6px;background:#ffc107;color:#000;font-weight:700">
           ⚡ Analyser et créer la feuille
@@ -4716,11 +4719,181 @@ function svcMoveTrip(ti,dir) {
   renderSvcTrips();
 }
 
+// ══ PARSEUR NOUVEAU FORMAT INEO ══════════════════════════════
+// Format : "05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]"
+// Chaque bloc de lignes consécutives = un trajet
+// Un saut de ligne vide ou une ligne "PRISE DE SERVICE" / "FIN DE SERVICE" sépare les trajets
+function parseIneoFeuilleNouveauFormat(lines) {
+
+  function normalize(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function toMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+
+  // Extraire le nom propre depuis "NOM ARRÊT - CODE [ABRÉV]"
+  function cleanName(raw) {
+    // Supprimer le code numérique et l'abréviation entre crochets
+    return raw
+      .replace(/\s*-\s*\d{3,}\s*$/, '')      // "- 759" à la fin
+      .replace(/\s*\[.*?\]\s*$/, '')           // "[RÉSIDENCE DE]" à la fin
+      .replace(/\s*-\s*\d{3,}\s*\[.*?\]\s*$/, '') // les deux ensemble
+      .trim();
+  }
+
+  // Parser toutes les lignes au format HH:MM > ...
+  // On regroupe les blocs séparés par des lignes non-horaires
+  let depotDepart = '', depotRetour = '';
+  let trips = [];
+  let currentStops = [];
+  let currentLineNum = null;
+
+  function flushTrip() {
+    if(currentStops.length < 2) { currentStops = []; return; }
+    const trip = buildTripFromNewFormat(currentLineNum, currentStops);
+    if(trip) trips.push(trip);
+    currentStops = [];
+    currentLineNum = null;
+  }
+
+  // Regex nouveau format
+  const REG = /^(\d{2}:\d{2})\s*>\s*(.+)$/;
+  // Regex numéro de ligne en tête "1206 - ..." ou "LIGNE 95" etc.
+  const REG_LIGNE = /^(\d{3,4})\s*[-–]\s*/;
+  const REG_PS = /(\d{2}:\d{2})\s+PRISE DE SERVICE/i;
+  const REG_FS = /(\d{2}:\d{2})\s+FIN DE SERVICE/i;
+  const REG_LIGNE2 = /^LIGNE\s+(\d+)/i;
+
+  for(let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+
+    // Prise / fin de service
+    const psM = l.match(REG_PS);
+    if(psM) { depotDepart = psM[1]; flushTrip(); continue; }
+    const fsM = l.match(REG_FS);
+    if(fsM) { depotRetour = fsM[1]; flushTrip(); continue; }
+
+    // Numéro de ligne en tête de bloc
+    const lgM = l.match(/^(\d{3,4})\s*[-–>]/);
+    if(lgM && !REG.test(l)) {
+      flushTrip();
+      currentLineNum = lgM[1];
+      continue;
+    }
+    const lgM2 = l.match(REG_LIGNE2);
+    if(lgM2) { flushTrip(); currentLineNum = lgM2[1]; continue; }
+
+    // HLP / P/L → séparateur de trajet
+    if(/^(HLP|P\/L|HAUT LE PIED)/i.test(l)) { flushTrip(); continue; }
+
+    // Ligne vide ou tirets → séparateur
+    if(!l || /^[-=*]{3,}$/.test(l)) { flushTrip(); continue; }
+
+    // Ligne au nouveau format
+    const m = l.match(REG);
+    if(m) {
+      const rawName = m[2].trim();
+      // Détecter si la ligne commence par un numéro de ligne collé ex: "1206 05:40 > ..."
+      const name = cleanName(rawName);
+      if(name) currentStops.push({ time: m[1], name });
+      continue;
+    }
+
+    // Ligne non reconnue → peut être un séparateur de trajet
+    // Si on a déjà des arrêts et la ligne n'est pas horaire → flush
+    if(currentStops.length > 0 && !/\d{2}:\d{2}/.test(l)) {
+      flushTrip();
+    }
+  }
+  flushTrip();
+
+  if(!trips.length) {
+    toast('❌ Aucun trajet détecté — vérifiez le format');
+    return;
+  }
+
+  if(depotDepart) document.getElementById('svc-depot-depart').value = depotDepart;
+  if(depotRetour) document.getElementById('svc-depot-retour').value = depotRetour;
+
+  svcTrips = trips;
+  renderSvcTrips();
+  document.getElementById('ineo-import-panel').style.display = 'none';
+  document.getElementById('ineo-text').value = '';
+
+  const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
+  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
+}
+
+// Construit un trajet depuis le nouveau format (liste d'arrêts déjà propres)
+function buildTripFromNewFormat(lineNum, refStops) {
+  function normalize(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function toMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+  // Chercher la ligne dans db
+  const dbLine = lineNum ? db.lines.find(l => l.num === lineNum) : null;
+
+  if(!dbLine) {
+    // Ligne inconnue ou non précisée : créer directement avec tous les arrêts comme référence
+    // Trouver si une ligne correspond par les noms d'arrêts
+    let bestLine = null, bestScore = 0;
+    const refNorms = refStops.map(r => normalize(r.name));
+    db.lines.forEach(dbL => {
+      let score = 0;
+      dbL.trips.forEach(t => {
+        const tripNorms = t.stops.map(s => normalize(s.name));
+        refNorms.forEach(rn => {
+          if(tripNorms.some(tn => tn.includes(rn) || rn.includes(tn))) score++;
+        });
+      });
+      if(score > bestScore) { bestScore = score; bestLine = dbL; }
+    });
+
+    if(bestLine && bestScore >= 2) {
+      // On a trouvé une ligne correspondante — utiliser buildTripFromRef
+      return buildTripFromRef(bestLine.num, refStops, null);
+    }
+
+    // Vraiment inconnue → créer tel quel
+    return {
+      lineNum: lineNum || '?',
+      lineColor: '#888',
+      label: `${refStops[0].name} → ${refStops[refStops.length-1].name}`,
+      direction: 'aller',
+      stops: refStops.map((s,i) => ({
+        name: s.name,
+        time: s.time,
+        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
+        isRef: true
+      }))
+    };
+  }
+
+  // Ligne connue → utiliser buildTripFromRef pour interpoler
+  return buildTripFromRef(dbLine.num, refStops, null);
+}
+
 function parseIneoFeuille() {
   const text = document.getElementById('ineo-text').value.trim();
   if(!text) { toast('Collez le texte INEO d\'abord'); return; }
 
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+  // ── Détection automatique du format ──
+  // Nouveau format : "05:40 > NOM ARRÊT - CODE [ABRÉV]"
+  const newFmtCount = lines.filter(l => /^\d{2}:\d{2}\s*>\s*.+/.test(l)).length;
+  if(newFmtCount >= 2) {
+    parseIneoFeuilleNouveauFormat(lines);
+    return;
+  }
+
   let depotDepart = '', depotRetour = '';
   let trips = [];
   let currentLineNum = null, currentRefStops = [], currentDirection = 'aller';
@@ -7129,14 +7302,20 @@ function traceLibraryHas(key) {
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  // Clé précise avec tripIdx (nouveau format)
+  // 1. Clé précise tripIdx : priorité absolue
   if(tripIdx !== undefined && tripIdx !== null) {
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
     if(lib[keyPrecise]) return lib[keyPrecise];
   }
-  // Fallback clé legacy lineNum_dir
-  const keyLegacy = `${lineNum}_${dir}`;
-  return lib[keyLegacy] || PRELOADED_TRACES?.[lineNum]?.[dir] || null;
+  // 2. Fallback legacy UNIQUEMENT si tripIdx est 0 ou non fourni
+  //    → évite que la variante 2 charge la carte de la variante 0
+  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) {
+    const keyLegacy = `${lineNum}_${dir}`;
+    if(lib[keyLegacy]) return lib[keyLegacy];
+  }
+  // 3. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
+  if(!tripIdx) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
+  return null;
 }
 function traceLibrarySet(lineNum, dir, points, tripIdx) {
   const lib = traceLibraryLoad();
@@ -7264,34 +7443,77 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
 
 // ── Menu édition (appui long) ─────────────────────────────────
 function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
-  const hasTrace = traceLibraryHas(`${lineNum}_${tripIdx}_${dir}`);
+  const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
+  const hasTrace = traceLibraryHas(keyPrecise);
+
+  // Lister toutes les cartes disponibles pour cette ligne (tous tripIdx confondus)
+  const lib = traceLibraryLoad();
+  const otherTraces = Object.keys(lib).filter(k => {
+    const parts = k.split('_');
+    return parts[0] === String(lineNum) && k !== keyPrecise;
+  });
+
+  // Construire les boutons "Utiliser cette carte" pour les autres tracés disponibles
+  const dbLine = db.lines.find(l => l.num === lineNum);
+  function traceLabelFor(key) {
+    const parts = key.split('_');
+    // Format: lineNum_tripIdx_dir  ou  lineNum_dir (legacy)
+    if(parts.length === 3) {
+      const tIdx = parseInt(parts[1]);
+      const tDir = parts[2];
+      const tripLabel = dbLine?.trips?.[tIdx]?.label || `Trajet ${tIdx + 1}`;
+      const pts = lib[key]?.length || 0;
+      return `Trajet ${tIdx + 1} (${tDir}) — ${tripLabel.replace(/^Ligne \S+ — /,'')} · ${pts} pts`;
+    }
+    // Legacy
+    const pts = lib[key]?.length || 0;
+    return `Carte legacy (${parts[parts.length-1]}) · ${pts} pts`;
+  }
+
+  const copyBtns = otherTraces.map(k => `
+    <button onclick="traceLibraryCopyFrom('${k}','${lineNum}','${dir}',${tripIdx})"
+      style="width:100%;padding:10px 12px;font-size:12px;font-weight:600;text-align:left;
+             background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.4);color:#ffc107;
+             border-radius:10px;cursor:pointer;margin-bottom:6px;box-sizing:border-box;line-height:1.3">
+      📋 Utiliser : ${traceLabelFor(k)}
+    </button>`).join('');
 
   const overlay = document.createElement('div');
   overlay.id = 'trace-edit-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding-bottom:20px';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding-bottom:20px;overflow-y:auto';
   overlay.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px 16px 16px 16px;
-                padding:20px;width:90%;max-width:340px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;
+                padding:20px;width:90%;max-width:380px;margin-top:20px">
       <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;
-                  color:var(--accent);margin-bottom:4px">🗺 Tracé — Ligne ${lineNum}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
-        ${dir.toUpperCase()} · ${hasTrace ? '✅ Tracé disponible' : '❌ Aucun tracé'}
+                  color:var(--accent);margin-bottom:2px">🗺 Carte GPS — Ligne ${lineNum}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Trajet ${tripIdx + 1} · ${dir.toUpperCase()} · ${hasTrace ? '✅ Carte associée' : '❌ Aucune carte'}
       </div>
 
+      <!-- Importer une nouvelle carte -->
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;margin-bottom:6px">IMPORTER UNE NOUVELLE CARTE</div>
       <label style="display:block;width:100%;padding:13px;font-size:14px;font-weight:700;
              background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);
-             border-radius:10px;cursor:pointer;text-align:center;margin-bottom:8px;box-sizing:border-box">
-        📂 Importer KML / JSON
+             border-radius:10px;cursor:pointer;text-align:center;margin-bottom:12px;box-sizing:border-box">
+        📂 Importer KML / JSON pour ce trajet
         <input type="file" accept=".kml,.json" style="display:none"
           onchange="traceLibraryImport(event,'${lineNum}','${dir}',${lineIdx},${tripIdx})">
       </label>
+
+      ${otherTraces.length > 0 ? `
+      <!-- Réutiliser une carte existante -->
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;margin-bottom:6px">OU RÉUTILISER UNE CARTE EXISTANTE</div>
+      ${copyBtns}
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px;font-style:italic">
+        La carte sera copiée pour ce trajet (l'original reste intact).
+      </div>` : ''}
 
       ${hasTrace ? `
       <button onclick="traceLibraryDeleteConfirm('${lineNum}','${dir}',${lineIdx},${tripIdx})"
         style="width:100%;padding:12px;font-size:14px;font-weight:700;
                background:rgba(231,76,60,.15);border:1px solid var(--red);color:var(--red);
                border-radius:10px;cursor:pointer;margin-bottom:8px">
-        🗑 Supprimer ce tracé
+        🗑 Supprimer la carte de ce trajet
       </button>` : ''}
 
       <button onclick="document.getElementById('trace-edit-overlay').remove()"
@@ -7303,6 +7525,19 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+// ── Copier une carte existante vers un autre trajet ───────────
+function traceLibraryCopyFrom(sourceKey, lineNum, dir, tripIdx) {
+  const lib = traceLibraryLoad();
+  const points = lib[sourceKey];
+  if(!points || !points.length) { toast('❌ Carte source introuvable'); return; }
+  const destKey = `${lineNum}_${tripIdx}_${dir}`;
+  lib[destKey] = points;
+  traceLibrarySave(lib);
+  document.getElementById('trace-edit-overlay')?.remove();
+  toast(`✅ Carte copiée pour le trajet ${tripIdx + 1}`);
+  renderLineDetail(db.lines.findIndex(l => l.num === lineNum));
 }
 
 // ── Import KML ou JSON ────────────────────────────────────────
