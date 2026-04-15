@@ -3958,16 +3958,102 @@ function renderGpsStopsPanel() {
     const delBtn = hasGps
       ? `<button onclick="gpsStopsDeleteOne('${key}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
       : '';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${bg};border:${border}">
-      <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
-      <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
-        ${coordText}
+    // Bouton saisie manuelle — bascule l'input inline
+    const editId = `gps-input-${si}`;
+    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
+      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
+             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
+      title="Saisir coordonnées manuellement">✏</button>`;
+
+    return `<div style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+        <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          ${coordText}
+        </div>
+        ${editBtn}
+        ${delBtn}
       </div>
-      ${delBtn}
+      <!-- Champ saisie manuelle — caché par défaut -->
+      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
+          COORDONNÉES GPS (lat, lon) — ex: 49.02665202072263, 1.9743218893309282
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="${editId}-val"
+            placeholder="49.02665, 1.97432  ou  49.02665202072263, 1.9743218893309282"
+            style="flex:1;padding:7px 10px;font-size:12px;font-family:monospace;border-radius:8px;
+                   border:1px solid rgba(255,193,7,.5);background:rgba(255,193,7,.06);color:var(--text)"
+            onkeydown="if(event.key==='Enter') gpsStopsSaveManual('${key}','${editId}')">
+          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
+            style="padding:7px 12px;background:rgba(39,174,96,.2);border:1px solid var(--green);
+                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;flex-shrink:0">
+            ✓
+          </button>
+        </div>
+      </div>
     </div>`;
   }).join('');
+}
+
+// ── Basculer l'affichage du champ de saisie manuelle ─────────
+function gpsStopsToggleInput(editId) {
+  const el = document.getElementById(editId);
+  if(!el) return;
+  const isOpen = el.style.display !== 'none';
+  // Fermer tous les autres champs ouverts
+  document.querySelectorAll('[id^="gps-input-"]').forEach(e => e.style.display = 'none');
+  if(!isOpen) {
+    el.style.display = 'block';
+    const inp = document.getElementById(editId + '-val');
+    if(inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+  }
+}
+
+// ── Sauvegarder les coordonnées saisies manuellement ─────────
+// Accepte tous ces formats :
+//   49.02665202072263, 1.9743218893309282   (virgule + espace)
+//   49.02665202072263 1.9743218893309282    (espace seul)
+//   49.02665,1.97432                        (virgule sans espace)
+//   49.052621 2.022193                      (déjà court)
+function gpsStopsSaveManual(key, editId) {
+  const inp = document.getElementById(editId + '-val');
+  if(!inp) return;
+  const raw = inp.value.trim();
+  if(!raw) { toast('Entrez des coordonnées'); return; }
+
+  // Parser : séparer lat et lon
+  // Remplacer virgule+espace ou juste espace comme séparateur
+  let parts = raw.split(/,\s*|\s+/);
+  // Si on a exactement 2 parties → lat, lon
+  // Si plus → peut-être des espaces dans un nombre (improbable) → prendre les 2 premiers
+  if(parts.length < 2) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); return; }
+
+  const lat = parseFloat(parts[0].replace(',', '.'));
+  const lon = parseFloat(parts[1].replace(',', '.'));
+
+  if(isNaN(lat) || isNaN(lon)) { toast('❌ Coordonnées non reconnues'); return; }
+  if(lat < -90 || lat > 90)    { toast('❌ Latitude invalide (doit être entre -90 et 90)'); return; }
+  if(lon < -180 || lon > 180)  { toast('❌ Longitude invalide'); return; }
+
+  // Arrondir à 6 décimales (précision ~11cm, suffisante pour un arrêt de bus)
+  const latR = Math.round(lat * 1e6) / 1e6;
+  const lonR = Math.round(lon * 1e6) / 1e6;
+
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line?.trips?.[gpsPanelTripIdx];
+  const stopName = trip ? trip.stops[parseInt(key.split('_').pop())]?.name : '';
+  gpsCoordsDB[key] = { lat: latR, lon: lonR, name: stopName || key };
+  saveGpsCoordsDB();
+
+  // Fermer le champ et rafraîchir
+  document.getElementById(editId).style.display = 'none';
+  renderGpsStopsPanel();
+  renderLineDetail(gpsPanelLineIdx);
+  toast(`📍 ${latR.toFixed(6)}, ${lonR.toFixed(6)} enregistré`);
 }
 
 function gpsStopsDeleteOne(key) {
