@@ -6335,17 +6335,10 @@ function autoNextTrip() {
     roadmapCursor++;
     activateRoadmapTrip();
     const next = currentRoadmap[roadmapCursor];
-    toast(`⏭ Trajet suivant automatique : ${next.label}`);
+    toast(`⏭ Trajet suivant : ${next.label}`);
   } else {
-    // Pas de feuille ou dernier trajet → afficher bouton terminus
-    toast('🏁 Dernier arrêt atteint — tapez TERMINUS pour terminer');
-    const btn = document.getElementById('terminus-btn');
-    if(btn) {
-      btn.style.background = '#ffc107';
-      btn.style.color = '#000';
-      btn.style.animation = 'pulse 0.5s infinite';
-      btn.textContent = '🏁 TERMINUS';
-    }
+    // Pas de feuille ou dernier trajet → terminus complet
+    confirmTerminus();
   }
 }
 
@@ -6365,8 +6358,14 @@ function gpsForceNext() {
   gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status, manual: true });
   saveGpsSession();
   gpsAutoNextIdx++;
+  activeTrip.validatedStopIdx = gpsAutoNextIdx;
   flashAutoDetect('⏭ ' + stop.name, diffMin, status);
-  toast(`⏭ Arrêt suivant : ${trip.stops[gpsAutoNextIdx]?.name || 'Terminus'}`);
+  if(gpsAutoNextIdx >= trip.stops.length) {
+    setTimeout(() => autoNextTrip(), 1500);
+  } else {
+    toast(`⏭ Arrêt suivant : ${trip.stops[gpsAutoNextIdx]?.name || 'Terminus'}`);
+  }
+  updateLive();
 }
 
 function flashAutoDetect(name, diff, status) {
@@ -6498,7 +6497,11 @@ function validateStopManual() {
     }
     return idx;
   })();
-  if(currentIdx >= trip.stops.length - 1) { confirmTerminus(); return; }
+  if(currentIdx >= trip.stops.length - 1) {
+    // Dernier arrêt — passer au trajet suivant si dispo, sinon terminus
+    autoNextTrip();
+    return;
+  }
   activeTrip.validatedStopIdx = currentIdx + 1;
   gpsAutoNextIdx = activeTrip.validatedStopIdx;
   const passedStop = trip.stops[currentIdx];
