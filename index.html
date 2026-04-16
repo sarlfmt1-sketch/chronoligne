@@ -3952,57 +3952,82 @@ function renderGpsStopsPanel() {
     const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
     const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
     const num = String(si+1).padStart(2,'0');
-    const coordText = hasGps
-      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
-      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
+    const coordVal = hasGps ? `${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}` : '';
+    const inputId = `gps-input-${si}-val`;
     const delBtn = hasGps
-      ? `<button onclick="gpsStopsDeleteOne('${key}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
+      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`
       : '';
-    // Bouton saisie manuelle — bascule l'input inline
-    const editId = `gps-input-${si}`;
-    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
-      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
-             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
-      title="Saisir coordonnées manuellement">✏</button>`;
+    const saveBtn = `<button onclick="gpsStopsSaveFromInput('${key}','${inputId}','${si}')"
+      style="padding:6px 10px;background:rgba(39,174,96,.25);border:1px solid var(--green);
+             color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0"
+      title="Enregistrer">💾</button>`;
 
-    return `<div style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
-        <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
-          ${coordText}
-        </div>
-        ${editBtn}
+    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:6px;padding:8px 10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace;width:22px">${num}</span>
+        <span class="gps-row-icon" style="font-size:14px;flex-shrink:0;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+        <div style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
         ${delBtn}
       </div>
-      <!-- Champ saisie manuelle — caché par défaut -->
-      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
-          COORDONNÉES GPS — Collez ou saisissez : lat, lon
-        </div>
-        <div style="display:flex;gap:6px">
-          <input type="text" id="${editId}-val"
-            inputmode="decimal"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-            placeholder="49.02665, 1.97432"
-            style="flex:1;padding:10px 10px;font-size:14px;font-family:monospace;border-radius:8px;
-                   border:2px solid rgba(255,193,7,.6);background:rgba(255,193,7,.08);color:var(--text);
-                   -webkit-user-select:text;user-select:text;touch-action:manipulation"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();gpsStopsSaveManual('${key}','${editId}')}"
-            oninput="gpsStopsAutoSave('${key}','${editId}',this.value)"
-            onpaste="setTimeout(()=>gpsStopsAutoSave('${key}','${editId}',document.getElementById('${editId}-val').value),10)">
-          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
-            style="padding:10px 14px;background:rgba(39,174,96,.2);border:1px solid var(--green);
-                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;flex-shrink:0;
-                   touch-action:manipulation">
-            ✓
-          </button>
-        </div>
-        <div id="${editId}-hint" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="${inputId}"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          placeholder="49.02665, 1.97432"
+          value="${coordVal}"
+          style="flex:1;padding:9px 10px;font-size:13px;font-family:monospace;border-radius:8px;
+                 border:2px solid ${hasGps ? 'rgba(39,174,96,.5)' : 'rgba(255,193,7,.5)'};
+                 background:${hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,193,7,.06)'};
+                 color:var(--text);
+                 -webkit-user-select:text !important;user-select:text !important;
+                 -webkit-touch-callout:default !important;
+                 touch-action:manipulation;cursor:text;pointer-events:auto">
+        ${saveBtn}
       </div>
+      <div id="gps-hint-${si}" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:13px"></div>
     </div>`;
   }).join('');
+
+  // Attacher les événements APRÈS insertion dans le DOM (évite les problèmes de innerHTML sur mobile)
+  setTimeout(() => {
+    items.forEach(({key, si}) => {
+      const inp = document.getElementById(`gps-input-${si}-val`);
+      if(!inp) return;
+      inp.removeAttribute('readonly');
+      inp.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') { e.preventDefault(); gpsStopsSaveFromInput(key, `gps-input-${si}-val`, si); }
+      });
+      inp.addEventListener('paste', () => {
+        setTimeout(() => {
+          const v = inp.value.trim();
+          const parsed = gpsParseCoords(v);
+          const hint = document.getElementById(`gps-hint-${si}`);
+          if(parsed) {
+            if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾`; hint.style.color = 'var(--green)'; }
+            inp.style.borderColor = 'rgba(39,174,96,.8)';
+          } else if(v) {
+            if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
+          }
+        }, 50);
+      });
+      inp.addEventListener('input', () => {
+        const v = inp.value.trim();
+        const parsed = gpsParseCoords(v);
+        const hint = document.getElementById(`gps-hint-${si}`);
+        if(parsed) {
+          if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾 ou Entrée`; hint.style.color = 'var(--green)'; }
+          inp.style.borderColor = 'rgba(39,174,96,.8)';
+        } else if(v.length > 3) {
+          if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
+          inp.style.borderColor = 'rgba(255,165,0,.8)';
+        } else {
+          if(hint) hint.textContent = '';
+          inp.style.borderColor = 'rgba(255,193,7,.5)';
+        }
+      });
+    });
+  }, 30);
 }
 
 // ── Basculer l'affichage du champ de saisie manuelle ─────────
@@ -4017,40 +4042,120 @@ function gpsStopsToggleInput(editId) {
     const inp = document.getElementById(editId + '-val');
     if(inp) {
       inp.value = '';
-      // Focus robuste sur mobile : plusieurs tentatives
+      document.getElementById(editId + '-hint').textContent = '';
       inp.removeAttribute('readonly');
+      // Focus robuste mobile — plusieurs tentatives espacées
       inp.focus();
-      setTimeout(() => { inp.focus(); inp.click(); }, 50);
-      setTimeout(() => { inp.focus(); }, 200);
+      setTimeout(() => { inp.focus(); inp.click(); }, 80);
+      setTimeout(() => { inp.focus(); }, 300);
     }
   }
 }
 
 // ── Aperçu en temps réel pendant la saisie / collage ─────────
-function gpsStopsAutoSave(key, editId, rawVal) {
+function gpsStopsAutoSave(key, editId, rawVal, doClose) {
   const hint = document.getElementById(editId + '-hint');
   if(!hint) return;
   const raw = (rawVal || '').trim();
-  if(!raw) { hint.textContent = ''; hint.style.color = 'var(--muted)'; return; }
+  if(!raw) { hint.textContent = 'Collez les coordonnées — enregistrement automatique'; hint.style.color = 'var(--muted)'; return; }
 
-  // Nettoyer la valeur : retirer les parenthèses, crochets éventuels
-  const clean = raw.replace(/[()[\]]/g, '');
-  let parts = clean.split(/,\s*|\s+/);
-  if(parts.length < 2) { hint.textContent = '⚠️ Format : lat, lon'; hint.style.color = 'orange'; return; }
+  const parsed = gpsParseCoords(raw);
+  if(!parsed) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; return; }
 
-  const lat = parseFloat(parts[0].replace(',', '.'));
-  const lon = parseFloat(parts[1].replace(',', '.'));
-
-  if(isNaN(lat) || isNaN(lon)) { hint.textContent = '⚠️ Nombres non reconnus'; hint.style.color = 'orange'; return; }
-  if(lat < -90 || lat > 90)   { hint.textContent = '❌ Latitude invalide (-90..90)'; hint.style.color = 'var(--red)'; return; }
-  if(lon < -180 || lon > 180) { hint.textContent = '❌ Longitude invalide'; hint.style.color = 'var(--red)'; return; }
-
-  const latR = Math.round(lat * 1e6) / 1e6;
-  const lonR = Math.round(lon * 1e6) / 1e6;
-  hint.textContent = `✅ ${latR.toFixed(6)}, ${lonR.toFixed(6)} — Appuie ✓ pour valider`;
-  hint.style.color = 'var(--green)';
+  if(doClose) {
+    // Collage détecté : sauvegarder et fermer directement
+    hint.textContent = '';
+    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
+  } else {
+    // Frappe manuelle : aperçu en temps réel, appuyer Entrée pour valider
+    hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie Entrée`;
+    hint.style.color = 'var(--green)';
+    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, false);
+  }
 }
 
+// ── Parser universel de coordonnées GPS ──────────────────────
+// Accepte : "49.02665, 1.97432" / "49.02665 1.97432" / "(49.02665,1.97432)"
+// Aussi le format Maps : "49.02665202072263, 1.9743218893309282"
+function gpsParseCoords(raw) {
+  const clean = raw.replace(/[()[\]]/g, '').trim();
+  const parts = clean.split(/[,\s]+/).filter(Boolean);
+  if(parts.length < 2) return null;
+  const lat = parseFloat(parts[0].replace(',', '.'));
+  const lon = parseFloat(parts[1].replace(',', '.'));
+  if(isNaN(lat) || isNaN(lon)) return null;
+  if(lat < -90 || lat > 90)   return null;
+  if(lon < -180 || lon > 180) return null;
+  return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
+}
+
+// ── Stocker les coords sans re-render du panneau ─────────────
+function gpsStoreCoord(key, lat, lon, editId, doClose) {
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line?.trips?.[gpsPanelTripIdx];
+  const si = parseInt(key.split('_').pop());
+  const stopName = trip ? (trip.stops[si]?.name || key) : key;
+  gpsCoordsDB[key] = { lat, lon, name: stopName };
+  saveGpsCoordsDB();
+
+  if(doClose) {
+    // Fermer le champ d'édition pour CET arrêt uniquement
+    const editEl = document.getElementById(editId);
+    if(editEl) editEl.style.display = 'none';
+    // Mettre à jour uniquement la ligne de cet arrêt (pas tout le panneau)
+    gpsStopsUpdateRow(key, si, lat, lon);
+    // Rafraîchir le badge dans la liste des trajets (léger)
+    renderLineDetail(gpsPanelLineIdx);
+    toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
+  } else {
+    // Mise à jour silencieuse (preview) — pas de toast, pas de fermeture
+    gpsStopsUpdateRow(key, si, lat, lon);
+  }
+}
+
+// ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
+function gpsStopsUpdateRow(key, si, lat, lon) {
+  const rowId = `gps-row-${si}`;
+  const row = document.getElementById(rowId);
+  if(!row) return;
+  const iconEl = row.querySelector('.gps-row-icon');
+  if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
+  row.style.background = 'rgba(39,174,96,.08)';
+  row.style.border = '1px solid rgba(39,174,96,.3)';
+  // Mettre à jour la valeur de l'input visible
+  const inp = document.getElementById(`gps-input-${si}-val`);
+  if(inp) {
+    inp.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    inp.style.borderColor = 'rgba(39,174,96,.8)';
+    inp.style.background = 'rgba(39,174,96,.08)';
+  }
+  _gpsUpdateProgress();
+}
+
+function _gpsUpdateProgress() {
+  if(gpsPanelLineIdx < 0) return;
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line?.trips?.[gpsPanelTripIdx];
+  if(!trip) return;
+  let recorded = 0;
+  trip.stops.forEach((s, si) => {
+    if(gpsCoordsDB[gpsCoordKey(line.num, gpsPanelTripIdx, si)]) recorded++;
+  });
+  const total = trip.stops.length;
+  const pct = Math.round(recorded / total * 100);
+  const pColor = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : pct > 0 ? 'orange' : 'var(--red)';
+  const progEl = document.getElementById('gps-stops-prog');
+  if(progEl) { progEl.style.width = pct + '%'; progEl.style.background = pColor; }
+  const hdrEl = document.getElementById('gps-stops-panel-header');
+  if(hdrEl) {
+    const col = line.color || '#00d4ff';
+    hdrEl.innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px">${line.num}</span>`+
+      `<strong>${trip.label}</strong><br>`+
+      `<span style="color:${pColor};font-weight:700">${recorded}/${total} arrêts avec GPS (${pct}%)</span>`;
+  }
+}
 
 // Accepte tous ces formats :
 //   49.02665202072263, 1.9743218893309282   (virgule + espace)
@@ -4058,51 +4163,75 @@ function gpsStopsAutoSave(key, editId, rawVal) {
 //   49.02665,1.97432                        (virgule sans espace)
 //   49.052621 2.022193                      (déjà court)
 //   (49.052621, 2.022193)                   (parenthèses)
+// ── Enregistrer depuis le champ input visible ─────────────────
+function gpsStopsSaveFromInput(key, inputId, si) {
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  const raw = (inp.value || '').trim();
+  if(!raw) { toast('⚠️ Collez ou saisissez des coordonnées GPS'); inp.focus(); return; }
+
+  const parsed = gpsParseCoords(raw);
+  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
+
+  gpsStoreCoord(key, parsed.lat, parsed.lon, null, false);
+
+  // Mettre à jour l'input avec les coords normalisées
+  inp.value = `${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`;
+  inp.style.borderColor = 'rgba(39,174,96,.8)';
+  inp.style.background = 'rgba(39,174,96,.08)';
+
+  // Mettre à jour l'icône de la ligne
+  const row = document.getElementById(`gps-row-${si}`);
+  if(row) {
+    row.style.background = 'rgba(39,174,96,.08)';
+    row.style.border = '1px solid rgba(39,174,96,.3)';
+    const iconEl = row.querySelector('.gps-row-icon');
+    if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
+  }
+
+  const hint = document.getElementById(`gps-hint-${si}`);
+  if(hint) { hint.textContent = `✅ Enregistré — ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`; hint.style.color = 'var(--green)'; }
+
+  _gpsUpdateProgress();
+  renderLineDetail(gpsPanelLineIdx);
+  toast(`📍 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} enregistré`);
+}
+
+// ── [Legacy] Enregistrer depuis l'ancien système toggle ───────
 function gpsStopsSaveManual(key, editId) {
   const inp = document.getElementById(editId + '-val');
   if(!inp) return;
-  // Lire la valeur au moment de l'appel (important après coller)
   const raw = (inp.value || '').trim();
   if(!raw) { toast('Entrez des coordonnées'); inp.focus(); return; }
-
-  // Nettoyer parenthèses, crochets
-  const clean = raw.replace(/[()[\]]/g, '');
-
-  // Parser : séparer lat et lon
-  let parts = clean.split(/,\s*|\s+/);
-  if(parts.length < 2) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
-
-  const lat = parseFloat(parts[0].replace(',', '.'));
-  const lon = parseFloat(parts[1].replace(',', '.'));
-
-  if(isNaN(lat) || isNaN(lon)) { toast('❌ Coordonnées non reconnues'); inp.focus(); return; }
-  if(lat < -90 || lat > 90)    { toast('❌ Latitude invalide (doit être entre -90 et 90)'); inp.focus(); return; }
-  if(lon < -180 || lon > 180)  { toast('❌ Longitude invalide'); inp.focus(); return; }
-
-  // Arrondir à 6 décimales (précision ~11cm, suffisante pour un arrêt de bus)
-  const latR = Math.round(lat * 1e6) / 1e6;
-  const lonR = Math.round(lon * 1e6) / 1e6;
-
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  const stopName = trip ? trip.stops[parseInt(key.split('_').pop())]?.name : '';
-  gpsCoordsDB[key] = { lat: latR, lon: lonR, name: stopName || key };
-  saveGpsCoordsDB();
-
-  // Fermer le champ et rafraîchir
-  document.getElementById(editId).style.display = 'none';
-  renderGpsStopsPanel();
-  renderLineDetail(gpsPanelLineIdx);
-  toast(`📍 ${latR.toFixed(6)}, ${lonR.toFixed(6)} enregistré`);
+  const parsed = gpsParseCoords(raw);
+  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
+  gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
 }
 
-function gpsStopsDeleteOne(key) {
+function gpsStopsDeleteOne(key, si) {
   loadGpsCoordsDB();
   delete gpsCoordsDB[key];
   saveGpsCoordsDB();
-  renderGpsStopsPanel();
-  // Rafraîchir le badge dans la liste des trajets
+  const row = document.getElementById(`gps-row-${si}`);
+  if(row) {
+    row.style.background = 'rgba(255,255,255,.02)';
+    row.style.border = '1px solid var(--border)';
+    const iconEl = row.querySelector('.gps-row-icon');
+    if(iconEl) { iconEl.textContent = '⬜'; iconEl.style.color = 'var(--muted)'; }
+    // Vider l'input et reset son style
+    const inp = document.getElementById(`gps-input-${si}-val`);
+    if(inp) {
+      inp.value = '';
+      inp.style.borderColor = 'rgba(255,193,7,.5)';
+      inp.style.background = 'rgba(255,193,7,.06)';
+    }
+    const hint = document.getElementById(`gps-hint-${si}`);
+    if(hint) hint.textContent = '';
+    // Supprimer le bouton 🗑 de cette ligne
+    const delBtn = row.querySelector('button[onclick^="gpsStopsDeleteOne"]');
+    if(delBtn) delBtn.remove();
+  }
+  _gpsUpdateProgress();
   renderLineDetail(gpsPanelLineIdx);
   toast('🗑 Point GPS supprimé');
 }
