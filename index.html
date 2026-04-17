@@ -763,13 +763,19 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Départ dépôt</div>
-          <input type="time" id="svc-depot-depart" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+          <input type="time" id="svc-depot-depart" step="60" oninput="svcUpdateIndemnite()" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
         </div>
         <div style="flex:1;min-width:120px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Retour dépôt</div>
-          <input type="time" id="svc-depot-retour" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+          <input type="time" id="svc-depot-retour" step="60" oninput="svcUpdateIndemnite()" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
         </div>
       </div>
+    </div>
+
+    <!-- ══ BANDEAU INDEMNITÉ REPAS ══ -->
+    <div id="svc-indemnite-band" style="display:none;border-radius:12px;padding:12px 14px;margin-bottom:4px;border:2px solid var(--border);background:rgba(255,255,255,.03)">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;font-weight:700">🍽 INDEMNITÉ REPAS</div>
+      <div id="svc-indemnite-content"></div>
     </div>
 
     <div id="svc-trips-container"></div>
@@ -3864,8 +3870,8 @@ function renderLineDetail(idx) {
     const pct = Math.round(gpsCount/total*100);
     const gpsColor = pct===100 ? 'var(--green)' : pct>0 ? '#ffc107' : 'var(--muted)';
     const gpsBadge = gpsCount > 0
-      ? `<span id="gps-badge-${idx}-${i}" style="font-size:10px;color:${gpsColor};font-weight:700">📍 ${gpsCount}/${total}</span>`
-      : `<span id="gps-badge-${idx}-${i}" style="font-size:10px;color:var(--muted)">📍 —</span>`;
+      ? `<span style="font-size:10px;color:${gpsColor};font-weight:700">📍 ${gpsCount}/${total}</span>`
+      : `<span style="font-size:10px;color:var(--muted)">📍 —</span>`;
 
     // Vérifier si un tracé existe pour ce trajet
     const traceKey = `${line.num}_${i}_${t.direction||'aller'}`;
@@ -4075,82 +4081,57 @@ function renderGpsStopsPanel() {
     const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
     const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
     const num = String(si+1).padStart(2,'0');
-    const coordVal = hasGps ? `${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}` : '';
-    const inputId = `gps-input-${si}-val`;
+    const coordText = hasGps
+      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
+      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
     const delBtn = hasGps
-      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`
+      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
       : '';
-    const saveBtn = `<button onclick="gpsStopsSaveFromInput('${key}','${inputId}','${si}')"
-      style="padding:6px 10px;background:rgba(39,174,96,.25);border:1px solid var(--green);
-             color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0"
-      title="Enregistrer">💾</button>`;
+    // Bouton saisie manuelle — bascule l'input inline
+    const editId = `gps-input-${si}`;
+    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
+      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
+             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
+      title="Saisir coordonnées manuellement">✏</button>`;
 
-    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:6px;padding:8px 10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace;width:22px">${num}</span>
-        <span class="gps-row-icon" style="font-size:14px;flex-shrink:0;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-        <div style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
+    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+        <span class="gps-row-icon" style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div class="gps-row-coord">${coordText}</div>
+        </div>
+        ${editBtn}
         ${delBtn}
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input id="${inputId}"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          placeholder="49.02665, 1.97432"
-          value="${coordVal}"
-          style="flex:1;padding:9px 10px;font-size:13px;font-family:monospace;border-radius:8px;
-                 border:2px solid ${hasGps ? 'rgba(39,174,96,.5)' : 'rgba(255,193,7,.5)'};
-                 background:${hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,193,7,.06)'};
-                 color:var(--text);
-                 -webkit-user-select:text !important;user-select:text !important;
-                 -webkit-touch-callout:default !important;
-                 touch-action:manipulation;cursor:text;pointer-events:auto">
-        ${saveBtn}
+      <!-- Champ saisie manuelle — caché par défaut -->
+      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
+          COORDONNÉES GPS — Collez ou saisissez : lat, lon
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="${editId}-val"
+            inputmode="decimal"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            placeholder="49.02665, 1.97432"
+            style="flex:1;padding:10px 10px;font-size:14px;font-family:monospace;border-radius:8px;
+                   border:2px solid rgba(255,193,7,.6);background:rgba(255,193,7,.08);color:var(--text);
+                   -webkit-user-select:text;user-select:text;touch-action:manipulation"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();gpsStopsSaveManual('${key}','${editId}')}"
+            oninput="gpsStopsAutoSave('${key}','${editId}',this.value)"
+            onpaste="setTimeout(()=>{const v=document.getElementById('${editId}-val').value;gpsStopsAutoSave('${key}','${editId}',v)},30)">
+          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
+            style="padding:10px 14px;background:rgba(39,174,96,.2);border:1px solid var(--green);
+                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;flex-shrink:0;
+                   touch-action:manipulation">
+            ✓
+          </button>
+        </div>
+        <div id="${editId}-hint" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px"></div>
       </div>
-      <div id="gps-hint-${si}" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:13px"></div>
     </div>`;
   }).join('');
-
-  // Attacher les événements APRÈS insertion dans le DOM (évite les problèmes de innerHTML sur mobile)
-  setTimeout(() => {
-    items.forEach(({key, si}) => {
-      const inp = document.getElementById(`gps-input-${si}-val`);
-      if(!inp) return;
-      inp.removeAttribute('readonly');
-      inp.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') { e.preventDefault(); gpsStopsSaveFromInput(key, `gps-input-${si}-val`, si); }
-      });
-      inp.addEventListener('paste', () => {
-        setTimeout(() => {
-          const v = inp.value.trim();
-          const parsed = gpsParseCoords(v);
-          const hint = document.getElementById(`gps-hint-${si}`);
-          if(parsed) {
-            if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾`; hint.style.color = 'var(--green)'; }
-            inp.style.borderColor = 'rgba(39,174,96,.8)';
-          } else if(v) {
-            if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
-          }
-        }, 50);
-      });
-      inp.addEventListener('input', () => {
-        const v = inp.value.trim();
-        const parsed = gpsParseCoords(v);
-        const hint = document.getElementById(`gps-hint-${si}`);
-        if(parsed) {
-          if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾 ou Entrée`; hint.style.color = 'var(--green)'; }
-          inp.style.borderColor = 'rgba(39,174,96,.8)';
-        } else if(v.length > 3) {
-          if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
-          inp.style.borderColor = 'rgba(255,165,0,.8)';
-        } else {
-          if(hint) hint.textContent = '';
-          inp.style.borderColor = 'rgba(255,193,7,.5)';
-        }
-      });
-    });
-  }, 30);
 }
 
 // ── Basculer l'affichage du champ de saisie manuelle ─────────
@@ -4219,33 +4200,34 @@ function gpsStoreCoord(key, lat, lon, editId, doClose) {
   saveGpsCoordsDB();
 
   if(doClose) {
+    // Fermer le champ d'édition pour CET arrêt uniquement
     const editEl = document.getElementById(editId);
     if(editEl) editEl.style.display = 'none';
+    // Mettre à jour uniquement la ligne de cet arrêt (pas tout le panneau)
     gpsStopsUpdateRow(key, si, lat, lon);
-    // Mettre à jour uniquement le badge (pas renderLineDetail qui détruit le panneau)
-    _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
+    // Rafraîchir le badge dans la liste des trajets (léger)
+    renderLineDetail(gpsPanelLineIdx);
     toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
   } else {
+    // Mise à jour silencieuse (preview) — pas de toast, pas de fermeture
     gpsStopsUpdateRow(key, si, lat, lon);
   }
 }
 
 // ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
 function gpsStopsUpdateRow(key, si, lat, lon) {
+  const num = String(si+1).padStart(2,'0');
   const rowId = `gps-row-${si}`;
   const row = document.getElementById(rowId);
   if(!row) return;
+  // Mettre à jour l'icône et les coordonnées affichées
   const iconEl = row.querySelector('.gps-row-icon');
+  const coordEl = row.querySelector('.gps-row-coord');
   if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
+  if(coordEl) coordEl.innerHTML = `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>`;
   row.style.background = 'rgba(39,174,96,.08)';
   row.style.border = '1px solid rgba(39,174,96,.3)';
-  // Mettre à jour la valeur de l'input visible (nouveau système)
-  const inp = document.getElementById(`gps-input-${si}-val`);
-  if(inp) {
-    inp.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    inp.style.borderColor = 'rgba(39,174,96,.8)';
-    inp.style.background = 'rgba(39,174,96,.08)';
-  }
+  // Mettre à jour la barre de progression
   _gpsUpdateProgress();
 }
 
@@ -4273,79 +4255,6 @@ function _gpsUpdateProgress() {
   }
 }
 
-// ── Mettre à jour le badge GPS dans la liste des trajets sans reconstruire le panneau ──
-function _gpsUpdateTripBadge(lineIdx, tripIdx) {
-  if(lineIdx < 0) return;
-  loadGpsCoordsDB();
-  const line = db.lines[lineIdx];
-  const trip = line?.trips?.[tripIdx];
-  if(!trip) return;
-  let gpsCount = 0;
-  trip.stops.forEach((s, si) => {
-    if(gpsCoordsDB[gpsCoordKey(line.num, tripIdx, si)]) gpsCount++;
-  });
-  const total = trip.stops.length;
-  const pct = Math.round(gpsCount / total * 100);
-  const gpsColor = pct === 100 ? 'var(--green)' : pct > 0 ? '#ffc107' : 'var(--muted)';
-  const badgeEl = document.getElementById(`gps-badge-${lineIdx}-${tripIdx}`);
-  if(badgeEl) {
-    badgeEl.style.color = gpsColor;
-    badgeEl.textContent = gpsCount > 0 ? `📍 ${gpsCount}/${total}` : '📍 —';
-  }
-}
-
-// ── Enregistrer depuis le champ input visible ─────────────────
-function gpsStopsSaveFromInput(key, inputId, si) {
-  const inp = document.getElementById(inputId);
-  if(!inp) return;
-  const raw = (inp.value || '').trim();
-  if(!raw) { toast('⚠️ Collez ou saisissez des coordonnées GPS'); inp.focus(); return; }
-
-  const parsed = gpsParseCoords(raw);
-  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
-
-  // Sauvegarder directement sans passer par gpsStoreCoord (évite renderLineDetail)
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  const stopName = trip ? (trip.stops[si]?.name || key) : key;
-  gpsCoordsDB[key] = { lat: parsed.lat, lon: parsed.lon, name: stopName };
-  saveGpsCoordsDB();
-
-  // Mettre à jour l'input avec les coords normalisées
-  inp.value = `${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`;
-  inp.style.borderColor = 'rgba(39,174,96,.8)';
-  inp.style.background = 'rgba(39,174,96,.08)';
-
-  // Mettre à jour uniquement la ligne de cet arrêt dans le panneau
-  const row = document.getElementById(`gps-row-${si}`);
-  if(row) {
-    row.style.background = 'rgba(39,174,96,.08)';
-    row.style.border = '1px solid rgba(39,174,96,.3)';
-    const iconEl = row.querySelector('.gps-row-icon');
-    if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
-    // Ajouter le bouton 🗑 s'il est absent
-    if(!row.querySelector('button[onclick^="gpsStopsDeleteOne"]')) {
-      const topRow = row.querySelector('div[style*="display:flex"]');
-      if(topRow) {
-        const delBtn = document.createElement('button');
-        delBtn.onclick = () => gpsStopsDeleteOne(key, si);
-        delBtn.style.cssText = 'padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0';
-        delBtn.textContent = '🗑';
-        topRow.appendChild(delBtn);
-      }
-    }
-  }
-
-  const hint = document.getElementById(`gps-hint-${si}`);
-  if(hint) { hint.textContent = `✅ Enregistré — ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`; hint.style.color = 'var(--green)'; }
-
-  // Mettre à jour barre de progression + badge du trajet (sans reconstruire le panneau)
-  _gpsUpdateProgress();
-  _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
-  toast(`📍 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} enregistré`);
-}
-
 // Accepte tous ces formats :
 //   49.02665202072263, 1.9743218893309282   (virgule + espace)
 //   49.02665202072263 1.9743218893309282    (espace seul)
@@ -4368,26 +4277,21 @@ function gpsStopsDeleteOne(key, si) {
   loadGpsCoordsDB();
   delete gpsCoordsDB[key];
   saveGpsCoordsDB();
+  // Mettre à jour uniquement la ligne concernée
   const row = document.getElementById(`gps-row-${si}`);
   if(row) {
     row.style.background = 'rgba(255,255,255,.02)';
     row.style.border = '1px solid var(--border)';
     const iconEl = row.querySelector('.gps-row-icon');
+    const coordEl = row.querySelector('.gps-row-coord');
     if(iconEl) { iconEl.textContent = '⬜'; iconEl.style.color = 'var(--muted)'; }
-    // Vider l'input et reset son style
-    const inp = document.getElementById(`gps-input-${si}-val`);
-    if(inp) {
-      inp.value = '';
-      inp.style.borderColor = 'rgba(255,193,7,.5)';
-      inp.style.background = 'rgba(255,193,7,.06)';
-    }
-    const hint = document.getElementById(`gps-hint-${si}`);
-    if(hint) hint.textContent = '';
+    if(coordEl) coordEl.innerHTML = `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
+    // Cacher le bouton 🗑 et laisser le ✏
     const delBtn = row.querySelector('button[onclick^="gpsStopsDeleteOne"]');
     if(delBtn) delBtn.remove();
   }
   _gpsUpdateProgress();
-  _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
+  renderLineDetail(gpsPanelLineIdx);
   toast('🗑 Point GPS supprimé');
 }
 
@@ -4786,10 +4690,17 @@ function renderSvcList() {
         ? `<span style="color:var(--accent)">${s.depotDepart}</span> → <span style="color:var(--green)">${s.depotRetour}</span>`
         : '';
       const heuresInfo = s.heures ? `<span style="font-family:'Share Tech Mono',monospace;color:var(--green);font-weight:700">${hDisplay(s.heures)}</span>` : '';
+      // Badge indemnité repas
+      const indemCalc = (s.depotDepart && s.depotRetour) ? svcCalcIndemnite(s.depotDepart, s.depotRetour, s.trips) : null;
+      const indemBadge = indemCalc
+        ? (indemCalc.montant > 0
+            ? `<span style="background:rgba(39,174,96,.2);border:1px solid var(--green);color:var(--green);padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700">🍽 +${indemCalc.montant.toFixed(2)} €</span>`
+            : `<span style="background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px">🍽 —</span>`)
+        : '';
 
       const detail = isOpen ? `
         <div style="padding:12px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
-          ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''}</div>` : ''}
+          ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''} ${indemBadge ? '· '+indemBadge : ''}</div>` : ''}
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
             ${s.trips.map(t => {
               const num = t.lineNum || (t.label||'').match(/Ligne (\S+)/)?.[1] || '';
@@ -4821,6 +4732,7 @@ function renderSvcList() {
                   return `<span style="background:${color};color:#fff;padding:0px 5px;border-radius:4px;font-size:11px;font-weight:700">${num}</span>`;
                 }).join(' · ')}
                 ${s.heures ? ' · <span style="color:var(--green)">'+hDisplay(s.heures)+'</span>' : ''}
+                ${indemBadge ? ' · '+indemBadge : ''}
               </div>
             </div>
             <div style="font-size:18px;color:var(--muted);transition:transform .2s;transform:rotate(${isOpen?90:0}deg)">›</div>
@@ -4947,6 +4859,7 @@ function openSvcEditor(num, jour) {
   document.getElementById('svc-page-list').style.display = 'none';
   document.getElementById('svc-page-editor').style.display = 'block';
   renderSvcTrips();
+  svcUpdateIndemnite();
 }
 
 function closeSvcEditor() {
@@ -5001,6 +4914,7 @@ function svcAddTrip() {
 
   svcTrips.push({ lineIdx, tripIdx, lineNum: line.num, lineColor: line.color, label:`Ligne ${line.num} — ${trip.label}`, stops });
   renderSvcTrips();
+  svcUpdateIndemnite();
   const lastStop = stops[stops.length-1];
   document.getElementById('svc-first-time').value = lastStop.time;
 
@@ -5121,7 +5035,7 @@ function svcRecalcTrip(ti) {
   toast('Horaires recalculés ✓');
 }
 
-function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); }
+function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); svcUpdateIndemnite(); }
 
 function svcMoveTrip(ti,dir) {
   const j = ti+dir;
@@ -5548,6 +5462,150 @@ function cleanStopName(name) {
     .split(' ').map(w => w.length > 2 ? w.charAt(0).toUpperCase()+w.slice(1).toLowerCase() : w).join(' ');
 }
 
+// ══ CALCUL INDEMNITÉ REPAS ═══════════════════════════════════
+// Règles convention collective :
+//   Indemnité repas unique (10 €)  : fin de service > 14h00 (service matin)
+//                                    OU fin de service > 21h30 (service après-midi)
+//   Indemnité spéciale repas (5 €) : coupe > 2h dans la journée (pause entre 2 trajets)
+//
+// Détermination matin/après-midi : heure de prise de service
+//   Prise avant 12h00 → service du matin   → seuil fin : 14h00
+//   Prise à partir de 12h00 → service AM   → seuil fin : 21h30
+
+function svcCalcIndemnite(depotDepart, depotRetour, trips) {
+  const toMin = t => {
+    if(!t) return null;
+    const [h,m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const depart = toMin(depotDepart);
+  const retour = toMin(depotRetour);
+  if(depart === null || retour === null) return null;
+
+  // Heure de fin réelle = retour dépôt
+  // (si pas renseigné, on prend le dernier arrêt du dernier trajet)
+  let finService = retour;
+  if(!finService && trips && trips.length > 0) {
+    const dernierTrajet = trips[trips.length - 1];
+    const dernierArret = dernierTrajet.stops?.[dernierTrajet.stops.length - 1];
+    finService = toMin(dernierArret?.time);
+  }
+  if(finService === null) return null;
+
+  // Dépassement minuit
+  let finAdj = finService;
+  if(finAdj < depart) finAdj += 24 * 60;
+
+  // Type de service
+  const estMatin = depart < 12 * 60; // prise avant 12h00
+  const seuilFin = estMatin ? 14 * 60 : 21 * 60 + 30; // 14h00 ou 21h30
+
+  const droitUnique = finAdj >= seuilFin;
+
+  // Indemnité spéciale : coupe ≥ 2h entre deux trajets consécutifs
+  let droitSpeciale = false;
+  let coupeMax = 0;
+  if(trips && trips.length >= 2) {
+    for(let i = 0; i < trips.length - 1; i++) {
+      const t1 = trips[i];
+      const t2 = trips[i + 1];
+      const finT1 = toMin(t1.stops?.[t1.stops.length - 1]?.time);
+      const debutT2 = toMin(t2.stops?.[0]?.time);
+      if(finT1 !== null && debutT2 !== null) {
+        let diff = debutT2 - finT1;
+        if(diff < 0) diff += 24 * 60;
+        if(diff > coupeMax) coupeMax = diff;
+        if(diff >= 120) droitSpeciale = true;
+      }
+    }
+  }
+
+  return {
+    estMatin,
+    depart,
+    finAdj,
+    seuilFin,
+    droitUnique,
+    droitSpeciale,
+    coupeMax,
+    montant: (droitUnique ? 10 : 0) + (droitSpeciale ? 5 : 0)
+  };
+}
+
+function svcUpdateIndemnite() {
+  const depart  = document.getElementById('svc-depot-depart')?.value;
+  const retour  = document.getElementById('svc-depot-retour')?.value;
+  const band    = document.getElementById('svc-indemnite-band');
+  const content = document.getElementById('svc-indemnite-content');
+  if(!band || !content) return;
+
+  if(!depart || !retour) { band.style.display = 'none'; return; }
+
+  const r = svcCalcIndemnite(depart, retour, svcTrips);
+  if(!r) { band.style.display = 'none'; return; }
+
+  band.style.display = 'block';
+
+  const fmtMin = m => {
+    const hh = Math.floor(((m % (24*60)) + 24*60) % (24*60) / 60);
+    const mm = String(m % 60).padStart(2,'0');
+    return `${hh}h${mm}`;
+  };
+
+  const typeService = r.estMatin ? 'Matin (prise < 12h00)' : 'Après-midi (prise ≥ 12h00)';
+  const seuilStr    = r.estMatin ? '14h00' : '21h30';
+
+  // Couleur du bandeau selon résultat
+  let bgColor, borderColor, totalLabel;
+  if(r.montant > 0) {
+    bgColor = 'rgba(39,174,96,.1)';
+    borderColor = 'var(--green)';
+    totalLabel = `<span style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--green)">+${r.montant.toFixed(2)} €</span>`;
+  } else {
+    bgColor = 'rgba(255,255,255,.03)';
+    borderColor = 'var(--border)';
+    totalLabel = `<span style="font-size:16px;color:var(--muted)">Aucune indemnité</span>`;
+  }
+
+  band.style.background  = bgColor;
+  band.style.borderColor = borderColor;
+
+  const ligneUnique = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--text)">Indemnité repas unique</span><br>
+        <span style="font-size:10px;color:var(--muted)">Fin de service ${fmtMin(r.finAdj)} ${r.droitUnique ? '>' : '≤'} ${seuilStr} (${typeService})</span>
+      </div>
+      <span style="font-size:14px;font-weight:700;${r.droitUnique ? 'color:var(--green)' : 'color:var(--muted)'}">
+        ${r.droitUnique ? '✅ 10,00 €' : '❌ —'}
+      </span>
+    </div>`;
+
+  const coupeStr = r.coupeMax >= 60
+    ? `${Math.floor(r.coupeMax/60)}h${String(r.coupeMax%60).padStart(2,'0')}`
+    : `${r.coupeMax} min`;
+
+  const ligneSpeciale = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--text)">Indemnité spéciale repas</span><br>
+        <span style="font-size:10px;color:var(--muted)">Coupe max : ${coupeStr} ${r.droitSpeciale ? '≥ 2h ✓' : '< 2h'}</span>
+      </div>
+      <span style="font-size:14px;font-weight:700;${r.droitSpeciale ? 'color:var(--green)' : 'color:var(--muted)'}">
+        ${r.droitSpeciale ? '✅ 5,00 €' : '❌ —'}
+      </span>
+    </div>`;
+
+  const ligneTotal = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 0 0">
+      <span style="font-size:12px;color:var(--muted);font-weight:700">TOTAL</span>
+      ${totalLabel}
+    </div>`;
+
+  content.innerHTML = ligneUnique + ligneSpeciale + ligneTotal;
+}
+
 function saveServiceEditor() {
   const num = document.getElementById('svc-num').value.trim();
   const jour = document.getElementById('svc-jour').value;
@@ -5568,8 +5626,11 @@ function saveServiceEditor() {
     heuresCalc = diffMin / 60; // stocké en décimal pour compatibilité HEURES
   }
 
+  // Calcul indemnité repas
+  const indemRes = (depotDepart && depotRetour) ? svcCalcIndemnite(depotDepart, depotRetour, svcTrips) : null;
+
   loadRoadmapServices();
-  const svc = { num, jour, depotDepart, depotRetour, heures: heuresCalc, trips: JSON.parse(JSON.stringify(svcTrips)) };
+  const svc = { num, jour, depotDepart, depotRetour, heures: heuresCalc, indemnite: indemRes, trips: JSON.parse(JSON.stringify(svcTrips)) };
   if(editingServiceIdx>=0) roadmapServices[editingServiceIdx]=svc;
   else roadmapServices.push(svc);
   saveRoadmapServices();
@@ -5585,12 +5646,17 @@ function saveServiceEditor() {
     }
   });
 
+  let toastMsg = `✅ Service ${num} enregistré`;
   if(heuresCalc) {
     const hh = Math.floor(heuresMin/60);
     const mm = String(heuresMin%60).padStart(2,'0');
-    toast(`✅ Service ${num} enregistré — ${hh}h${mm} · intervalles mémorisés`);
+    toastMsg += ` — ${hh}h${mm}`;
   }
-  else toast(`✅ Service ${num} enregistré · intervalles mémorisés`);
+  if(indemRes && indemRes.montant > 0) {
+    toastMsg += ` · 🍽 +${indemRes.montant.toFixed(2)} €`;
+  }
+  toastMsg += ' · intervalles mémorisés';
+  toast(toastMsg);
   closeSvcEditor();
 }
 
@@ -8722,9 +8788,6 @@ function liveMapRefresh() {
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
 
-  // Recharger la DB GPS depuis le stockage (peut avoir été mise à jour depuis le panneau)
-  loadGpsCoordsDB();
-
   // Collecter les coordonnées GPS des arrêts
   const stopPoints = [];
   trip.stops.forEach((stop, idx) => {
@@ -8733,17 +8796,7 @@ function liveMapRefresh() {
     if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
   });
 
-  // Afficher les marqueurs dès le premier point enregistré
-  if(stopPoints.length === 0) return;
-
-  // ── Helper : centrer la carte sur les points disponibles ──────
-  function fitToPoints() {
-    if(stopPoints.length === 1) {
-      liveMap.setView([stopPoints[0].lat, stopPoints[0].lon], 16);
-    } else {
-      liveMap.fitBounds(L.latLngBounds(stopPoints.map(sp => [sp.lat, sp.lon])), {padding: [24, 24]});
-    }
-  }
+  if(stopPoints.length < 2) return;
 
   // ── Dessiner les marqueurs d'arrêts ──────────────────────────
   function drawStopMarkers() {
@@ -8782,14 +8835,7 @@ function liveMapRefresh() {
     return;
   }
 
-  // Avec un seul point : centrer + marqueur uniquement, pas de polyline/OSRM
-  if(stopPoints.length === 1) {
-    fitToPoints();
-    drawStopMarkers();
-    return;
-  }
-
-  // Pas de KML → fallback OSRM (seulement si ≥ 2 points)
+  // Pas de KML → fallback OSRM
   const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
   const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
 
@@ -8800,7 +8846,7 @@ function liveMapRefresh() {
     opacity: 0.4,
     dashArray: '8 6'
   }).addTo(liveMap);
-  fitToPoints();
+  liveMap.fitBounds(provisoire.getBounds(), {padding: [24, 24]});
 
   drawStopMarkers();
 
