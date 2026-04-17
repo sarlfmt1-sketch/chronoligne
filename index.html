@@ -3741,11 +3741,11 @@ function renderLineDetail(idx) {
     const pct = Math.round(gpsCount/total*100);
     const gpsColor = pct===100 ? 'var(--green)' : pct>0 ? '#ffc107' : 'var(--muted)';
     const gpsBadge = gpsCount > 0
-      ? `<span id="gps-badge-${idx}-${i}" style="font-size:10px;color:${gpsColor};font-weight:700">📍 ${gpsCount}/${total}</span>`
-      : `<span id="gps-badge-${idx}-${i}" style="font-size:10px;color:var(--muted)">📍 —</span>`;
+      ? `<span style="font-size:10px;color:${gpsColor};font-weight:700">📍 ${gpsCount}/${total}</span>`
+      : `<span style="font-size:10px;color:var(--muted)">📍 —</span>`;
 
     // Vérifier si un tracé existe pour ce trajet
-    const traceKey = buildMapId(line.num, t.direction||'aller', i);
+    const traceKey = `${line.num}_${i}_${t.direction||'aller'}`;
     const hasTrace = traceLibraryHas(traceKey);
     const mapBtnStyle = hasTrace
       ? 'background:rgba(0,212,255,.2);border:1px solid var(--accent);color:var(--accent);'
@@ -3952,327 +3952,31 @@ function renderGpsStopsPanel() {
     const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
     const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
     const num = String(si+1).padStart(2,'0');
-    const coordVal = hasGps ? `${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}` : '';
-    const inputId = `gps-input-${si}-val`;
+    const coordText = hasGps
+      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
+      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
     const delBtn = hasGps
-      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`
+      ? `<button onclick="gpsStopsDeleteOne('${key}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
       : '';
-    const saveBtn = `<button onclick="gpsStopsSaveFromInput('${key}','${inputId}','${si}')"
-      style="padding:6px 10px;background:rgba(39,174,96,.25);border:1px solid var(--green);
-             color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0"
-      title="Enregistrer">💾</button>`;
-
-    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:6px;padding:8px 10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace;width:22px">${num}</span>
-        <span class="gps-row-icon" style="font-size:14px;flex-shrink:0;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-        <div style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
-        ${delBtn}
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${bg};border:${border}">
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+      <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+        ${coordText}
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input id="${inputId}"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          placeholder="49.02665, 1.97432"
-          value="${coordVal}"
-          style="flex:1;padding:9px 10px;font-size:13px;font-family:monospace;border-radius:8px;
-                 border:2px solid ${hasGps ? 'rgba(39,174,96,.5)' : 'rgba(255,193,7,.5)'};
-                 background:${hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,193,7,.06)'};
-                 color:var(--text);
-                 -webkit-user-select:text !important;user-select:text !important;
-                 -webkit-touch-callout:default !important;
-                 touch-action:manipulation;cursor:text;pointer-events:auto">
-        ${saveBtn}
-      </div>
-      <div id="gps-hint-${si}" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:13px"></div>
+      ${delBtn}
     </div>`;
   }).join('');
-
-  // Attacher les événements APRÈS insertion dans le DOM (évite les problèmes de innerHTML sur mobile)
-  setTimeout(() => {
-    items.forEach(({key, si}) => {
-      const inp = document.getElementById(`gps-input-${si}-val`);
-      if(!inp) return;
-      inp.removeAttribute('readonly');
-      inp.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') { e.preventDefault(); gpsStopsSaveFromInput(key, `gps-input-${si}-val`, si); }
-      });
-      inp.addEventListener('paste', () => {
-        setTimeout(() => {
-          const v = inp.value.trim();
-          const parsed = gpsParseCoords(v);
-          const hint = document.getElementById(`gps-hint-${si}`);
-          if(parsed) {
-            if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾`; hint.style.color = 'var(--green)'; }
-            inp.style.borderColor = 'rgba(39,174,96,.8)';
-          } else if(v) {
-            if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
-          }
-        }, 50);
-      });
-      inp.addEventListener('input', () => {
-        const v = inp.value.trim();
-        const parsed = gpsParseCoords(v);
-        const hint = document.getElementById(`gps-hint-${si}`);
-        if(parsed) {
-          if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾 ou Entrée`; hint.style.color = 'var(--green)'; }
-          inp.style.borderColor = 'rgba(39,174,96,.8)';
-        } else if(v.length > 3) {
-          if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
-          inp.style.borderColor = 'rgba(255,165,0,.8)';
-        } else {
-          if(hint) hint.textContent = '';
-          inp.style.borderColor = 'rgba(255,193,7,.5)';
-        }
-      });
-    });
-  }, 30);
 }
 
-// ── Basculer l'affichage du champ de saisie manuelle ─────────
-function gpsStopsToggleInput(editId) {
-  const el = document.getElementById(editId);
-  if(!el) return;
-  const isOpen = el.style.display !== 'none';
-  // Fermer tous les autres champs ouverts
-  document.querySelectorAll('[id^="gps-input-"]').forEach(e => e.style.display = 'none');
-  if(!isOpen) {
-    el.style.display = 'block';
-    const inp = document.getElementById(editId + '-val');
-    if(inp) {
-      inp.value = '';
-      document.getElementById(editId + '-hint').textContent = '';
-      inp.removeAttribute('readonly');
-      // Focus robuste mobile — plusieurs tentatives espacées
-      inp.focus();
-      setTimeout(() => { inp.focus(); inp.click(); }, 80);
-      setTimeout(() => { inp.focus(); }, 300);
-    }
-  }
-}
-
-// ── Aperçu en temps réel pendant la saisie / collage ─────────
-function gpsStopsAutoSave(key, editId, rawVal, doClose) {
-  const hint = document.getElementById(editId + '-hint');
-  if(!hint) return;
-  const raw = (rawVal || '').trim();
-  if(!raw) { hint.textContent = 'Collez les coordonnées — enregistrement automatique'; hint.style.color = 'var(--muted)'; return; }
-
-  const parsed = gpsParseCoords(raw);
-  if(!parsed) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; return; }
-
-  if(doClose) {
-    // Collage détecté : sauvegarder et fermer directement
-    hint.textContent = '';
-    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
-  } else {
-    // Frappe manuelle : aperçu en temps réel, appuyer Entrée pour valider
-    hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie Entrée`;
-    hint.style.color = 'var(--green)';
-    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, false);
-  }
-}
-
-// ── Parser universel de coordonnées GPS ──────────────────────
-// Accepte : "49.02665, 1.97432" / "49.02665 1.97432" / "(49.02665,1.97432)"
-// Aussi le format Maps : "49.02665202072263, 1.9743218893309282"
-function gpsParseCoords(raw) {
-  const clean = raw.replace(/[()[\]]/g, '').trim();
-  const parts = clean.split(/[,\s]+/).filter(Boolean);
-  if(parts.length < 2) return null;
-  const lat = parseFloat(parts[0].replace(',', '.'));
-  const lon = parseFloat(parts[1].replace(',', '.'));
-  if(isNaN(lat) || isNaN(lon)) return null;
-  if(lat < -90 || lat > 90)   return null;
-  if(lon < -180 || lon > 180) return null;
-  return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
-}
-
-// ── Stocker les coords sans re-render du panneau ─────────────
-function gpsStoreCoord(key, lat, lon, editId, doClose) {
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  const si = parseInt(key.split('_').pop());
-  const stopName = trip ? (trip.stops[si]?.name || key) : key;
-  gpsCoordsDB[key] = { lat, lon, name: stopName };
-  saveGpsCoordsDB();
-
-  if(doClose) {
-    const editEl = document.getElementById(editId);
-    if(editEl) editEl.style.display = 'none';
-    gpsStopsUpdateRow(key, si, lat, lon);
-    // Mettre à jour uniquement le badge (pas renderLineDetail qui détruit le panneau)
-    _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
-    toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
-  } else {
-    gpsStopsUpdateRow(key, si, lat, lon);
-  }
-}
-
-// ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
-function gpsStopsUpdateRow(key, si, lat, lon) {
-  const rowId = `gps-row-${si}`;
-  const row = document.getElementById(rowId);
-  if(!row) return;
-  const iconEl = row.querySelector('.gps-row-icon');
-  if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
-  row.style.background = 'rgba(39,174,96,.08)';
-  row.style.border = '1px solid rgba(39,174,96,.3)';
-  // Mettre à jour la valeur de l'input visible
-  const inp = document.getElementById(`gps-input-${si}-val`);
-  if(inp) {
-    inp.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    inp.style.borderColor = 'rgba(39,174,96,.8)';
-    inp.style.background = 'rgba(39,174,96,.08)';
-  }
-  _gpsUpdateProgress();
-}
-
-function _gpsUpdateProgress() {
-  if(gpsPanelLineIdx < 0) return;
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  if(!trip) return;
-  let recorded = 0;
-  trip.stops.forEach((s, si) => {
-    if(gpsCoordsDB[gpsCoordKey(line.num, gpsPanelTripIdx, si)]) recorded++;
-  });
-  const total = trip.stops.length;
-  const pct = Math.round(recorded / total * 100);
-  const pColor = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : pct > 0 ? 'orange' : 'var(--red)';
-  const progEl = document.getElementById('gps-stops-prog');
-  if(progEl) { progEl.style.width = pct + '%'; progEl.style.background = pColor; }
-  const hdrEl = document.getElementById('gps-stops-panel-header');
-  if(hdrEl) {
-    const col = line.color || '#00d4ff';
-    hdrEl.innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px">${line.num}</span>`+
-      `<strong>${trip.label}</strong><br>`+
-      `<span style="color:${pColor};font-weight:700">${recorded}/${total} arrêts avec GPS (${pct}%)</span>`;
-  }
-}
-
-// ── Mettre à jour le badge GPS dans la liste des trajets sans reconstruire le panneau ──
-function _gpsUpdateTripBadge(lineIdx, tripIdx) {
-  if(lineIdx < 0) return;
-  loadGpsCoordsDB();
-  const line = db.lines[lineIdx];
-  const trip = line?.trips?.[tripIdx];
-  if(!trip) return;
-  let gpsCount = 0;
-  trip.stops.forEach((s, si) => {
-    if(gpsCoordsDB[gpsCoordKey(line.num, tripIdx, si)]) gpsCount++;
-  });
-  const total = trip.stops.length;
-  const pct = Math.round(gpsCount / total * 100);
-  const gpsColor = pct === 100 ? 'var(--green)' : pct > 0 ? '#ffc107' : 'var(--muted)';
-  // Chercher le badge dans le bouton 📍 de cette ligne de trajet
-  const mapBtn = document.getElementById(`map-btn-${lineIdx}-${tripIdx}`);
-  if(mapBtn) {
-    // Trouver le span badge GPS à côté
-    const badgeEl = document.getElementById(`gps-badge-${lineIdx}-${tripIdx}`);
-    if(badgeEl) {
-      badgeEl.style.color = gpsColor;
-      badgeEl.textContent = gpsCount > 0 ? `📍 ${gpsCount}/${total}` : '📍 —';
-    }
-  }
-}
-
-// Accepte tous ces formats :
-//   49.02665202072263, 1.9743218893309282   (virgule + espace)
-//   49.02665202072263 1.9743218893309282    (espace seul)
-//   49.02665,1.97432                        (virgule sans espace)
-//   49.052621 2.022193                      (déjà court)
-//   (49.052621, 2.022193)                   (parenthèses)
-// ── Enregistrer depuis le champ input visible ─────────────────
-function gpsStopsSaveFromInput(key, inputId, si) {
-  const inp = document.getElementById(inputId);
-  if(!inp) return;
-  const raw = (inp.value || '').trim();
-  if(!raw) { toast('⚠️ Collez ou saisissez des coordonnées GPS'); inp.focus(); return; }
-
-  const parsed = gpsParseCoords(raw);
-  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
-
-  // Sauvegarder directement sans passer par gpsStoreCoord (évite renderLineDetail)
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  const stopName = trip ? (trip.stops[si]?.name || key) : key;
-  gpsCoordsDB[key] = { lat: parsed.lat, lon: parsed.lon, name: stopName };
-  saveGpsCoordsDB();
-
-  // Mettre à jour l'input avec les coords normalisées
-  inp.value = `${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`;
-  inp.style.borderColor = 'rgba(39,174,96,.8)';
-  inp.style.background = 'rgba(39,174,96,.08)';
-
-  // Mettre à jour uniquement la ligne de cet arrêt dans le panneau
-  const row = document.getElementById(`gps-row-${si}`);
-  if(row) {
-    row.style.background = 'rgba(39,174,96,.08)';
-    row.style.border = '1px solid rgba(39,174,96,.3)';
-    const iconEl = row.querySelector('.gps-row-icon');
-    if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
-    // Ajouter le bouton 🗑 s'il est absent (cas d'un arrêt nouvellement enregistré)
-    if(!row.querySelector('button[onclick^="gpsStopsDeleteOne"]')) {
-      const topRow = row.querySelector('div[style*="display:flex"]');
-      if(topRow) {
-        const delBtn = document.createElement('button');
-        delBtn.onclick = () => gpsStopsDeleteOne(key, si);
-        delBtn.style.cssText = 'padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0';
-        delBtn.textContent = '🗑';
-        topRow.appendChild(delBtn);
-      }
-    }
-  }
-
-  const hint = document.getElementById(`gps-hint-${si}`);
-  if(hint) { hint.textContent = `✅ Enregistré — ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`; hint.style.color = 'var(--green)'; }
-
-  // Mettre à jour barre de progression + badge du trajet (sans reconstruire le panneau)
-  _gpsUpdateProgress();
-  _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
-  toast(`📍 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} enregistré`);
-}
-
-// ── [Legacy] Enregistrer depuis l'ancien système toggle ───────
-function gpsStopsSaveManual(key, editId) {
-  const inp = document.getElementById(editId + '-val');
-  if(!inp) return;
-  const raw = (inp.value || '').trim();
-  if(!raw) { toast('Entrez des coordonnées'); inp.focus(); return; }
-  const parsed = gpsParseCoords(raw);
-  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
-  gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
-}
-
-function gpsStopsDeleteOne(key, si) {
+function gpsStopsDeleteOne(key) {
   loadGpsCoordsDB();
   delete gpsCoordsDB[key];
   saveGpsCoordsDB();
-  const row = document.getElementById(`gps-row-${si}`);
-  if(row) {
-    row.style.background = 'rgba(255,255,255,.02)';
-    row.style.border = '1px solid var(--border)';
-    const iconEl = row.querySelector('.gps-row-icon');
-    if(iconEl) { iconEl.textContent = '⬜'; iconEl.style.color = 'var(--muted)'; }
-    const inp = document.getElementById(`gps-input-${si}-val`);
-    if(inp) {
-      inp.value = '';
-      inp.style.borderColor = 'rgba(255,193,7,.5)';
-      inp.style.background = 'rgba(255,193,7,.06)';
-    }
-    const hint = document.getElementById(`gps-hint-${si}`);
-    if(hint) hint.textContent = '';
-    const delBtn = row.querySelector('button[onclick^="gpsStopsDeleteOne"]');
-    if(delBtn) delBtn.remove();
-  }
-  _gpsUpdateProgress();
-  // Mettre à jour uniquement le badge (pas renderLineDetail qui détruit le panneau)
-  _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
+  renderGpsStopsPanel();
+  // Rafraîchir le badge dans la liste des trajets
+  renderLineDetail(gpsPanelLineIdx);
   toast('🗑 Point GPS supprimé');
 }
 
@@ -5322,40 +5026,43 @@ function buildTripFromRef(lineNum, refStops, direction) {
 
   const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
 
-  // Trouver le meilleur trajet en vérifiant l'ORDRE des arrêts INEO dans chaque trajet
-  // C'est la clé pour les trajets intermédiaires (ex: Cergy Le Haut → La Siaule sur la 1240)
+  // Détection automatique de la direction si non fournie
+  // On regarde si le 1er arrêt INEO correspond plutôt à un arrêt de début aller ou retour
+  let autoDirection = direction || 'aller';
+  if(dbLine.trips.length >= 2) {
+    const firstRefNorm = refNorm[0].norm;
+    const lastRefNorm  = refNorm[refNorm.length-1].norm;
+    let scoreAller = 0, scoreRetour = 0;
+    dbLine.trips.forEach(trip => {
+      const tripNorms = trip.stops.map(s => normalize(s.name));
+      // Chercher la position du 1er et dernier arrêt INEO dans ce trajet
+      const posFirst = tripNorms.findIndex(n => n.includes(firstRefNorm) || firstRefNorm.includes(n));
+      const posLast  = tripNorms.findIndex(n => n.includes(lastRefNorm)  || lastRefNorm.includes(n));
+      if(posFirst >= 0 && posLast >= 0 && posFirst < posLast) {
+        // L'ordre est cohérent avec ce trajet
+        if(trip.direction === 'aller') scoreAller += 10;
+        else scoreRetour += 10;
+      }
+      let matches = 0;
+      refNorm.forEach(ref => {
+        if(tripNorms.some(n => n.includes(ref.norm) || ref.norm.includes(n))) matches++;
+      });
+      if(trip.direction === 'aller') scoreAller += matches;
+      else scoreRetour += matches;
+    });
+    autoDirection = scoreRetour > scoreAller ? 'retour' : 'aller';
+  }
+
+  // Trouver le bon trajet dans la ligne
   let bestTrip = null, bestScore = -1;
   dbLine.trips.forEach(trip => {
-    const tripNorms = trip.stops.map(s => normalize(s.name));
-
-    // Compter les arrêts INEO trouvés dans ce trajet + vérifier l'ordre
-    let matchPositions = [];
+    let matches = 0;
     refNorm.forEach(ref => {
-      let bestIdx = -1, bestMatch = 0;
-      tripNorms.forEach((tn, idx) => {
-        const score = tn.includes(ref.norm) || ref.norm.includes(tn) ? Math.min(tn.length, ref.norm.length) : 0;
-        if(score > bestMatch) { bestMatch = score; bestIdx = idx; }
-      });
-      if(bestIdx >= 0 && bestMatch > 2) matchPositions.push(bestIdx);
+      if(trip.stops.some(s => normalize(s.name).includes(ref.norm) || ref.norm.includes(normalize(s.name)))) matches++;
     });
-
-    const matchCount = matchPositions.length;
-    if(matchCount === 0) return;
-
-    // Vérifier que les positions sont dans le bon ordre (arrêts se suivent dans le même sens)
-    let orderedCount = 0;
-    for(let k = 1; k < matchPositions.length; k++) {
-      if(matchPositions[k] > matchPositions[k-1]) orderedCount++;
-    }
-    const orderScore = matchPositions.length > 1 ? orderedCount / (matchPositions.length - 1) : 1;
-
-    // Score final : nb de matches * respect de l'ordre (poids fort sur l'ordre)
-    const score = matchCount * (1 + orderScore * 3);
-    if(score > bestScore) { bestScore = score; bestTrip = trip; }
+    if(trip.direction === autoDirection) matches += 100;
+    if(matches > bestScore) { bestScore = matches; bestTrip = trip; }
   });
-
-  // Direction déduite du trajet choisi
-  const autoDirection = bestTrip?.direction || direction || 'aller';
 
   const sourceTrip = bestTrip || dbLine.trips[0];
   if(!sourceTrip) return null;
@@ -6375,10 +6082,17 @@ function autoNextTrip() {
     roadmapCursor++;
     activateRoadmapTrip();
     const next = currentRoadmap[roadmapCursor];
-    toast(`⏭ Trajet suivant : ${next.label}`);
+    toast(`⏭ Trajet suivant automatique : ${next.label}`);
   } else {
-    // Pas de feuille ou dernier trajet → terminus complet
-    confirmTerminus();
+    // Pas de feuille ou dernier trajet → afficher bouton terminus
+    toast('🏁 Dernier arrêt atteint — tapez TERMINUS pour terminer');
+    const btn = document.getElementById('terminus-btn');
+    if(btn) {
+      btn.style.background = '#ffc107';
+      btn.style.color = '#000';
+      btn.style.animation = 'pulse 0.5s infinite';
+      btn.textContent = '🏁 TERMINUS';
+    }
   }
 }
 
@@ -6398,14 +6112,8 @@ function gpsForceNext() {
   gpsSession.push({ stopName: stop.name, planned: stop.time, actual: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, diff: diffMin, status, manual: true });
   saveGpsSession();
   gpsAutoNextIdx++;
-  activeTrip.validatedStopIdx = gpsAutoNextIdx;
   flashAutoDetect('⏭ ' + stop.name, diffMin, status);
-  if(gpsAutoNextIdx >= trip.stops.length) {
-    setTimeout(() => autoNextTrip(), 1500);
-  } else {
-    toast(`⏭ Arrêt suivant : ${trip.stops[gpsAutoNextIdx]?.name || 'Terminus'}`);
-  }
-  updateLive();
+  toast(`⏭ Arrêt suivant : ${trip.stops[gpsAutoNextIdx]?.name || 'Terminus'}`);
 }
 
 function flashAutoDetect(name, diff, status) {
@@ -6537,11 +6245,7 @@ function validateStopManual() {
     }
     return idx;
   })();
-  if(currentIdx >= trip.stops.length - 1) {
-    // Dernier arrêt — passer au trajet suivant si dispo, sinon terminus
-    autoNextTrip();
-    return;
-  }
+  if(currentIdx >= trip.stops.length - 1) { confirmTerminus(); return; }
   activeTrip.validatedStopIdx = currentIdx + 1;
   gpsAutoNextIdx = activeTrip.validatedStopIdx;
   const passedStop = trip.stops[currentIdx];
@@ -7590,31 +7294,29 @@ function buildMapId(lineNum, dir, tripIdx) {
   const sensMap = { aller: 'A', retour: 'R' };
   const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
 
-  // tripIdx est TOUJOURS inclus pour garantir l'unicite absolue entre trajets
-  const tIdx = (tripIdx !== undefined && tripIdx !== null) ? tripIdx : 0;
-
-  // Terminus du trajet (pour lisibilite de la cle uniquement)
+  // Chercher le dernier arrêt du trajet dans la DB
   let terminus = '';
   try {
     const line = db.lines.find(l => String(l.num) === String(lineNum));
-    if(line) {
-      const trip = line.trips?.[tIdx];
+    if(line && tripIdx !== undefined && tripIdx !== null) {
+      const trip = line.trips?.[tripIdx];
       if(trip && trip.stops && trip.stops.length > 0) {
         terminus = trip.stops[trip.stops.length - 1].name || '';
       }
     }
+    // Normaliser : supprimer accents, remplacer espaces/tirets/points par _
     if(terminus) {
       terminus = terminus
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .substring(0, 20);
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accents
+        .replace(/[^a-zA-Z0-9]+/g, '_')                  // tout ce qui n'est pas alphanum
+        .replace(/^_+|_+$/g, '')                          // underscores en début/fin
+        .substring(0, 30);                                // max 30 chars
     }
   } catch(e) {}
 
-  // Format : lineNum_sens_tN_Terminus (tripIdx garantit l'unicite)
-  if(terminus) return lineNum + '_' + sens + '_t' + tIdx + '_' + terminus;
-  return lineNum + '_' + sens + '_t' + tIdx;
+  if(terminus) return `${lineNum}_${sens}_${terminus}`;
+  // Fallback si terminus indisponible : format avec tripIdx
+  return `${lineNum}_${sens}_t${tripIdx !== undefined && tripIdx !== null ? tripIdx : 0}`;
 }
 
 function traceLibraryLoad() {
@@ -7626,49 +7328,36 @@ function traceLibrarySave(lib) {
 function traceLibraryHas(key) {
   const lib = traceLibraryLoad();
   if(lib[key]) return true;
-  // Fallback PRELOADED_TRACES : cle legacy lineNum_dir
+  // Fallback PRELOADED_TRACES : clé legacy lineNum_dir (sans tripIdx)
   const parts = key.split('_');
   const num = parts[0];
-  // Extraire le sens depuis la cle (format lineNum_sens_tN ou lineNum_sens_tN_Terminus)
-  const sens = parts[1] || '';
-  const dirMap = { A: 'aller', R: 'retour' };
-  const dir = dirMap[sens] || sens.toLowerCase();
+  const dir = parts[parts.length - 1];
   return !!PRELOADED_TRACES?.[num]?.[dir];
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  const tIdx = (tripIdx !== undefined && tripIdx !== null) ? tripIdx : 0;
 
-  // 1. Nouveau format avec tripIdx dans la cle (garantit l'unicite)
-  const mapId = buildMapId(lineNum, dir, tIdx);
-  if(lib[mapId]) return lib[mapId];
-
-  // 2. Legacy v2 : lineNum_tripIdx_dir — compatibilite descendante
-  const keyLegacyV2 = lineNum + '_' + tIdx + '_' + dir;
-  if(lib[keyLegacyV2]) return lib[keyLegacyV2];
-
-  // 3. Legacy v1 : lineNum_dir sans tripIdx
-  //    UNIQUEMENT pour le trajet 0 (evite le partage entre trajets)
-  if(tIdx === 0) {
-    const keyLegacyV1 = lineNum + '_' + dir;
-    if(lib[keyLegacyV1]) return lib[keyLegacyV1];
+  // 1. MapID unique Ligne_Sens_Terminus (nouvelle logique) : priorité absolue
+  if(tripIdx !== undefined && tripIdx !== null) {
+    const mapId = buildMapId(lineNum, dir, tripIdx);
+    if(lib[mapId]) return lib[mapId];
   }
 
-  // 4. Ancien format MapID sans tripIdx dans la cle (ex: 1201_A_GareCergy)
-  //    Chercher une cle qui correspond a lineNum + sens mais PAS au nouveau format
-  //    Uniquement pour tripIdx 0 pour eviter le partage
-  if(tIdx === 0) {
-    const sensMap = { aller: 'A', retour: 'R' };
-    const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
-    const oldPrefix = lineNum + '_' + sens + '_';
-    const oldKey = Object.keys(lib).find(k =>
-      k.startsWith(oldPrefix) && !k.match(/_t\d+/)
-    );
-    if(oldKey) return lib[oldKey];
+  // 2. Clé précise tripIdx (format legacy v2) : compatibilité descendante
+  if(tripIdx !== undefined && tripIdx !== null) {
+    const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
+    if(lib[keyPrecise]) return lib[keyPrecise];
   }
 
-  // 5. Traces pre-charges — seulement tripIdx 0
-  if(tIdx === 0) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
+  // 3. Fallback legacy lineNum_dir UNIQUEMENT si tripIdx est 0 ou non fourni
+  //    → évite que la variante 2 charge la carte de la variante 0
+  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) {
+    const keyLegacy = `${lineNum}_${dir}`;
+    if(lib[keyLegacy]) return lib[keyLegacy];
+  }
+
+  // 4. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
+  if(!tripIdx) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
   return null;
 }
 function traceLibrarySet(lineNum, dir, points, tripIdx) {
@@ -8625,9 +8314,6 @@ function liveMapRefresh() {
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
 
-  // Recharger la DB GPS depuis localStorage (peut avoir été mise à jour depuis le panneau)
-  loadGpsCoordsDB();
-
   // Collecter les coordonnées GPS des arrêts
   const stopPoints = [];
   trip.stops.forEach((stop, idx) => {
@@ -8636,8 +8322,7 @@ function liveMapRefresh() {
     if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
   });
 
-  // Afficher les marqueurs même s'il n'y a qu'un seul point enregistré
-  if(stopPoints.length === 0) return;
+  if(stopPoints.length < 2) return;
 
   // ── Dessiner les marqueurs d'arrêts ──────────────────────────
   function drawStopMarkers() {
@@ -8661,16 +8346,6 @@ function liveMapRefresh() {
     });
   }
 
-  // ── Helper : centrer la carte sur les points disponibles ──────
-  function fitToPoints() {
-    if(stopPoints.length === 1) {
-      liveMap.setView([stopPoints[0].lat, stopPoints[0].lon], 16);
-    } else if(stopPoints.length >= 2) {
-      const latLngs = stopPoints.map(sp => [sp.lat, sp.lon]);
-      liveMap.fitBounds(L.latLngBounds(latLngs), {padding: [24, 24]});
-    }
-  }
-
   // ── Tracé : bibliothèque locale en priorité, sinon OSRM ──────
   const kmlTrace = traceLibraryGet(line.num, activeTrip.direction || (line.trips[activeTrip.tripIdx]?.direction) || 'aller', activeTrip.tripIdx);
 
@@ -8686,14 +8361,7 @@ function liveMapRefresh() {
     return;
   }
 
-  // Avec un seul point : juste centrer + marqueur, pas de polyline/OSRM
-  if(stopPoints.length === 1) {
-    fitToPoints();
-    drawStopMarkers();
-    return;
-  }
-
-  // Pas de KML → fallback OSRM (seulement si ≥ 2 points)
+  // Pas de KML → fallback OSRM
   const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
   const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
 
@@ -8704,7 +8372,8 @@ function liveMapRefresh() {
     opacity: 0.4,
     dashArray: '8 6'
   }).addTo(liveMap);
-  fitToPoints();
+  liveMap.fitBounds(provisoire.getBounds(), {padding: [24, 24]});
+
   drawStopMarkers();
 
   // Appel OSRM
@@ -8714,4 +8383,103 @@ function liveMapRefresh() {
       if(!data.routes || !data.routes[0]) throw new Error('Pas de route OSRM');
       const geom = data.routes[0].geometry.coordinates;
       const latLngs = geom.map(c => [c[1], c[0]]);
-      liveMap.removeLaye
+
+      liveMap.removeLayer(provisoire);
+
+      // Tracer la vraie route
+      liveMapPolyline = L.polyline(latLngs, {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.9
+      }).addTo(liveMap);
+
+      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
+      toast('🗺 Tracé réaliste chargé');
+    })
+    .catch(err => {
+      // Fallback : garder la polyline provisoire comme définitive
+      liveMap.removeLayer(provisoire);
+      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.85
+      }).addTo(liveMap);
+      console.warn('OSRM indisponible, tracé droit utilisé :', err.message);
+    });
+}
+
+function liveMapUpdateBus() {
+  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
+
+  // Icône bus
+  const busIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;
+           background:#00d4ff;border:3px solid #fff;
+           display:flex;align-items:center;justify-content:center;
+           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  if(liveMapBusMarker) {
+    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
+  } else {
+    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
+      .addTo(liveMap);
+  }
+
+  // Mettre à jour les couleurs des pastilles
+  liveMapRefreshStopColors();
+}
+
+function liveMapRefreshStopColors() {
+  if(!activeTrip || !liveMap) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  liveMapStopMarkers.forEach((marker, idx) => {
+    const stop = trip.stops[idx];
+    if(!stop) return;
+    const isCurrent = idx === gpsAutoNextIdx;
+    const isPassed  = idx < gpsAutoNextIdx;
+    const isRef     = stop.isRef;
+    const size  = isCurrent ? 16 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
+    const border = isCurrent ? '#fff' : '#333';
+    marker.setIcon(L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    }));
+  });
+}
+
+// ══ BOOT ═════════════════════════════════════════════════════
+// Recalibrer la carte Leaflet lors d'un changement d'orientation
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
+screen.orientation?.addEventListener('change', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
+initTheme();
+initDB();
+applyLiveMode();
+
+installPreloadedGPS();
+updateClock();
+setInterval(updateClock, 1000);
+requestWakeLock();
+gdriveInit();
+</script>
+</body>
+</html>
