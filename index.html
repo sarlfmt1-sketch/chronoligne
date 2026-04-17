@@ -1543,6 +1543,129 @@ function installPreloadedGPS() {
   if(added > 0) { saveGpsCoordsDB(); console.log(`GPS: ${added} arrêts préchargés`); }
 }
 
+
+// ══ INDEXEDDB — COUCHE DE STOCKAGE PERMANENT (~100 Mo) ════════
+// Remplace localStorage pour tous les stores applicatifs.
+// API synchrone simulée via un cache mémoire chargé au boot.
+// Chaque écriture met à jour le cache ET IndexedDB en arrière-plan.
+const IDB_NAME    = 'ChronoligneDB';
+const IDB_VERSION = 1;
+const IDB_STORE   = 'keyval';
+
+let _idb = null;          // instance IDBDatabase
+let _idbCache = {};       // cache mémoire — miroir d'IndexedDB
+let _idbReady = false;    // true une fois le chargement initial terminé
+
+// Ouvrir / créer la base IndexedDB
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror   = e => { console.error('IDB open error', e); reject(e); };
+  });
+}
+
+// Charger TOUTES les entrées dans le cache mémoire
+function idbLoadAll() {
+  return new Promise((resolve, reject) => {
+    const tx = _idb.transaction(IDB_STORE, 'readonly');
+    const store = tx.objectStore(IDB_STORE);
+    const req = store.getAllKeys();
+    req.onsuccess = () => {
+      const keys = req.result;
+      if(!keys.length) { resolve(); return; }
+      let done = 0;
+      keys.forEach(k => {
+        const r = store.get(k);
+        r.onsuccess = () => {
+          _idbCache[k] = r.result;
+          if(++done === keys.length) resolve();
+        };
+        r.onerror = () => { if(++done === keys.length) resolve(); };
+      });
+    };
+    req.onerror = () => resolve();
+  });
+}
+
+// Lire depuis le cache (synchrone)
+function idbGet(key) {
+  return _idbCache[key] !== undefined ? _idbCache[key] : null;
+}
+
+// Écrire dans le cache ET dans IndexedDB (arrière-plan)
+function idbSet(key, value) {
+  _idbCache[key] = value;
+  if(!_idb) return;
+  try {
+    const tx = _idb.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+  } catch(e) { console.warn('IDB write error', key, e); }
+}
+
+// Supprimer
+function idbDel(key) {
+  delete _idbCache[key];
+  if(!_idb) return;
+  try {
+    const tx = _idb.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+  } catch(e) {}
+}
+
+// ── Migration unique localStorage → IndexedDB ────────────────
+function idbMigrateFromLocalStorage() {
+  const KEYS = [
+    'chronoligne_v2','chronoligne_roadmaps',
+    'chronoligne_gps_coords','chronoligne_gps_sessions',
+    'chronoligne_prime_sessions','chronoligne_planning',
+    'chronoligne_intervals','chronoligne_traces',
+    'chronoligne_theme','chronoligne_livemode',
+    'chronoligne_trips_version','chronoligne_gdrive_fid'
+  ];
+  let migrated = 0;
+  KEYS.forEach(k => {
+    const v = localStorage.getItem(k);
+    if(v !== null && _idbCache[k] === undefined) {
+      idbSet(k, v);
+      migrated++;
+    }
+  });
+  if(migrated > 0) {
+    console.log(`IDB: ${migrated} clé(s) migrée(s) depuis localStorage`);
+    // Nettoyer localStorage après migration réussie
+    setTimeout(() => { KEYS.forEach(k => localStorage.removeItem(k)); }, 2000);
+  }
+}
+
+// ── Boot asynchrone : ouvrir IDB, charger le cache, puis démarrer l'app ──
+async function idbBoot() {
+  try {
+    await idbOpen();
+    await idbLoadAll();
+    idbMigrateFromLocalStorage();
+    _idbReady = true;
+  } catch(e) {
+    console.error('IDB boot failed, fallback localStorage', e);
+    _idbReady = true; // continuer quand même
+  }
+  // Démarrer l'application
+  initTheme();
+  initDB();
+  applyLiveMode();
+  installPreloadedGPS();
+  updateClock();
+  setInterval(updateClock, 1000);
+  requestWakeLock();
+  gdriveInit();
+}
+
 const STORAGE_KEY = 'chronoligne_v2';
 const ROADMAP_KEY = 'chronoligne_roadmaps';
 
@@ -3165,7 +3288,7 @@ const PRELOADED_TRIPS = {
 
 // ══ DB ════════════════════════════════════════════════════════
 function initDB() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = idbGet(STORAGE_KEY);
   if(saved) {
     try { db = JSON.parse(saved); } catch(e) {}
     while(db.lines.length < REAL_LINES.length) {
@@ -3179,7 +3302,7 @@ function initDB() {
 
   // Version de purge : force la réinitialisation des trips au premier chargement
   const TRIPS_VERSION = 'v7_with_1206_variants';
-  const storedVersion = localStorage.getItem('chronoligne_trips_version');
+  const storedVersion = idbGet('chronoligne_trips_version');
   const needsPurge = storedVersion !== TRIPS_VERSION;
 
   // Charger uniquement les 2 trajets officiels par ligne (aller + retour)
@@ -3199,12 +3322,12 @@ function initDB() {
       line.trips = [];
     }
   });
-  if(needsPurge) localStorage.setItem('chronoligne_trips_version', TRIPS_VERSION);
+  if(needsPurge) idbSet('chronoligne_trips_version', TRIPS_VERSION);
   saveDB();
   installPreloadedServices();
 }
 
-function saveDB() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+function saveDB() { idbSet(STORAGE_KEY, JSON.stringify(db)); }
 
 // ══ NAV ══════════════════════════════════════════════════════
 function showView(id) {
@@ -3623,11 +3746,11 @@ function updateLive() {
   }
 }
 // ── Toggle Mode CLASSIQUE / INEO ─────────────────
-let liveMode = localStorage.getItem('chronoligne_livemode') || 'classique';
+let liveMode = idbGet('chronoligne_livemode') || 'classique';
 
 function toggleLiveMode() {
   liveMode = liveMode === 'classique' ? 'ineo' : 'classique';
-  localStorage.setItem('chronoligne_livemode', liveMode);
+  idbSet('chronoligne_livemode', liveMode);
   applyLiveMode();
 }
 
@@ -3956,26 +4079,212 @@ function renderGpsStopsPanel() {
       ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
       : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
     const delBtn = hasGps
-      ? `<button onclick="gpsStopsDeleteOne('${key}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
+      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:4px 8px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">🗑</button>`
       : '';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${bg};border:${border}">
-      <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
-      <span style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
-        ${coordText}
+    // Bouton saisie manuelle — bascule l'input inline
+    const editId = `gps-input-${si}`;
+    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
+      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
+             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
+      title="Saisir coordonnées manuellement">✏</button>`;
+
+    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+        <span class="gps-row-icon" style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div class="gps-row-coord">${coordText}</div>
+        </div>
+        ${editBtn}
+        ${delBtn}
       </div>
-      ${delBtn}
+      <!-- Champ saisie manuelle — caché par défaut -->
+      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
+          COORDONNÉES GPS — Collez ou saisissez : lat, lon
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="${editId}-val"
+            inputmode="decimal"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            placeholder="49.02665, 1.97432"
+            style="flex:1;padding:10px 10px;font-size:14px;font-family:monospace;border-radius:8px;
+                   border:2px solid rgba(255,193,7,.6);background:rgba(255,193,7,.08);color:var(--text);
+                   -webkit-user-select:text;user-select:text;touch-action:manipulation"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();gpsStopsSaveManual('${key}','${editId}')}"
+            oninput="gpsStopsAutoSave('${key}','${editId}',this.value)"
+            onpaste="setTimeout(()=>{const v=document.getElementById('${editId}-val').value;gpsStopsAutoSave('${key}','${editId}',v)},30)">
+          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
+            style="padding:10px 14px;background:rgba(39,174,96,.2);border:1px solid var(--green);
+                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;flex-shrink:0;
+                   touch-action:manipulation">
+            ✓
+          </button>
+        </div>
+        <div id="${editId}-hint" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px"></div>
+      </div>
     </div>`;
   }).join('');
 }
 
-function gpsStopsDeleteOne(key) {
+// ── Basculer l'affichage du champ de saisie manuelle ─────────
+function gpsStopsToggleInput(editId) {
+  const el = document.getElementById(editId);
+  if(!el) return;
+  const isOpen = el.style.display !== 'none';
+  // Fermer tous les autres champs ouverts
+  document.querySelectorAll('[id^="gps-input-"]').forEach(e => e.style.display = 'none');
+  if(!isOpen) {
+    el.style.display = 'block';
+    const inp = document.getElementById(editId + '-val');
+    if(inp) {
+      inp.value = '';
+      document.getElementById(editId + '-hint').textContent = '';
+      inp.removeAttribute('readonly');
+      // Focus robuste mobile — plusieurs tentatives espacées
+      inp.focus();
+      setTimeout(() => { inp.focus(); inp.click(); }, 80);
+      setTimeout(() => { inp.focus(); }, 300);
+    }
+  }
+}
+
+// ── Aperçu en temps réel pendant la saisie / collage ─────────
+function gpsStopsAutoSave(key, editId, rawVal) {
+  const hint = document.getElementById(editId + '-hint');
+  if(!hint) return;
+  const raw = (rawVal || '').trim();
+  if(!raw) { hint.textContent = ''; hint.style.color = 'var(--muted)'; return; }
+
+  const parsed = gpsParseCoords(raw);
+  if(!parsed) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; return; }
+
+  hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie ✓`;
+  hint.style.color = 'var(--green)';
+
+  // Sauvegarde automatique immédiate si les coords sont valides
+  // (évite d'avoir à appuyer sur ✓ après un collage)
+  gpsStoreCoord(key, parsed.lat, parsed.lon, editId, false);
+}
+
+// ── Parser universel de coordonnées GPS ──────────────────────
+// Accepte : "49.02665, 1.97432" / "49.02665 1.97432" / "(49.02665,1.97432)"
+// Aussi le format Maps : "49.02665202072263, 1.9743218893309282"
+function gpsParseCoords(raw) {
+  const clean = raw.replace(/[()[\]]/g, '').trim();
+  const parts = clean.split(/[,\s]+/).filter(Boolean);
+  if(parts.length < 2) return null;
+  const lat = parseFloat(parts[0].replace(',', '.'));
+  const lon = parseFloat(parts[1].replace(',', '.'));
+  if(isNaN(lat) || isNaN(lon)) return null;
+  if(lat < -90 || lat > 90)   return null;
+  if(lon < -180 || lon > 180) return null;
+  return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
+}
+
+// ── Stocker les coords sans re-render du panneau ─────────────
+function gpsStoreCoord(key, lat, lon, editId, doClose) {
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line?.trips?.[gpsPanelTripIdx];
+  const si = parseInt(key.split('_').pop());
+  const stopName = trip ? (trip.stops[si]?.name || key) : key;
+  gpsCoordsDB[key] = { lat, lon, name: stopName };
+  saveGpsCoordsDB();
+
+  if(doClose) {
+    // Fermer le champ d'édition pour CET arrêt uniquement
+    const editEl = document.getElementById(editId);
+    if(editEl) editEl.style.display = 'none';
+    // Mettre à jour uniquement la ligne de cet arrêt (pas tout le panneau)
+    gpsStopsUpdateRow(key, si, lat, lon);
+    // Rafraîchir le badge dans la liste des trajets (léger)
+    renderLineDetail(gpsPanelLineIdx);
+    toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
+  } else {
+    // Mise à jour silencieuse (preview) — pas de toast, pas de fermeture
+    gpsStopsUpdateRow(key, si, lat, lon);
+  }
+}
+
+// ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
+function gpsStopsUpdateRow(key, si, lat, lon) {
+  const num = String(si+1).padStart(2,'0');
+  const rowId = `gps-row-${si}`;
+  const row = document.getElementById(rowId);
+  if(!row) return;
+  // Mettre à jour l'icône et les coordonnées affichées
+  const iconEl = row.querySelector('.gps-row-icon');
+  const coordEl = row.querySelector('.gps-row-coord');
+  if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
+  if(coordEl) coordEl.innerHTML = `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>`;
+  row.style.background = 'rgba(39,174,96,.08)';
+  row.style.border = '1px solid rgba(39,174,96,.3)';
+  // Mettre à jour la barre de progression
+  _gpsUpdateProgress();
+}
+
+function _gpsUpdateProgress() {
+  if(gpsPanelLineIdx < 0) return;
+  loadGpsCoordsDB();
+  const line = db.lines[gpsPanelLineIdx];
+  const trip = line?.trips?.[gpsPanelTripIdx];
+  if(!trip) return;
+  let recorded = 0;
+  trip.stops.forEach((s, si) => {
+    if(gpsCoordsDB[gpsCoordKey(line.num, gpsPanelTripIdx, si)]) recorded++;
+  });
+  const total = trip.stops.length;
+  const pct = Math.round(recorded / total * 100);
+  const pColor = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : pct > 0 ? 'orange' : 'var(--red)';
+  const progEl = document.getElementById('gps-stops-prog');
+  if(progEl) { progEl.style.width = pct + '%'; progEl.style.background = pColor; }
+  const hdrEl = document.getElementById('gps-stops-panel-header');
+  if(hdrEl) {
+    const col = line.color || '#00d4ff';
+    hdrEl.innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px">${line.num}</span>`+
+      `<strong>${trip.label}</strong><br>`+
+      `<span style="color:${pColor};font-weight:700">${recorded}/${total} arrêts avec GPS (${pct}%)</span>`;
+  }
+}
+
+// Accepte tous ces formats :
+//   49.02665202072263, 1.9743218893309282   (virgule + espace)
+//   49.02665202072263 1.9743218893309282    (espace seul)
+//   49.02665,1.97432                        (virgule sans espace)
+//   49.052621 2.022193                      (déjà court)
+//   (49.052621, 2.022193)                   (parenthèses)
+function gpsStopsSaveManual(key, editId) {
+  const inp = document.getElementById(editId + '-val');
+  if(!inp) return;
+  const raw = (inp.value || '').trim();
+  if(!raw) { toast('Entrez des coordonnées'); inp.focus(); return; }
+
+  const parsed = gpsParseCoords(raw);
+  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
+
+  gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
+}
+
+function gpsStopsDeleteOne(key, si) {
   loadGpsCoordsDB();
   delete gpsCoordsDB[key];
   saveGpsCoordsDB();
-  renderGpsStopsPanel();
-  // Rafraîchir le badge dans la liste des trajets
+  // Mettre à jour uniquement la ligne concernée
+  const row = document.getElementById(`gps-row-${si}`);
+  if(row) {
+    row.style.background = 'rgba(255,255,255,.02)';
+    row.style.border = '1px solid var(--border)';
+    const iconEl = row.querySelector('.gps-row-icon');
+    const coordEl = row.querySelector('.gps-row-coord');
+    if(iconEl) { iconEl.textContent = '⬜'; iconEl.style.color = 'var(--muted)'; }
+    if(coordEl) coordEl.innerHTML = `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
+    // Cacher le bouton 🗑 et laisser le ✏
+    const delBtn = row.querySelector('button[onclick^="gpsStopsDeleteOne"]');
+    if(delBtn) delBtn.remove();
+  }
+  _gpsUpdateProgress();
   renderLineDetail(gpsPanelLineIdx);
   toast('🗑 Point GPS supprimé');
 }
@@ -4125,8 +4434,8 @@ function reloadOfficialTrips() {
 
 function resetAll() {
   if(!confirm('Supprimer toutes les données ?')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(ROADMAP_KEY);
+  idbDel(STORAGE_KEY);
+  idbDel(ROADMAP_KEY);
   initDB(); activeTrip=null; activeLine=null;
   toast('Réinitialisé ✓');
 }
@@ -4144,7 +4453,7 @@ function intervalsKey(lineNum, tripLabel, stopName) {
 }
 
 function loadSavedIntervals() {
-  try { return JSON.parse(localStorage.getItem(INTERVALS_KEY)||'{}'); } catch(e) { return {}; }
+  try { return JSON.parse(idbGet(INTERVALS_KEY)||'{}'); } catch(e) { return {}; }
 }
 
 function saveStopIntervals(lineNum, tripLabel, stops) {
@@ -4154,7 +4463,7 @@ function saveStopIntervals(lineNum, tripLabel, stops) {
       db_int[intervalsKey(lineNum, tripLabel, s.name)] = s.intervalAfter;
     }
   });
-  localStorage.setItem(INTERVALS_KEY, JSON.stringify(db_int));
+  idbSet(INTERVALS_KEY, JSON.stringify(db_int));
 }
 
 function applyStoredIntervals(lineNum, tripLabel, stops) {
@@ -4323,13 +4632,13 @@ function deleteEditorTrip() {
 // ══ FEUILLES DE SERVICE ═══════════════════════════════════════
 function loadRoadmapServices() {
   try {
-    const s = localStorage.getItem(ROADMAP_KEY);
+    const s = idbGet(ROADMAP_KEY);
     roadmapServices = s ? JSON.parse(s) : [];
   } catch(e) { roadmapServices = []; }
 }
 
 function saveRoadmapServices() {
-  localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapServices));
+  idbSet(ROADMAP_KEY, JSON.stringify(roadmapServices));
 }
 
 function renderRoadmapView() {
@@ -5026,43 +5335,40 @@ function buildTripFromRef(lineNum, refStops, direction) {
 
   const refNorm = refStops.map(r => ({ ...r, norm: normalize(r.name) }));
 
-  // Détection automatique de la direction si non fournie
-  // On regarde si le 1er arrêt INEO correspond plutôt à un arrêt de début aller ou retour
-  let autoDirection = direction || 'aller';
-  if(dbLine.trips.length >= 2) {
-    const firstRefNorm = refNorm[0].norm;
-    const lastRefNorm  = refNorm[refNorm.length-1].norm;
-    let scoreAller = 0, scoreRetour = 0;
-    dbLine.trips.forEach(trip => {
-      const tripNorms = trip.stops.map(s => normalize(s.name));
-      // Chercher la position du 1er et dernier arrêt INEO dans ce trajet
-      const posFirst = tripNorms.findIndex(n => n.includes(firstRefNorm) || firstRefNorm.includes(n));
-      const posLast  = tripNorms.findIndex(n => n.includes(lastRefNorm)  || lastRefNorm.includes(n));
-      if(posFirst >= 0 && posLast >= 0 && posFirst < posLast) {
-        // L'ordre est cohérent avec ce trajet
-        if(trip.direction === 'aller') scoreAller += 10;
-        else scoreRetour += 10;
-      }
-      let matches = 0;
-      refNorm.forEach(ref => {
-        if(tripNorms.some(n => n.includes(ref.norm) || ref.norm.includes(n))) matches++;
-      });
-      if(trip.direction === 'aller') scoreAller += matches;
-      else scoreRetour += matches;
-    });
-    autoDirection = scoreRetour > scoreAller ? 'retour' : 'aller';
-  }
-
-  // Trouver le bon trajet dans la ligne
+  // Trouver le meilleur trajet en vérifiant l'ORDRE des arrêts INEO dans chaque trajet
+  // C'est la clé pour les trajets intermédiaires (ex: Cergy Le Haut → La Siaule sur la 1240)
   let bestTrip = null, bestScore = -1;
   dbLine.trips.forEach(trip => {
-    let matches = 0;
+    const tripNorms = trip.stops.map(s => normalize(s.name));
+
+    // Compter les arrêts INEO trouvés dans ce trajet + vérifier l'ordre
+    let matchPositions = [];
     refNorm.forEach(ref => {
-      if(trip.stops.some(s => normalize(s.name).includes(ref.norm) || ref.norm.includes(normalize(s.name)))) matches++;
+      let bestIdx = -1, bestMatch = 0;
+      tripNorms.forEach((tn, idx) => {
+        const score = tn.includes(ref.norm) || ref.norm.includes(tn) ? Math.min(tn.length, ref.norm.length) : 0;
+        if(score > bestMatch) { bestMatch = score; bestIdx = idx; }
+      });
+      if(bestIdx >= 0 && bestMatch > 2) matchPositions.push(bestIdx);
     });
-    if(trip.direction === autoDirection) matches += 100;
-    if(matches > bestScore) { bestScore = matches; bestTrip = trip; }
+
+    const matchCount = matchPositions.length;
+    if(matchCount === 0) return;
+
+    // Vérifier que les positions sont dans le bon ordre (arrêts se suivent dans le même sens)
+    let orderedCount = 0;
+    for(let k = 1; k < matchPositions.length; k++) {
+      if(matchPositions[k] > matchPositions[k-1]) orderedCount++;
+    }
+    const orderScore = matchPositions.length > 1 ? orderedCount / (matchPositions.length - 1) : 1;
+
+    // Score final : nb de matches * respect de l'ordre (poids fort sur l'ordre)
+    const score = matchCount * (1 + orderScore * 3);
+    if(score > bestScore) { bestScore = score; bestTrip = trip; }
   });
+
+  // Direction déduite du trajet choisi
+  const autoDirection = bestTrip?.direction || direction || 'aller';
 
   const sourceTrip = bestTrip || dbLine.trips[0];
   if(!sourceTrip) return null;
@@ -5614,9 +5920,9 @@ function gpsUpdatePrediction(coords) {
 }
 
 function loadGpsCoordsDB() {
-  try { gpsCoordsDB = JSON.parse(localStorage.getItem(GPS_COORDS_KEY)||'{}'); } catch(e) { gpsCoordsDB = {}; }
+  try { gpsCoordsDB = JSON.parse(idbGet(GPS_COORDS_KEY)||'{}'); } catch(e) { gpsCoordsDB = {}; }
 }
-function saveGpsCoordsDB() { localStorage.setItem(GPS_COORDS_KEY, JSON.stringify(gpsCoordsDB)); }
+function saveGpsCoordsDB() { idbSet(GPS_COORDS_KEY, JSON.stringify(gpsCoordsDB)); }
 
 function gpsCoordKey(lineNum, tripIdx, stopIdx) { return `${lineNum}_${tripIdx}_${stopIdx}`; }
 
@@ -6148,7 +6454,7 @@ function flashAutoDetect(name, diff, status) {
 
 function saveGpsSession() {
   try {
-    const sessions = JSON.parse(localStorage.getItem(GPS_SESSIONS_KEY)||'[]');
+    const sessions = JSON.parse(idbGet(GPS_SESSIONS_KEY)||'[]');
     const today = new Date().toISOString().split('T')[0];
     if(!activeTrip) return;
     const line = db.lines[activeTrip.lineIdx];
@@ -6160,7 +6466,7 @@ function saveGpsSession() {
     // Garder max 90 jours
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-90);
     const filtered = sessions.filter(s => new Date(s.date)>=cutoff);
-    localStorage.setItem(GPS_SESSIONS_KEY, JSON.stringify(filtered));
+    idbSet(GPS_SESSIONS_KEY, JSON.stringify(filtered));
   } catch(e) {}
 }
 
@@ -6192,10 +6498,10 @@ function stopGpsAuto() {
 function savePrimeSession(counts, total) {
   try {
     const key = 'chronoligne_prime_sessions';
-    const sessions = JSON.parse(localStorage.getItem(key)||'[]');
+    const sessions = JSON.parse(idbGet(key)||'[]');
     const today = new Date().toISOString().split('T')[0];
     sessions.push({ date:today, counts, total });
-    localStorage.setItem(key, JSON.stringify(sessions));
+    idbSet(key, JSON.stringify(sessions));
   } catch(e) {}
 }
 
@@ -7320,10 +7626,10 @@ function buildMapId(lineNum, dir, tripIdx) {
 }
 
 function traceLibraryLoad() {
-  try { return JSON.parse(localStorage.getItem(TRACE_LIBRARY_KEY) || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(idbGet(TRACE_LIBRARY_KEY) || '{}'); } catch(e) { return {}; }
 }
 function traceLibrarySave(lib) {
-  localStorage.setItem(TRACE_LIBRARY_KEY, JSON.stringify(lib));
+  idbSet(TRACE_LIBRARY_KEY, JSON.stringify(lib));
 }
 function traceLibraryHas(key) {
   const lib = traceLibraryLoad();
@@ -7649,7 +7955,7 @@ function traceLibraryDeleteConfirm(lineNum, dir, lineIdx, tripIdx) {
 
 // ══ THÈME CLAIR / SOMBRE ═════════════════════════════════════
 function initTheme() {
-  const saved = localStorage.getItem('chronoligne_theme') || 'dark';
+  const saved = idbGet('chronoligne_theme') || 'dark';
   applyTheme(saved);
 }
 
@@ -7662,7 +7968,7 @@ function applyTheme(theme) {
     document.documentElement.classList.remove('light');
     if(btn) btn.textContent = '🌙';
   }
-  localStorage.setItem('chronoligne_theme', theme);
+  idbSet('chronoligne_theme', theme);
 }
 
 function toggleTheme() {
@@ -7728,7 +8034,7 @@ const GDRIVE_KEYS = [
 let gdriveToken = null;
 let gdriveAutoSyncOn = false;
 let gdriveAutoTimer = null;
-let gdriveFileId = localStorage.getItem('chronoligne_gdrive_fid') || null;
+let gdriveFileId = idbGet('chronoligne_gdrive_fid') || null;
 
 function gdriveSignIn() {
   if(typeof google === 'undefined') {
@@ -7767,7 +8073,7 @@ function gdriveCheckFile() {
   }).then(r => r.json()).then(data => {
     if(data.files && data.files.length > 0) {
       gdriveFileId = data.files[0].id;
-      localStorage.setItem('chronoligne_gdrive_fid', gdriveFileId);
+      idbSet('chronoligne_gdrive_fid', gdriveFileId);
       const modif = new Date(data.files[0].modifiedTime).toLocaleString('fr-FR');
       if(confirm(`☁️ Sauvegarde trouvée sur Drive (${modif})\n\nCharger sur cet appareil ?`)) {
         gdriveLoad();
@@ -7778,7 +8084,7 @@ function gdriveCheckFile() {
 
 function gdriveCollect() {
   const data = {};
-  GDRIVE_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
+  GDRIVE_KEYS.forEach(k => { const v = idbGet(k); if(v) data[k] = v; });
   data._savedAt = new Date().toISOString();
   data._device  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '💻 PC';
   return data;
@@ -7801,7 +8107,7 @@ async function gdriveSave() {
     const json = await res.json();
     if(json.error) throw new Error(json.error.message);
     gdriveFileId = json.id;
-    localStorage.setItem('chronoligne_gdrive_fid', gdriveFileId);
+    idbSet('chronoligne_gdrive_fid', gdriveFileId);
     const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const el = document.getElementById('gdrive-last-sync');
     if(el) el.innerHTML = `☁️ Sauvegardé à ${now}`;
@@ -7821,7 +8127,7 @@ async function gdriveLoad() {
     const data = await res.json();
     if(data.error) throw new Error(data.error.message);
     let count = 0;
-    GDRIVE_KEYS.forEach(k => { if(data[k]) { localStorage.setItem(k, data[k]); count++; } });
+    GDRIVE_KEYS.forEach(k => { if(data[k]) { idbSet(k, data[k]); count++; } });
     const device  = data._device  || '';
     const savedAt = data._savedAt ? new Date(data._savedAt).toLocaleString('fr-FR') : '';
     const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -7884,9 +8190,9 @@ const JOUR_TYPE = ['semaine','semaine','semaine','semaine','semaine','samedi','d
 let planWeekOffset = 0; // 0 = semaine courante, -1 = semaine précédente, etc.
 
 function getPlanData() {
-  try { return JSON.parse(localStorage.getItem(PLAN_KEY)||'{}'); } catch(e) { return {}; }
+  try { return JSON.parse(idbGet(PLAN_KEY)||'{}'); } catch(e) { return {}; }
 }
-function savePlanData(d) { localStorage.setItem(PLAN_KEY, JSON.stringify(d)); }
+function savePlanData(d) { idbSet(PLAN_KEY, JSON.stringify(d)); }
 
 // Retourne le lundi de la semaine avec offset
 function getMondayOfWeek(offset) {
@@ -8471,15 +8777,8 @@ screen.orientation?.addEventListener('change', () => {
     mapDraw();
   }, 300);
 });
-initTheme();
-initDB();
-applyLiveMode();
-
-installPreloadedGPS();
-updateClock();
-setInterval(updateClock, 1000);
-requestWakeLock();
-gdriveInit();
+// Démarrage asynchrone via IndexedDB
+idbBoot();
 </script>
 </body>
 </html>
