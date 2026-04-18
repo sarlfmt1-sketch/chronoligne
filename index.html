@@ -3917,7 +3917,7 @@ function renderLineDetail(idx) {
       : `<span style="font-size:10px;color:var(--muted)">📍 —</span>`;
 
     // Vérifier si un tracé existe pour ce trajet
-    const traceKey = `${line.num}_${i}_${t.direction||'aller'}`;
+    const traceKey = buildMapId(line.num, t.direction||'aller', i);
     const hasTrace = traceLibraryHas(traceKey);
     const mapBtnStyle = hasTrace
       ? 'background:rgba(0,212,255,.2);border:1px solid var(--accent);color:var(--accent);'
@@ -8404,32 +8404,24 @@ let _traceLongPressTimer = null;
 // Le sens est déduit de trip.direction ('aller' → 'A', 'retour' → 'R', sinon 'X')
 // Le terminus est le dernier arrêt du trajet, normalisé (sans accents, espaces → underscores)
 function buildMapId(lineNum, dir, tripIdx) {
-  // Sens : A = aller, R = retour, X = autre
-  const sensMap = { aller: 'A', retour: 'R' };
-  const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
-
-  // Chercher le dernier arrêt du trajet dans la DB
-  let terminus = '';
+  // Clé basée sur le LABEL du trajet — unique par trajet, indépendant du sens
   try {
     const line = db.lines.find(l => String(l.num) === String(lineNum));
     if(line && tripIdx !== undefined && tripIdx !== null) {
       const trip = line.trips?.[tripIdx];
-      if(trip && trip.stops && trip.stops.length > 0) {
-        terminus = trip.stops[trip.stops.length - 1].name || '';
+      if(trip && trip.label) {
+        const normLabel = trip.label
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .substring(0, 60);
+        return `${lineNum}_${normLabel}`;
       }
     }
-    // Normaliser : supprimer accents, remplacer espaces/tirets/points par _
-    if(terminus) {
-      terminus = terminus
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accents
-        .replace(/[^a-zA-Z0-9]+/g, '_')                  // tout ce qui n'est pas alphanum
-        .replace(/^_+|_+$/g, '')                          // underscores en début/fin
-        .substring(0, 30);                                // max 30 chars
-    }
   } catch(e) {}
-
-  if(terminus) return `${lineNum}_${sens}_${terminus}`;
-  // Fallback si terminus indisponible : format avec tripIdx
+  // Fallback : lineNum + sens + tripIdx
+  const sensMap = { aller: 'A', retour: 'R' };
+  const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
   return `${lineNum}_${sens}_t${tripIdx !== undefined && tripIdx !== null ? tripIdx : 0}`;
 }
 
@@ -8441,59 +8433,55 @@ function traceLibrarySave(lib) {
 }
 function traceLibraryHas(key) {
   const lib = traceLibraryLoad();
-  if(lib[key]) return true;
-  // Fallback PRELOADED_TRACES : clé legacy lineNum_dir (sans tripIdx)
-  const parts = key.split('_');
-  const num = parts[0];
-  const dir = parts[parts.length - 1];
-  return !!PRELOADED_TRACES?.[num]?.[dir];
+  return !!lib[key];
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
 
-  // 1. MapID unique Ligne_Sens_Terminus (nouvelle logique) : priorité absolue
+  // 1. MapID unique Ligne_Sens_Terminus — clé principale (basée sur terminus réel)
   if(tripIdx !== undefined && tripIdx !== null) {
     const mapId = buildMapId(lineNum, dir, tripIdx);
     if(lib[mapId]) return lib[mapId];
   }
 
-  // 2. Clé précise tripIdx (format legacy v2) : compatibilité descendante
+  // 2. Clé précise tripIdx (format legacy v2) — migration vers MapId
   if(tripIdx !== undefined && tripIdx !== null) {
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
-    if(lib[keyPrecise]) return lib[keyPrecise];
+    if(lib[keyPrecise]) {
+      // Migrer vers MapId automatiquement
+      const mapId = buildMapId(lineNum, dir, tripIdx);
+      lib[mapId] = lib[keyPrecise];
+      delete lib[keyPrecise];
+      traceLibrarySave(lib);
+      return lib[mapId];
+    }
   }
 
-  // 3. Fallback legacy lineNum_dir UNIQUEMENT si tripIdx est 0 ou non fourni
-  //    → évite que la variante 2 charge la carte de la variante 0
-  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) {
-    const keyLegacy = `${lineNum}_${dir}`;
-    if(lib[keyLegacy]) return lib[keyLegacy];
-  }
-
-  // 4. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
-  if(!tripIdx) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
-  return null;
+  // 3. Tracés pré-chargés — uniquement si aucune carte utilisateur n'existe
+  return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
 }
 function traceLibrarySet(lineNum, dir, points, tripIdx) {
   const lib = traceLibraryLoad();
   // Toujours sauvegarder sous le MapID unique Ligne_Sens_Terminus
-  const key = (tripIdx !== undefined && tripIdx !== null)
-    ? buildMapId(lineNum, dir, tripIdx)
-    : `${lineNum}_${dir}`;
+  // tripIdx requis — sans lui on ne peut pas construire un MapId fiable
+  if(tripIdx === undefined || tripIdx === null) {
+    console.warn('[traceLibrarySet] tripIdx manquant pour', lineNum, dir);
+  }
+  const key = buildMapId(lineNum, dir, tripIdx !== undefined && tripIdx !== null ? tripIdx : 0);
   lib[key] = points;
   traceLibrarySave(lib);
+  return key;
 }
 function traceLibraryDelete(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
-  // Supprimer toutes les formes de clé connues pour ce trajet
   if(tripIdx !== undefined && tripIdx !== null) {
+    // Supprimer le MapId principal
     const mapId = buildMapId(lineNum, dir, tripIdx);
     delete lib[mapId];
+    // Supprimer aussi format legacy v2 si présent
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
     delete lib[keyPrecise];
   }
-  const keyLegacy = `${lineNum}_${dir}`;
-  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) delete lib[keyLegacy];
   traceLibrarySave(lib);
 }
 
