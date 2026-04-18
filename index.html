@@ -5406,6 +5406,124 @@ function svcMoveTrip(ti,dir) {
   renderSvcTrips();
 }
 
+function parseIneoFeuille() {
+  const text = document.getElementById('ineo-text').value.trim();
+  if(!text) { toast('Collez le texte INEO d\'abord'); return; }
+
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+  // ── Détection automatique du format ──
+  // Nouveau format : "05:40 > NOM ARRÊT - CODE [ABRÉV]"
+  const newFmtCount = lines.filter(l => /^\d{2}:\d{2}\s*>\s*.+/.test(l)).length;
+  if(newFmtCount >= 2) {
+    parseIneoFeuilleNouveauFormat(lines);
+    return;
+  }
+
+  let depotDepart = '', depotRetour = '';
+  let trips = [];
+  let currentLineNum = null, currentRefStops = [], currentDirection = 'aller';
+  let i = 0;
+
+  // Fonction pour normaliser un nom d'arrêt (pour matching)
+  function normalize(s) {
+    return s.toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/['\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  // Fonction pour convertir HH:MM en minutes
+  function toMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+  while(i < lines.length) {
+    const line = lines[i];
+
+    // Prise de service
+    const psMatch = line.match(/(\d{2}:\d{2})\s+PRISE DE SERVICE/i);
+    if(psMatch) { depotDepart = psMatch[1]; i++; continue; }
+
+    // Fin de service
+    const fsMatch = line.match(/FS\s+(\d{2}:\d{2})\s+FIN DE SERVICE/i) ||
+                    line.match(/(\d{2}:\d{2})\s+FIN DE SERVICE/i);
+    if(fsMatch) { depotRetour = fsMatch[1]; i++; continue; }
+
+    // HLP / P/L → ignorer
+    if(line.startsWith('HLP') || line.startsWith('P/L')) { i++; continue; }
+
+    // Ligne de service : "1206 - GARE DE CERG >> GARE DE PONT"
+    const ligneMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*>>\s*(.+)$/);
+    if(ligneMatch) {
+      // Sauvegarder trajet précédent
+      if(currentLineNum && currentRefStops.length > 0) {
+        const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+        if(trip) trips.push(trip);
+      }
+      currentLineNum = ligneMatch[1];
+      currentRefStops = [];
+      // Détecter direction : si deuxième partie contient le nom du terminus aller ou retour
+      currentDirection = 'aller'; // sera affiné selon les arrêts
+      i++; continue;
+    }
+
+    // ITINERAIRE → collecter arrêts de référence
+    if(line.startsWith('ITINERAIRE') || (line.match(/^\d{2}:\d{2}\s*-->/) && currentLineNum)) {
+      // Séparer les arrêts collés sur la même ligne ex: "...821 05:57 --> GARE..."
+      const splitLines = line.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+      splitLines.forEach(sl => {
+        const m = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+        if(m) {
+          const name = m[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
+          if(name) currentRefStops.push({ time: m[1], name });
+        }
+      });
+      i++;
+      while(i < lines.length) {
+        const al = lines[i];
+        // Gérer arrêts collés
+        const splitAl = al.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+        let pushed = false;
+        splitAl.forEach(sl => {
+          const am = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+          if(am) {
+            const name = am[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
+            if(name) { currentRefStops.push({ time: am[1], name }); pushed = true; }
+          }
+        });
+        if(pushed) i++;
+        else break;
+      }
+      continue;
+    }
+
+    // En correspondance → ignorer
+    if(line.startsWith('En correspondance')) { i++; continue; }
+    i++;
+  }
+
+  // Dernier trajet
+  if(currentLineNum && currentRefStops.length > 0) {
+    const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+    if(trip) trips.push(trip);
+  }
+
+  if(!trips.length) { toast('❌ Aucun trajet détecté — vérifiez le format INEO'); return; }
+
+  if(depotDepart) document.getElementById('svc-depot-depart').value = depotDepart;
+  if(depotRetour) document.getElementById('svc-depot-retour').value = depotRetour;
+
+  svcTrips = trips;
+  renderSvcTrips();
+
+  document.getElementById('ineo-import-panel').style.display = 'none';
+  document.getElementById('ineo-text').value = '';
+
+  const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
+  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
+}
+
+
 // ══ PARSEUR NOUVEAU FORMAT INEO ══════════════════════════════
 // Format : "05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]"
 // Chaque bloc de lignes consécutives = un trajet
@@ -5511,6 +5629,180 @@ function parseIneoFeuilleNouveauFormat(lines) {
 
   const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
   toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
+}
+
+// ══ buildTripFromRef ══════════════════════════════════════════
+// Construit un trajet enrichi depuis une liste d'arrêts de référence INEO
+// (avec horaires connus) en les matchant contre la base DB de la ligne.
+// Interpole les horaires des arrêts intermédiaires non-référencés.
+// Paramètres :
+//   lineNum   : numéro de ligne (ex "1206")
+//   refStops  : [{time, name}, ...] — arrêts extraits de la feuille de service
+//   direction : 'aller' | 'retour' | null (auto-détecté si null)
+function buildTripFromRef(lineNum, refStops, direction) {
+  function normalize(s) {
+    return String(s).toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function toMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+  const dbLine = db.lines.find(l => l.num === lineNum);
+
+  // Fallback : ligne inconnue → tout passer comme référence
+  if(!dbLine || !dbLine.trips || !dbLine.trips.length) {
+    const fpRaw = refStops.slice(0,3).map(s=>s.name.replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toLowerCase()).join('|');
+    const fp = `${lineNum||'X'}_${direction||'aller'}_${fpRaw}`;
+    const mem = idbGet(`svcTraceMap_${fp}`);
+    return {
+      lineNum: lineNum || '?',
+      lineColor: '#888',
+      label: `${refStops[0].name} → ${refStops[refStops.length-1].name}`,
+      direction: direction || 'aller',
+      stops: refStops.map((s,i) => ({
+        name: s.name,
+        time: s.time,
+        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
+        isRef: true
+      })),
+      _fingerprint: fp,
+      _manualTraceKey: mem || null
+    };
+  }
+
+  const refNorms = refStops.map(r => normalize(r.name));
+
+  // Scorer chaque trip de la ligne pour trouver le meilleur match directionnel
+  let bestTrip = null, bestTripDir = direction || 'aller', bestScore = -1;
+  dbLine.trips.forEach((t, ti) => {
+    const tripNorms = t.stops.map(s => normalize(s.name));
+    let score = 0;
+    refNorms.forEach(rn => {
+      if(tripNorms.some(tn => tn.includes(rn) || rn.includes(tn))) score++;
+    });
+    if(score > bestScore) {
+      bestScore = score;
+      bestTrip = t;
+      bestTripDir = t.direction || (ti % 2 === 0 ? 'aller' : 'retour');
+    }
+  });
+
+  const usedTrip = bestTrip || dbLine.trips[0];
+  const usedDir = direction || bestTripDir;
+
+  // Construire une map nom normalisé → horaire de référence
+  const refTimeMap = {};
+  refStops.forEach(r => { refTimeMap[normalize(r.name)] = r.time; });
+
+  // Identifier les arrêts de référence dans le trip DB (ceux qui ont un horaire dans refStops)
+  const dbStopNorms = usedTrip.stops.map(s => normalize(s.name));
+
+  // Annoter chaque arrêt du trip DB avec le temps de référence s'il correspond
+  const annotated = usedTrip.stops.map((s, idx) => {
+    const sn = normalize(s.name);
+    // Chercher une correspondance dans les arrêts de référence
+    let refTime = refTimeMap[sn] || null;
+    if(!refTime) {
+      // Correspondance partielle
+      const match = refStops.find(r => {
+        const rn = normalize(r.name);
+        return sn.includes(rn) || rn.includes(sn);
+      });
+      if(match) refTime = match.time;
+    }
+    return { ...s, _refTime: refTime, _dbIdx: idx };
+  });
+
+  // Interpoler les horaires intermédiaires entre les ancres connues
+  // Trouver les indices des ancres (arrêts avec _refTime)
+  const anchors = annotated.map((a,i) => a._refTime ? i : -1).filter(i => i >= 0);
+
+  if(anchors.length === 0) {
+    // Aucun match : utiliser refStops tels quels comme référence
+    const fpRaw = refStops.slice(0,3).map(s=>s.name.replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toLowerCase()).join('|');
+    const fp = `${lineNum}_${usedDir}_${fpRaw}`;
+    const mem = idbGet(`svcTraceMap_${fp}`);
+    return {
+      lineNum,
+      lineColor: dbLine.color || '#888',
+      label: `${refStops[0].name} → ${refStops[refStops.length-1].name}`,
+      direction: usedDir,
+      stops: refStops.map((s,i) => ({
+        name: s.name,
+        time: s.time,
+        intervalAfter: i < refStops.length-1 ? Math.max(1, toMin(refStops[i+1].time) - toMin(s.time)) : 0,
+        isRef: true
+      })),
+      _fingerprint: fp,
+      _manualTraceKey: mem || null
+    };
+  }
+
+  // Interpolation linéaire entre ancres
+  const finalStops = annotated.map((a, i) => {
+    let time = a._refTime || null;
+    if(!time) {
+      // Trouver ancres encadrantes
+      const prev = anchors.filter(ai => ai < i);
+      const next = anchors.filter(ai => ai > i);
+      if(prev.length && next.length) {
+        const pi = prev[prev.length-1], ni = next[0];
+        const tPrev = toMin(annotated[pi]._refTime);
+        const tNext = toMin(annotated[ni]._refTime);
+        const ratio = (i - pi) / (ni - pi);
+        time = fromMin(tPrev + ratio * (tNext - tPrev));
+      } else if(prev.length) {
+        // Extrapoler depuis la dernière ancre avec l'intervalle DB moyen
+        const pi = prev[prev.length-1];
+        const tPrev = toMin(annotated[pi]._refTime);
+        const stepsAfter = i - pi;
+        const dbIntervalAvg = usedTrip.stops.reduce((acc,s,si) =>
+          si > 0 && usedTrip.stops[si-1].intervalAfter
+            ? acc + usedTrip.stops[si-1].intervalAfter
+            : acc, 0) / Math.max(1, usedTrip.stops.length - 1);
+        time = fromMin(tPrev + stepsAfter * (dbIntervalAvg || 2));
+      } else if(next.length) {
+        const ni = next[0];
+        const tNext = toMin(annotated[ni]._refTime);
+        const stepsBefore = ni - i;
+        const dbIntervalAvg = usedTrip.stops.reduce((acc,s,si) =>
+          si > 0 && usedTrip.stops[si-1].intervalAfter
+            ? acc + usedTrip.stops[si-1].intervalAfter
+            : acc, 0) / Math.max(1, usedTrip.stops.length - 1);
+        time = fromMin(tNext - stepsBefore * (dbIntervalAvg || 2));
+      }
+    }
+    return {
+      name: a.name,
+      time: time || '',
+      intervalAfter: a.intervalAfter || 0,
+      isRef: !!a._refTime
+    };
+  });
+
+  // Recalculer intervalAfter à partir des temps finaux
+  for(let i = 0; i < finalStops.length - 1; i++) {
+    if(finalStops[i].time && finalStops[i+1].time) {
+      const diff = toMin(finalStops[i+1].time) - toMin(finalStops[i].time);
+      finalStops[i].intervalAfter = Math.max(0, diff);
+    }
+  }
+
+  const fpRaw = refStops.slice(0,3).map(s=>s.name.replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toLowerCase()).join('|');
+  const fp = `${lineNum}_${usedDir}_${fpRaw}`;
+  const mem = idbGet(`svcTraceMap_${fp}`);
+
+  return {
+    lineNum,
+    lineColor: dbLine.color || '#c0392b',
+    label: `${finalStops[0].name} → ${finalStops[finalStops.length-1].name}`,
+    direction: usedDir,
+    stops: finalStops,
+    _fingerprint: fp,
+    _manualTraceKey: mem || null
+  };
 }
 
 // Construit un trajet depuis le nouveau format (liste d'arrêts déjà propres)
