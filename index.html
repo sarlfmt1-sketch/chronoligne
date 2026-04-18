@@ -776,6 +776,16 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
 
     <div class="card">
       <div class="card-title">➕ Ajouter un trajet</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="svc-dir-aller" onclick="svcSetDir('aller')"
+          style="flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-radius:8px;cursor:pointer;border:2px solid var(--accent);background:rgba(0,212,255,.15);color:var(--accent)">
+          ↗ ALLER
+        </button>
+        <button id="svc-dir-retour" onclick="svcSetDir('retour')"
+          style="flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-radius:8px;cursor:pointer;border:2px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted)">
+          ↙ RETOUR
+        </button>
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <select id="svc-add-line" onchange="svcRenderTripOptions()" style="flex:1;min-width:120px;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
           <option value="">— Ligne —</option>
@@ -3901,12 +3911,16 @@ function renderLineDetail(idx) {
     </div>`;
   }).join('');
 
-  // Bouton + Nouveau trajet
+  // Boutons + Nouveau trajet Aller / Retour
   list.innerHTML += `
-    <div style="margin-top:12px">
-      <button class="btn" onclick="addNewTripToLine(${idx})"
-        style="width:100%;background:rgba(39,174,96,.15);border:2px dashed var(--green);color:var(--green);font-weight:700;font-size:14px;padding:12px">
-        ＋ Nouveau trajet
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn" onclick="addNewTripToLine(${idx},'aller')"
+        style="flex:1;background:rgba(0,212,255,.12);border:2px dashed var(--accent);color:var(--accent);font-weight:700;font-size:14px;padding:12px">
+        ↗ Nouveau trajet ALLER
+      </button>
+      <button class="btn" onclick="addNewTripToLine(${idx},'retour')"
+        style="flex:1;background:rgba(39,174,96,.12);border:2px dashed var(--green);color:var(--green);font-weight:700;font-size:14px;padding:12px">
+        ↙ Nouveau trajet RETOUR
       </button>
     </div>`;
 
@@ -3938,23 +3952,40 @@ Cette action est irréversible.`)) return;
 }
 
 // ── Ajouter un nouveau trajet vide à la ligne ─────────────
-function addNewTripToLine(lineIdx) {
+function addNewTripToLine(lineIdx, direction) {
   const line = db.lines[lineIdx];
   if(!line) return;
-  // Créer un trajet vide avec les mêmes arrêts que le premier trajet si dispo
-  const template = line.trips[0];
+
+  // Choisir le bon template selon la direction
+  // Pour aller : premier trip aller (ou trips[0])
+  // Pour retour : premier trip retour si dispo, sinon trips[0] inversé
+  let template = null;
+  if(direction === 'retour') {
+    template = line.trips.find(t => t.direction === 'retour') || line.trips[0];
+  } else {
+    template = line.trips.find(t => t.direction === 'aller') || line.trips[0];
+  }
+
+  let stops = [];
+  if(template) {
+    let baseStops = template.stops.map(s => ({ name: s.name, time: '00:00', isRef: s.isRef || false, intervalAfter: s.intervalAfter || 0 }));
+    // Si le template est dans le sens opposé, inverser les arrêts
+    if(template.direction && template.direction !== direction) {
+      baseStops = baseStops.reverse();
+    }
+    stops = baseStops;
+  }
+
+  const dirLabel = direction === 'retour' ? '↙ Retour' : '↗ Aller';
   const newTrip = {
-    label: `Trajet ${line.trips.length + 1}`,
-    direction: 'aller',
-    stops: template
-      ? template.stops.map(s => ({ name: s.name, time: '00:00', isRef: s.isRef || false }))
-      : []
+    label: `${dirLabel} — Trajet ${line.trips.length + 1}`,
+    direction,
+    stops
   };
   line.trips.push(newTrip);
   saveDB();
-  // Ouvrir directement l'éditeur sur ce nouveau trajet
   openTripEditor(lineIdx, line.trips.length - 1);
-  toast('✅ Nouveau trajet créé — modifiez les horaires');
+  toast(`✅ Nouveau trajet ${dirLabel} créé — modifiez les horaires`);
 }
 
 function activateTrip(lineIdx, tripIdx) {
@@ -4853,14 +4884,48 @@ function closeSvcEditor() {
   renderSvcList();
 }
 
+// Direction sélectionnée pour l'ajout manuel (aller par défaut)
+let svcAddDir = 'aller';
+
+function svcSetDir(dir) {
+  svcAddDir = dir;
+  const btnA = document.getElementById('svc-dir-aller');
+  const btnR = document.getElementById('svc-dir-retour');
+  if(dir === 'aller') {
+    btnA.style.borderColor = 'var(--accent)';
+    btnA.style.background  = 'rgba(0,212,255,.15)';
+    btnA.style.color        = 'var(--accent)';
+    btnR.style.borderColor = 'var(--border)';
+    btnR.style.background  = 'rgba(255,255,255,.04)';
+    btnR.style.color        = 'var(--muted)';
+  } else {
+    btnR.style.borderColor = 'var(--green)';
+    btnR.style.background  = 'rgba(39,174,96,.15)';
+    btnR.style.color        = 'var(--green)';
+    btnA.style.borderColor = 'var(--border)';
+    btnA.style.background  = 'rgba(255,255,255,.04)';
+    btnA.style.color        = 'var(--muted)';
+  }
+  svcRenderTripOptions();
+}
+
 function svcRenderTripOptions() {
   const lineIdx = parseInt(document.getElementById('svc-add-line').value);
   const sel = document.getElementById('svc-add-trip');
   sel.innerHTML = '<option value="">— Trajet —</option>';
   if(isNaN(lineIdx)) return;
-  db.lines[lineIdx].trips.forEach((t,i) => {
+  db.lines[lineIdx].trips.forEach((t, i) => {
+    // Filtrer selon la direction sélectionnée
+    const tDir = t.direction || (i % 2 === 0 ? 'aller' : 'retour');
+    if(tDir !== svcAddDir) return;
     sel.innerHTML += `<option value="${i}">${t.label}</option>`;
   });
+  // Si aucun trajet dans ce sens, afficher tous (fallback)
+  if(sel.options.length <= 1) {
+    db.lines[lineIdx].trips.forEach((t, i) => {
+      sel.innerHTML += `<option value="${i}">${t.label}</option>`;
+    });
+  }
 }
 
 function svcAddTrip() {
@@ -4886,18 +4951,22 @@ function svcAddTrip() {
     curMin = now.getHours()*60+now.getMinutes();
   }
 
-  const stops = trip.stops.map((s,i) => {
+  // Si retour : inverser l'ordre des arrêts du trip DB
+  const isRetour = svcAddDir === 'retour';
+  const rawStops = isRetour ? [...trip.stops].reverse() : trip.stops;
+
+  const stops = rawStops.map((s, i) => {
     const h = String(Math.floor(curMin/60)%24).padStart(2,'0');
     const m = String(curMin%60).padStart(2,'0');
     const time = `${h}:${m}`;
-    // Utiliser l'intervalle mémorisé pour cet arrêt, sinon celui du trajet de base, sinon global
     const savedInterval = db_int[intervalsKey(line.num, trip.label, s.name)];
     const iv = savedInterval !== undefined ? savedInterval : (s.intervalAfter !== undefined ? s.intervalAfter : intervalGlobal);
-    if(i < trip.stops.length-1) curMin += iv;
+    if(i < rawStops.length-1) curMin += iv;
     return {name:s.name, time, intervalAfter:iv};
   });
 
-  svcTrips.push({ lineIdx, tripIdx, lineNum: line.num, lineColor: line.color, label:`Ligne ${line.num} — ${trip.label}`, stops });
+  const dirLabel = isRetour ? '↙ RETOUR' : '↗ ALLER';
+  svcTrips.push({ lineIdx, tripIdx, lineNum: line.num, lineColor: line.color, direction: svcAddDir, label:`Ligne ${line.num} ${dirLabel} — ${trip.label}`, stops });
   renderSvcTrips();
   const lastStop = stops[stops.length-1];
   document.getElementById('svc-first-time').value = lastStop.time;
@@ -5437,6 +5506,30 @@ function parseIneoFeuille() {
   function toMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
   function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
 
+  // Helper : extraire les arrêts "-->" d'une chaine (gere les arrêts collés)
+  function extractStopsFromStr(str) {
+    const parts = str.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n');
+    const result = [];
+    parts.forEach(sl => {
+      sl = sl.trim();
+      const m = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+      if(m) {
+        const name = m[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
+        if(name) result.push({ time: m[1], name });
+      }
+    });
+    return result;
+  }
+
+  // Helper : détecter la direction depuis "FROM >> TO"
+  // retour = la destination est le dépôt/Cergy
+  function detectDirection(from, to) {
+    const toCaps = to.toUpperCase();
+    const depotKw = ['CERG','DEPOT','DEPO','COB'];
+    if(depotKw.some(kw => toCaps.includes(kw))) return 'retour';
+    return 'aller';
+  }
+
   while(i < lines.length) {
     const line = lines[i];
 
@@ -5449,11 +5542,12 @@ function parseIneoFeuille() {
                     line.match(/(\d{2}:\d{2})\s+FIN DE SERVICE/i);
     if(fsMatch) { depotRetour = fsMatch[1]; i++; continue; }
 
-    // HLP / P/L → ignorer
-    if(line.startsWith('HLP') || line.startsWith('P/L')) { i++; continue; }
+    // HLP / P/L / LAV / PS → ignorer
+    if(/^(HLP|P\/L|LAV|PS)\b/i.test(line)) { i++; continue; }
 
-    // Ligne de service : "1206 - GARE DE CERG >> GARE DE PONT"
-    const ligneMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*>>\s*(.+)$/);
+    // Ligne de service : "1235 - GARE DE PONT >> GARE DE CERG[arrêts éventuellement collés]"
+    // Le regex tolère du texte collé après le terminus (cas INEO sans saut de ligne)
+    const ligneMatch = line.match(/^(\d{3,4})\s*-\s*(.+?)\s*>>\s*(.+?)(\d{2}:\d{2}\s*-->.+)?$/);
     if(ligneMatch) {
       // Sauvegarder trajet précédent
       if(currentLineNum && currentRefStops.length > 0) {
@@ -5462,37 +5556,28 @@ function parseIneoFeuille() {
       }
       currentLineNum = ligneMatch[1];
       currentRefStops = [];
-      // Détecter direction : si deuxième partie contient le nom du terminus aller ou retour
-      currentDirection = 'aller'; // sera affiné selon les arrêts
+
+      // Détecter direction depuis FROM >> TO
+      const fromPart = ligneMatch[2].trim();
+      const toPart = (ligneMatch[3] || '').replace(/\d{2}:\d{2}.*$/, '').trim();
+      currentDirection = detectDirection(fromPart, toPart);
+
+      // Si des arrêts étaient collés après le terminus sur la même ligne, les extraire
+      if(ligneMatch[4]) {
+        extractStopsFromStr(ligneMatch[4]).forEach(s => currentRefStops.push(s));
+      }
       i++; continue;
     }
 
-    // ITINERAIRE → collecter arrêts de référence
+    // ITINERAIRE ou ligne commençant par un horaire "-->"
     if(line.startsWith('ITINERAIRE') || (line.match(/^\d{2}:\d{2}\s*-->/) && currentLineNum)) {
-      // Séparer les arrêts collés sur la même ligne ex: "...821 05:57 --> GARE..."
-      const splitLines = line.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
-      splitLines.forEach(sl => {
-        const m = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
-        if(m) {
-          const name = m[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
-          if(name) currentRefStops.push({ time: m[1], name });
-        }
-      });
+      extractStopsFromStr(line).forEach(s => currentRefStops.push(s));
       i++;
       while(i < lines.length) {
         const al = lines[i];
-        // Gérer arrêts collés
-        const splitAl = al.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
-        let pushed = false;
-        splitAl.forEach(sl => {
-          const am = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
-          if(am) {
-            const name = am[2].replace(/\s*-\s*\d{3,}\s*$/, '').replace(/\s*\d{5,}\s*$/, '').trim();
-            if(name) { currentRefStops.push({ time: am[1], name }); pushed = true; }
-          }
-        });
-        if(pushed) i++;
-        else break;
+        if(!/\d{2}:\d{2}\s*-->/.test(al)) break;
+        extractStopsFromStr(al).forEach(s => currentRefStops.push(s));
+        i++;
       }
       continue;
     }
@@ -5696,16 +5781,11 @@ function buildTripFromRef(lineNum, refStops, direction) {
   const refTimeMap = {};
   refStops.forEach(r => { refTimeMap[normalize(r.name)] = r.time; });
 
-  // Identifier les arrêts de référence dans le trip DB (ceux qui ont un horaire dans refStops)
-  const dbStopNorms = usedTrip.stops.map(s => normalize(s.name));
-
   // Annoter chaque arrêt du trip DB avec le temps de référence s'il correspond
-  const annotated = usedTrip.stops.map((s, idx) => {
+  const annotatedFull = usedTrip.stops.map((s, idx) => {
     const sn = normalize(s.name);
-    // Chercher une correspondance dans les arrêts de référence
     let refTime = refTimeMap[sn] || null;
     if(!refTime) {
-      // Correspondance partielle
       const match = refStops.find(r => {
         const rn = normalize(r.name);
         return sn.includes(rn) || rn.includes(sn);
@@ -5715,8 +5795,21 @@ function buildTripFromRef(lineNum, refStops, direction) {
     return { ...s, _refTime: refTime, _dbIdx: idx };
   });
 
-  // Interpoler les horaires intermédiaires entre les ancres connues
-  // Trouver les indices des ancres (arrêts avec _refTime)
+  // ── Rogner le trip DB aux bornes de ton trajet partiel ──────
+  // On cherche le premier et le dernier arrêt DB qui matchent un arrêt de référence,
+  // et on ne garde que cette plage (tu ne fais pas forcément toute la ligne).
+  const matchedIndices = annotatedFull.map((a,i) => a._refTime ? i : -1).filter(i => i >= 0);
+
+  let startIdx = 0, endIdx = annotatedFull.length - 1;
+  if(matchedIndices.length >= 1) {
+    startIdx = matchedIndices[0];
+    endIdx   = matchedIndices[matchedIndices.length - 1];
+  }
+
+  // Garder uniquement les arrêts entre le premier et le dernier arrêt reconnu
+  const annotated = annotatedFull.slice(startIdx, endIdx + 1);
+
+  // Recalculer les indices d'ancres dans le tableau rogné
   const anchors = annotated.map((a,i) => a._refTime ? i : -1).filter(i => i >= 0);
 
   if(anchors.length === 0) {
