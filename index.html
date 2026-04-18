@@ -557,8 +557,18 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
       <div class="card-title" style="margin:0">🗺 Carte du trajet</div>
       <div style="display:flex;gap:6px">
         <button onclick="liveMapCenter()" class="btn btn-sm btn-ghost" style="font-size:12px">📍 Centrer</button>
+        <button onclick="liveMapToggleTilePicker()" class="btn btn-sm btn-ghost" style="font-size:12px" title="Changer de fond de carte">🌐</button>
         <button onclick="liveMapToggle()" id="live-map-toggle-btn" class="btn btn-sm btn-ghost" style="font-size:12px">▼ Réduire</button>
       </div>
+    </div>
+    <!-- Sélecteur de fond de carte -->
+    <div id="tile-picker" style="display:none;flex-wrap:wrap;gap:6px;padding:0 10px 10px 10px">
+      <div style="width:100%;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px">FOND DE CARTE</div>
+      <button id="tile-btn-osm"    onclick="liveMapSetTile('osm')"    class="btn btn-sm" style="font-size:11px;padding:5px 10px">🗺 OSM Standard</button>
+      <button id="tile-btn-osmfr"  onclick="liveMapSetTile('osmfr')"  class="btn btn-sm" style="font-size:11px;padding:5px 10px">🗺 OSM France</button>
+      <button id="tile-btn-carto"  onclick="liveMapSetTile('carto')"  class="btn btn-sm" style="font-size:11px;padding:5px 10px">🌍 Carto clair</button>
+      <button id="tile-btn-cartod" onclick="liveMapSetTile('cartod')" class="btn btn-sm" style="font-size:11px;padding:5px 10px">🌑 Carto sombre</button>
+      <button id="tile-btn-sat"    onclick="liveMapSetTile('sat')"    class="btn btn-sm" style="font-size:11px;padding:5px 10px">🛰 Satellite</button>
     </div>
     <div id="live-map" style="height:300px;width:100%;z-index:10"></div>
   </div>
@@ -763,19 +773,13 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Départ dépôt</div>
-          <input type="time" id="svc-depot-depart" step="60" oninput="svcUpdateIndemnite()" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+          <input type="time" id="svc-depot-depart" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
         </div>
         <div style="flex:1;min-width:120px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:3px">🏭 Retour dépôt</div>
-          <input type="time" id="svc-depot-retour" step="60" oninput="svcUpdateIndemnite()" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
+          <input type="time" id="svc-depot-retour" step="60" style="width:100%;padding:7px 8px;font-size:15px;font-family:'Share Tech Mono',monospace;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text)">
         </div>
       </div>
-    </div>
-
-    <!-- ══ BANDEAU INDEMNITÉ REPAS ══ -->
-    <div id="svc-indemnite-band" style="display:none;border-radius:12px;padding:12px 14px;margin-bottom:4px;border:2px solid var(--border);background:rgba(255,255,255,.03)">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;font-weight:700">🍽 INDEMNITÉ REPAS</div>
-      <div id="svc-indemnite-content"></div>
     </div>
 
     <div id="svc-trips-container"></div>
@@ -4690,17 +4694,10 @@ function renderSvcList() {
         ? `<span style="color:var(--accent)">${s.depotDepart}</span> → <span style="color:var(--green)">${s.depotRetour}</span>`
         : '';
       const heuresInfo = s.heures ? `<span style="font-family:'Share Tech Mono',monospace;color:var(--green);font-weight:700">${hDisplay(s.heures)}</span>` : '';
-      // Badge indemnité repas
-      const indemCalc = (s.depotDepart && s.depotRetour) ? svcCalcIndemnite(s.depotDepart, s.depotRetour, s.trips) : null;
-      const indemBadge = indemCalc
-        ? (indemCalc.montant > 0
-            ? `<span style="background:rgba(39,174,96,.2);border:1px solid var(--green);color:var(--green);padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700">🍽 +${indemCalc.montant.toFixed(2)} €</span>`
-            : `<span style="background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px">🍽 —</span>`)
-        : '';
 
       const detail = isOpen ? `
         <div style="padding:12px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
-          ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''} ${indemBadge ? '· '+indemBadge : ''}</div>` : ''}
+          ${depotInfo ? `<div style="font-size:12px;margin-bottom:8px">🏭 ${depotInfo} ${heuresInfo ? '· '+heuresInfo : ''}</div>` : ''}
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
             ${s.trips.map(t => {
               const num = t.lineNum || (t.label||'').match(/Ligne (\S+)/)?.[1] || '';
@@ -4732,7 +4729,6 @@ function renderSvcList() {
                   return `<span style="background:${color};color:#fff;padding:0px 5px;border-radius:4px;font-size:11px;font-weight:700">${num}</span>`;
                 }).join(' · ')}
                 ${s.heures ? ' · <span style="color:var(--green)">'+hDisplay(s.heures)+'</span>' : ''}
-                ${indemBadge ? ' · '+indemBadge : ''}
               </div>
             </div>
             <div style="font-size:18px;color:var(--muted);transition:transform .2s;transform:rotate(${isOpen?90:0}deg)">›</div>
@@ -4859,7 +4855,6 @@ function openSvcEditor(num, jour) {
   document.getElementById('svc-page-list').style.display = 'none';
   document.getElementById('svc-page-editor').style.display = 'block';
   renderSvcTrips();
-  svcUpdateIndemnite();
 }
 
 function closeSvcEditor() {
@@ -4914,7 +4909,6 @@ function svcAddTrip() {
 
   svcTrips.push({ lineIdx, tripIdx, lineNum: line.num, lineColor: line.color, label:`Ligne ${line.num} — ${trip.label}`, stops });
   renderSvcTrips();
-  svcUpdateIndemnite();
   const lastStop = stops[stops.length-1];
   document.getElementById('svc-first-time').value = lastStop.time;
 
@@ -5035,7 +5029,7 @@ function svcRecalcTrip(ti) {
   toast('Horaires recalculés ✓');
 }
 
-function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); svcUpdateIndemnite(); }
+function svcRemoveTrip(ti) { svcTrips.splice(ti,1); renderSvcTrips(); }
 
 function svcMoveTrip(ti,dir) {
   const j = ti+dir;
@@ -5462,150 +5456,6 @@ function cleanStopName(name) {
     .split(' ').map(w => w.length > 2 ? w.charAt(0).toUpperCase()+w.slice(1).toLowerCase() : w).join(' ');
 }
 
-// ══ CALCUL INDEMNITÉ REPAS ═══════════════════════════════════
-// Règles convention collective :
-//   Indemnité repas unique (10 €)  : fin de service > 14h00 (service matin)
-//                                    OU fin de service > 21h30 (service après-midi)
-//   Indemnité spéciale repas (5 €) : coupe > 2h dans la journée (pause entre 2 trajets)
-//
-// Détermination matin/après-midi : heure de prise de service
-//   Prise avant 12h00 → service du matin   → seuil fin : 14h00
-//   Prise à partir de 12h00 → service AM   → seuil fin : 21h30
-
-function svcCalcIndemnite(depotDepart, depotRetour, trips) {
-  const toMin = t => {
-    if(!t) return null;
-    const [h,m] = t.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const depart = toMin(depotDepart);
-  const retour = toMin(depotRetour);
-  if(depart === null || retour === null) return null;
-
-  // Heure de fin réelle = retour dépôt
-  // (si pas renseigné, on prend le dernier arrêt du dernier trajet)
-  let finService = retour;
-  if(!finService && trips && trips.length > 0) {
-    const dernierTrajet = trips[trips.length - 1];
-    const dernierArret = dernierTrajet.stops?.[dernierTrajet.stops.length - 1];
-    finService = toMin(dernierArret?.time);
-  }
-  if(finService === null) return null;
-
-  // Dépassement minuit
-  let finAdj = finService;
-  if(finAdj < depart) finAdj += 24 * 60;
-
-  // Type de service
-  const estMatin = depart < 12 * 60; // prise avant 12h00
-  const seuilFin = estMatin ? 14 * 60 : 21 * 60 + 30; // 14h00 ou 21h30
-
-  const droitUnique = finAdj >= seuilFin;
-
-  // Indemnité spéciale : coupe ≥ 2h entre deux trajets consécutifs
-  let droitSpeciale = false;
-  let coupeMax = 0;
-  if(trips && trips.length >= 2) {
-    for(let i = 0; i < trips.length - 1; i++) {
-      const t1 = trips[i];
-      const t2 = trips[i + 1];
-      const finT1 = toMin(t1.stops?.[t1.stops.length - 1]?.time);
-      const debutT2 = toMin(t2.stops?.[0]?.time);
-      if(finT1 !== null && debutT2 !== null) {
-        let diff = debutT2 - finT1;
-        if(diff < 0) diff += 24 * 60;
-        if(diff > coupeMax) coupeMax = diff;
-        if(diff >= 120) droitSpeciale = true;
-      }
-    }
-  }
-
-  return {
-    estMatin,
-    depart,
-    finAdj,
-    seuilFin,
-    droitUnique,
-    droitSpeciale,
-    coupeMax,
-    montant: (droitUnique ? 10 : 0) + (droitSpeciale ? 5 : 0)
-  };
-}
-
-function svcUpdateIndemnite() {
-  const depart  = document.getElementById('svc-depot-depart')?.value;
-  const retour  = document.getElementById('svc-depot-retour')?.value;
-  const band    = document.getElementById('svc-indemnite-band');
-  const content = document.getElementById('svc-indemnite-content');
-  if(!band || !content) return;
-
-  if(!depart || !retour) { band.style.display = 'none'; return; }
-
-  const r = svcCalcIndemnite(depart, retour, svcTrips);
-  if(!r) { band.style.display = 'none'; return; }
-
-  band.style.display = 'block';
-
-  const fmtMin = m => {
-    const hh = Math.floor(((m % (24*60)) + 24*60) % (24*60) / 60);
-    const mm = String(m % 60).padStart(2,'0');
-    return `${hh}h${mm}`;
-  };
-
-  const typeService = r.estMatin ? 'Matin (prise < 12h00)' : 'Après-midi (prise ≥ 12h00)';
-  const seuilStr    = r.estMatin ? '14h00' : '21h30';
-
-  // Couleur du bandeau selon résultat
-  let bgColor, borderColor, totalLabel;
-  if(r.montant > 0) {
-    bgColor = 'rgba(39,174,96,.1)';
-    borderColor = 'var(--green)';
-    totalLabel = `<span style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--green)">+${r.montant.toFixed(2)} €</span>`;
-  } else {
-    bgColor = 'rgba(255,255,255,.03)';
-    borderColor = 'var(--border)';
-    totalLabel = `<span style="font-size:16px;color:var(--muted)">Aucune indemnité</span>`;
-  }
-
-  band.style.background  = bgColor;
-  band.style.borderColor = borderColor;
-
-  const ligneUnique = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--text)">Indemnité repas unique</span><br>
-        <span style="font-size:10px;color:var(--muted)">Fin de service ${fmtMin(r.finAdj)} ${r.droitUnique ? '>' : '≤'} ${seuilStr} (${typeService})</span>
-      </div>
-      <span style="font-size:14px;font-weight:700;${r.droitUnique ? 'color:var(--green)' : 'color:var(--muted)'}">
-        ${r.droitUnique ? '✅ 10,00 €' : '❌ —'}
-      </span>
-    </div>`;
-
-  const coupeStr = r.coupeMax >= 60
-    ? `${Math.floor(r.coupeMax/60)}h${String(r.coupeMax%60).padStart(2,'0')}`
-    : `${r.coupeMax} min`;
-
-  const ligneSpeciale = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--text)">Indemnité spéciale repas</span><br>
-        <span style="font-size:10px;color:var(--muted)">Coupe max : ${coupeStr} ${r.droitSpeciale ? '≥ 2h ✓' : '< 2h'}</span>
-      </div>
-      <span style="font-size:14px;font-weight:700;${r.droitSpeciale ? 'color:var(--green)' : 'color:var(--muted)'}">
-        ${r.droitSpeciale ? '✅ 5,00 €' : '❌ —'}
-      </span>
-    </div>`;
-
-  const ligneTotal = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 0 0">
-      <span style="font-size:12px;color:var(--muted);font-weight:700">TOTAL</span>
-      ${totalLabel}
-    </div>`;
-
-  content.innerHTML = ligneUnique + ligneSpeciale + ligneTotal;
-}
-
 function saveServiceEditor() {
   const num = document.getElementById('svc-num').value.trim();
   const jour = document.getElementById('svc-jour').value;
@@ -5626,11 +5476,8 @@ function saveServiceEditor() {
     heuresCalc = diffMin / 60; // stocké en décimal pour compatibilité HEURES
   }
 
-  // Calcul indemnité repas
-  const indemRes = (depotDepart && depotRetour) ? svcCalcIndemnite(depotDepart, depotRetour, svcTrips) : null;
-
   loadRoadmapServices();
-  const svc = { num, jour, depotDepart, depotRetour, heures: heuresCalc, indemnite: indemRes, trips: JSON.parse(JSON.stringify(svcTrips)) };
+  const svc = { num, jour, depotDepart, depotRetour, heures: heuresCalc, trips: JSON.parse(JSON.stringify(svcTrips)) };
   if(editingServiceIdx>=0) roadmapServices[editingServiceIdx]=svc;
   else roadmapServices.push(svc);
   saveRoadmapServices();
@@ -5646,17 +5493,12 @@ function saveServiceEditor() {
     }
   });
 
-  let toastMsg = `✅ Service ${num} enregistré`;
   if(heuresCalc) {
     const hh = Math.floor(heuresMin/60);
     const mm = String(heuresMin%60).padStart(2,'0');
-    toastMsg += ` — ${hh}h${mm}`;
+    toast(`✅ Service ${num} enregistré — ${hh}h${mm} · intervalles mémorisés`);
   }
-  if(indemRes && indemRes.montant > 0) {
-    toastMsg += ` · 🍽 +${indemRes.montant.toFixed(2)} €`;
-  }
-  toastMsg += ' · intervalles mémorisés';
-  toast(toastMsg);
+  else toast(`✅ Service ${num} enregistré · intervalles mémorisés`);
   closeSvcEditor();
 }
 
@@ -7810,29 +7652,32 @@ function traceLibraryHas(key) {
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
+  const sens = { aller: 'A', retour: 'R' }[dir] || (dir ? dir[0].toUpperCase() : 'X');
 
-  // 1. MapID unique Ligne_Sens_Terminus (nouvelle logique) : priorité absolue
+  // 1. MapID exact Ligne_Sens_Terminus (priorité absolue)
   if(tripIdx !== undefined && tripIdx !== null) {
     const mapId = buildMapId(lineNum, dir, tripIdx);
     if(lib[mapId]) return lib[mapId];
   }
 
-  // 2. Clé précise tripIdx (format legacy v2) : compatibilité descendante
+  // 2. Recherche par préfixe Ligne_Sens_ : trouve la carte même si les stops
+  //    ont été remplacés par la feuille de service (terminus peut changer)
+  const prefix = `${lineNum}_${sens}_`;
+  const matchBySens = Object.keys(lib).find(k => k.startsWith(prefix));
+  if(matchBySens) return lib[matchBySens];
+
+  // 3. Clé legacy tripIdx (format v2)
   if(tripIdx !== undefined && tripIdx !== null) {
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
     if(lib[keyPrecise]) return lib[keyPrecise];
   }
 
-  // 3. Fallback legacy lineNum_dir UNIQUEMENT si tripIdx est 0 ou non fourni
-  //    → évite que la variante 2 charge la carte de la variante 0
-  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) {
-    const keyLegacy = `${lineNum}_${dir}`;
-    if(lib[keyLegacy]) return lib[keyLegacy];
-  }
+  // 4. Clé legacy lineNum_dir (très ancien format)
+  const keyLegacy = `${lineNum}_${dir}`;
+  if(lib[keyLegacy]) return lib[keyLegacy];
 
-  // 4. Tracés pré-chargés (hors-ligne) — seulement si tripIdx === 0
-  if(!tripIdx) return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
-  return null;
+  // 5. Tracés pré-chargés hors-ligne
+  return PRELOADED_TRACES?.[lineNum]?.[dir] || null;
 }
 function traceLibrarySet(lineNum, dir, points, tripIdx) {
   const lib = traceLibraryLoad();
@@ -8727,6 +8572,54 @@ function liveMapCenter() {
   }
 }
 
+// ── Sources de tuiles disponibles ──────────────────────────────
+const TILE_SOURCES = [
+  { id: 'osm',    name: '🗺 OSM Standard',   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', sub: ['a','b','c'] },
+  { id: 'osmfr',  name: '🗺 OSM France',     url: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', sub: ['a','b','c'] },
+  { id: 'carto',  name: '🌍 Carto (clair)',  url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', sub: ['a','b','c','d'] },
+  { id: 'cartod', name: '🌑 Carto (sombre)', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', sub: ['a','b','c','d'] },
+  { id: 'sat',    name: '🛰 Satellite (ESRI)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', sub: [] },
+];
+let _currentTileId = localStorage.getItem('chronoligne_tile') || 'osm';
+let _liveTileLayer  = null;
+
+function liveMapSetTile(tileId) {
+  if(!liveMap) return;
+  const src = TILE_SOURCES.find(s => s.id === tileId) || TILE_SOURCES[0];
+  _currentTileId = src.id;
+  localStorage.setItem('chronoligne_tile', src.id);
+  if(_liveTileLayer) { liveMap.removeLayer(_liveTileLayer); _liveTileLayer = null; }
+  _liveTileLayer = L.tileLayer(src.url, {
+    maxZoom: 19,
+    subdomains: src.sub.length ? src.sub : ['a'],
+    crossOrigin: true,
+    errorTileUrl: ''
+  });
+  _liveTileLayer.on('tileerror', () => {
+    // Essayer la source suivante automatiquement
+    const idx = TILE_SOURCES.findIndex(s => s.id === _currentTileId);
+    const next = TILE_SOURCES[(idx + 1) % TILE_SOURCES.length];
+    if(next.id !== _currentTileId) liveMapSetTile(next.id);
+  });
+  _liveTileLayer.addTo(liveMap);
+  // Mettre à jour les boutons du sélecteur si visible
+  TILE_SOURCES.forEach(s => {
+    const btn = document.getElementById('tile-btn-' + s.id);
+    if(btn) {
+      btn.style.background  = s.id === src.id ? 'rgba(0,212,255,.25)' : 'rgba(255,255,255,.06)';
+      btn.style.borderColor = s.id === src.id ? 'var(--accent)' : 'var(--border)';
+      btn.style.color       = s.id === src.id ? 'var(--accent)'  : 'var(--text)';
+    }
+  });
+  toast(`🗺 ${src.name}`);
+}
+
+function liveMapToggleTilePicker() {
+  const el = document.getElementById('tile-picker');
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
 function liveMapInit() {
   if(liveMapInitialized || typeof L === 'undefined') return;
   const mapEl = document.getElementById('live-map');
@@ -8737,41 +8630,13 @@ function liveMapInit() {
     attributionControl: false
   }).setView([49.04, 2.07], 13);
 
-  // Sources de tuiles — essayées dans l'ordre jusqu'à ce qu'une marche
-  const tileSources = [
-    { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',       name: 'OSM' },
-    { url: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',      name: 'OSM FR' },
-    { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', name: 'CartoCDN' },
-    { url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png', name: 'Stadia' },
-  ];
-
-  let tileLayer = null;
-  let sourceIdx = 0;
-
-  function tryNextSource() {
-    if(tileLayer) { liveMap.removeLayer(tileLayer); tileLayer = null; }
-    if(sourceIdx >= tileSources.length) {
-      // Toutes les sources ont échoué — mode sans tuiles (tracé seul)
-      toast('⚠️ Carte hors ligne — tracé uniquement');
-      return;
-    }
-    const src = tileSources[sourceIdx++];
-    tileLayer = L.tileLayer(src.url, {
-      maxZoom: 19,
-      subdomains: ['a','b','c'],
-      crossOrigin: true
-    });
-    // Détecter erreur de chargement → essayer la suivante
-    tileLayer.on('tileerror', () => {
-      if(sourceIdx < tileSources.length) tryNextSource();
-    });
-    tileLayer.addTo(liveMap);
-  }
-
-  tryNextSource();
+  // Charger la source mémorisée (ou OSM par défaut)
+  liveMapSetTile(_currentTileId);
 
   liveMapInitialized = true;
   liveMapRefresh();
+  // Initialiser l'état visuel du sélecteur de fond
+  setTimeout(() => liveMapSetTile(_currentTileId), 100);
 }
 
 function liveMapRefresh() {
@@ -8852,101 +8717,4 @@ function liveMapRefresh() {
 
   // Appel OSRM
   fetch(osrmUrl)
-    .then(r => { if(!r.ok) throw new Error('OSRM ' + r.status); return r.json(); })
-    .then(data => {
-      if(!data.routes || !data.routes[0]) throw new Error('Pas de route OSRM');
-      const geom = data.routes[0].geometry.coordinates;
-      const latLngs = geom.map(c => [c[1], c[0]]);
-
-      liveMap.removeLayer(provisoire);
-
-      // Tracer la vraie route
-      liveMapPolyline = L.polyline(latLngs, {
-        color: line.color || '#c0392b',
-        weight: 5,
-        opacity: 0.9
-      }).addTo(liveMap);
-
-      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
-      toast('🗺 Tracé réaliste chargé');
-    })
-    .catch(err => {
-      // Fallback : garder la polyline provisoire comme définitive
-      liveMap.removeLayer(provisoire);
-      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
-        color: line.color || '#c0392b',
-        weight: 5,
-        opacity: 0.85
-      }).addTo(liveMap);
-      console.warn('OSRM indisponible, tracé droit utilisé :', err.message);
-    });
-}
-
-function liveMapUpdateBus() {
-  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
-
-  // Icône bus
-  const busIcon = L.divIcon({
-    className: '',
-    html: `<div style="width:22px;height:22px;border-radius:50%;
-           background:#00d4ff;border:3px solid #fff;
-           display:flex;align-items:center;justify-content:center;
-           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11]
-  });
-
-  if(liveMapBusMarker) {
-    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
-  } else {
-    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
-      .addTo(liveMap);
-  }
-
-  // Mettre à jour les couleurs des pastilles
-  liveMapRefreshStopColors();
-}
-
-function liveMapRefreshStopColors() {
-  if(!activeTrip || !liveMap) return;
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-
-  liveMapStopMarkers.forEach((marker, idx) => {
-    const stop = trip.stops[idx];
-    if(!stop) return;
-    const isCurrent = idx === gpsAutoNextIdx;
-    const isPassed  = idx < gpsAutoNextIdx;
-    const isRef     = stop.isRef;
-    const size  = isCurrent ? 16 : isRef ? 12 : 8;
-    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
-    const border = isCurrent ? '#fff' : '#333';
-    marker.setIcon(L.divIcon({
-      className: '',
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
-    }));
-  });
-}
-
-// ══ BOOT ═════════════════════════════════════════════════════
-// Recalibrer la carte Leaflet lors d'un changement d'orientation
-window.addEventListener('orientationchange', () => {
-  setTimeout(() => {
-    if(liveMap) liveMap.invalidateSize();
-    mapDraw();
-  }, 300);
-});
-screen.orientation?.addEventListener('change', () => {
-  setTimeout(() => {
-    if(liveMap) liveMap.invalidateSize();
-    mapDraw();
-  }, 300);
-});
-// Démarrage asynchrone via IndexedDB
-idbBoot();
-</script>
-</body>
-</html>
+    .then(r => { i
