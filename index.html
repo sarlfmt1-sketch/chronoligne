@@ -8662,6 +8662,13 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
         🗑 Supprimer la carte de ce trajet
       </button>` : ''}
 
+      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
+      <button onclick="traceLibraryPurgeOrphans('${lineNum}',${lineIdx})"
+        style="width:100%;padding:10px;font-size:12px;font-weight:700;
+               background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);
+               color:var(--red);border-radius:10px;cursor:pointer;margin-bottom:6px">
+        🧹 Purger les cartes orphelines (ligne ${lineNum})
+      </button>
       <button onclick="document.getElementById('trace-edit-overlay').remove()"
         style="width:100%;padding:10px;font-size:13px;
                background:rgba(255,255,255,.06);border:1px solid var(--border);
@@ -8671,6 +8678,35 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+// ── Purger les clés orphelines d'une ligne ───────────────────
+// Garde uniquement les clés qui correspondent à un trajet existant en DB
+function traceLibraryPurgeOrphans(lineNum, lineIdx) {
+  document.getElementById('trace-edit-overlay')?.remove();
+  const lib = traceLibraryLoad();
+
+  // Construire l'ensemble des clés valides pour cette ligne
+  const validKeys = new Set();
+  const line = db.lines.find(l => String(l.num) === String(lineNum));
+  if(line) {
+    line.trips.forEach((trip, ti) => {
+      validKeys.add(buildMapId(lineNum, trip.direction || 'aller', ti));
+    });
+  }
+
+  // Supprimer toutes les clés de cette ligne qui ne sont pas valides
+  let removed = 0;
+  Object.keys(lib).forEach(k => {
+    if(k.startsWith(String(lineNum) + '_') && !validKeys.has(k)) {
+      delete lib[k];
+      removed++;
+    }
+  });
+
+  traceLibrarySave(lib);
+  toast(`🧹 ${removed} carte(s) orpheline(s) supprimée(s) pour la ligne ${lineNum}`);
+  if(lineIdx !== undefined) renderLineDetail(lineIdx);
 }
 
 // ── Copier une carte existante vers un autre trajet ───────────
