@@ -5673,10 +5673,18 @@ function parseIneoFeuille() {
   // Helper : détecter la direction depuis "FROM >> TO"
   // retour = la destination est le dépôt/Cergy
   function detectDirection(from, to) {
-    const toCaps = to.toUpperCase();
+    // Mots-clés du dépôt / Cergy (côté départ habituel)
     const depotKw = ['CERG','DEPOT','DEPO','COB'];
-    if(depotKw.some(kw => toCaps.includes(kw))) return 'retour';
-    return 'aller';
+    const fromCaps = from.toUpperCase();
+    const toCaps   = to.toUpperCase();
+    const fromIsDepot = depotKw.some(kw => fromCaps.includes(kw));
+    const toIsDepot   = depotKw.some(kw => toCaps.includes(kw));
+    // Si la destination est le dépôt/Cergy → retour
+    // Si le départ est le dépôt/Cergy → aller
+    // Si les deux ou aucun → on regarde les arrêts INEO (sera affiné par buildTripFromRef)
+    if(toIsDepot && !fromIsDepot) return 'retour';
+    if(fromIsDepot && !toIsDepot) return 'aller';
+    return 'aller'; // défaut
   }
 
   while(i < lines.length) {
@@ -5956,9 +5964,26 @@ function buildTripFromRef(lineNum, refStops, direction) {
   }
 
   // Garder uniquement les arrêts entre le premier et le dernier arrêt reconnu
-  const annotated = annotatedFull.slice(startIdx, endIdx + 1);
+  let annotated = annotatedFull.slice(startIdx, endIdx + 1);
 
-  // Recalculer les indices d'ancres dans le tableau rogné
+  // ── Vérifier si l'ordre DB est inverse par rapport aux refStops ──
+  // Si le premier refStop matché dans la DB est APRÈS le dernier → il faut inverser
+  if(matchedIndices.length >= 2) {
+    const firstRefNorm = normalize(refStops[0].name);
+    const lastRefNorm  = normalize(refStops[refStops.length-1].name);
+    let firstDbPos = -1, lastDbPos = -1;
+    annotated.forEach((a, i) => {
+      const sn = normalize(a.name);
+      if(firstDbPos < 0 && (sn.includes(firstRefNorm) || firstRefNorm.includes(sn))) firstDbPos = i;
+      if(sn.includes(lastRefNorm) || lastRefNorm.includes(sn)) lastDbPos = i;
+    });
+    // Si dans la DB le "premier arrêt INEO" arrive après le "dernier arrêt INEO" → ordre inversé
+    if(firstDbPos > lastDbPos && lastDbPos >= 0) {
+      annotated = [...annotated].reverse();
+    }
+  }
+
+  // Recalculer les indices d'ancres dans le tableau rogné (après éventuel inversement)
   const anchors = annotated.map((a,i) => a._refTime ? i : -1).filter(i => i >= 0);
 
   if(anchors.length === 0) {
@@ -6036,10 +6061,15 @@ function buildTripFromRef(lineNum, refStops, direction) {
   const fp = `${lineNum}_${usedDir}_${fpRaw}`;
   const mem = idbGet(`svcTraceMap_${fp}`);
 
+  // Label : toujours basé sur les arrêts INEO réels (premier → dernier que le chauffeur fait)
+  // et non sur les arrêts DB qui peuvent être dans l'ordre inverse
+  const labelFrom = refStops[0].name;
+  const labelTo   = refStops[refStops.length - 1].name;
+
   return {
     lineNum,
     lineColor: dbLine.color || '#c0392b',
-    label: `${finalStops[0].name} → ${finalStops[finalStops.length-1].name}`,
+    label: `${labelFrom} → ${labelTo}`,
     direction: usedDir,
     stops: finalStops,
     _fingerprint: fp,
