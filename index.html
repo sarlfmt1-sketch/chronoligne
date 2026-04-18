@@ -5563,10 +5563,10 @@ function svcOpenMapModal(ti, traceKey, points) {
 
   document.body.appendChild(modal);
 
-  // Init carte Leaflet dans le modal
-  setTimeout(() => {
+  // Init carte Leaflet dans le modal (avec chargement dynamique si nécessaire)
+  function _initSvcMap() {
     const mapEl = document.getElementById('svc-map-container');
-    if(!mapEl || typeof L === 'undefined') { toast('❌ Leaflet non disponible'); modal.remove(); return; }
+    if(!mapEl) return;
 
     const svcMap = L.map(mapEl, { zoomControl: true, attributionControl: false }).setView([49.04, 2.07], 13);
 
@@ -5608,7 +5608,9 @@ function svcOpenMapModal(ti, traceKey, points) {
 
     // Forcer le rendu (le div était caché)
     setTimeout(() => svcMap.invalidateSize(), 100);
-  }, 80);
+  }
+
+  _ensureLeaflet(_initSvcMap);
 }
 
 // ── Oublier une association mémorisée ────────────────────────
@@ -5632,7 +5634,7 @@ function svcFindTraceWithManual(t) {
   return _svcFindTraceOrig(t);
 }
 
-// Patch svcBuildMapBtn — badge selon méthode de détection
+// Patch svcBuildMapBtn — badge selon méthode de détection + bouton changer
 const _svcBuildMapBtnOrig = svcBuildMapBtn;
 function svcBuildMapBtn(t, ti) {
   const match = svcFindTraceWithManual(t);
@@ -5641,14 +5643,20 @@ function svcBuildMapBtn(t, ti) {
     const isMemorized = match.method === 'memorized' || match.method === 'manual';
     const isVariant   = match.method?.startsWith('variant:');
     const icon  = isMemorized ? '📌' : isVariant ? '🔀' : '🗺';
-    const label = isMemorized ? 'Carte mémo' : isVariant ? 'Variante' : 'Voir Carte';
-    const bg    = isMemorized ? 'rgba(255,193,7,.2)' : 'rgba(39,174,96,.2)';
-    const border= isMemorized ? 'rgba(255,193,7,.8)' : 'var(--green)';
-    const color = isMemorized ? '#ffc107' : 'var(--green)';
-    return `<button onclick="svcShowMap(${ti})"
-      style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
-             background:${bg};border:1px solid ${border};color:${color};white-space:nowrap"
-      title="${match.key} (${pts} pts) — ${match.method}">${icon} ${label}</button>`;
+    const label = isMemorized ? 'Carte mémo' : isVariant ? 'Variante ?' : 'Voir Carte';
+    const bg    = isMemorized ? 'rgba(255,193,7,.2)' : isVariant ? 'rgba(255,100,0,.15)' : 'rgba(39,174,96,.2)';
+    const border= isMemorized ? 'rgba(255,193,7,.8)' : isVariant ? 'rgba(255,140,0,.7)' : 'var(--green)';
+    const color = isMemorized ? '#ffc107' : isVariant ? 'orange' : 'var(--green)';
+    return `<div style="display:flex;gap:3px;align-items:center">
+      <button onclick="svcShowMap(${ti})"
+        style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
+               background:${bg};border:1px solid ${border};color:${color};white-space:nowrap"
+        title="${match.key} (${pts} pts) — ${match.method}">${icon} ${label}</button>
+      <button onclick="svcPickTrace(${ti})" title="Mauvaise carte ? Choisir ou importer un KML"
+        style="padding:4px 7px;font-size:11px;border-radius:6px;cursor:pointer;
+               background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);
+               color:rgba(255,255,255,.5);white-space:nowrap;line-height:1">✎</button>
+    </div>`;
   } else {
     return `<button onclick="svcPickTrace(${ti})"
       style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
@@ -8684,9 +8692,9 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
   document.body.appendChild(overlay);
 
   // Initialiser la mini-carte dans la modal
-  setTimeout(() => {
+  _ensureLeaflet(() => {
     const mapEl = document.getElementById('trace-map-view');
-    if(!mapEl || typeof L === 'undefined') return;
+    if(!mapEl) return;
 
     const m = L.map('trace-map-view', { zoomControl: true, attributionControl: false })
                .setView([49.04, 2.07], 13);
@@ -8737,7 +8745,33 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
         .bindPopup('📍 Votre position')
         .addTo(m);
     }
-  }, 150);
+  });
+}
+
+// ── Utilitaire : charger Leaflet dynamiquement si absent ─────
+function _ensureLeaflet(cb) {
+  if(typeof L !== 'undefined') { setTimeout(cb, 80); return; }
+  if(!document.querySelector('link[data-leaflet-css]')) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    css.setAttribute('data-leaflet-css', '1');
+    document.head.appendChild(css);
+  }
+  if(!document.querySelector('script[data-leaflet-js]')) {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.setAttribute('data-leaflet-js', '1');
+    s.onload = () => setTimeout(cb, 100);
+    s.onerror = () => toast('🌐 Impossible de charger la carte — connexion requise');
+    document.head.appendChild(s);
+  } else {
+    let tries = 0;
+    const wait = setInterval(() => {
+      if(typeof L !== 'undefined') { clearInterval(wait); setTimeout(cb, 50); }
+      else if(++tries > 20) { clearInterval(wait); toast('🌐 Carte indisponible hors-ligne'); }
+    }, 200);
+  }
 }
 
 // ── Menu édition (appui long) ─────────────────────────────────
