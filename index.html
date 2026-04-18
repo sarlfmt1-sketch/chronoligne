@@ -8715,6 +8715,103 @@ function liveMapRefresh() {
 
   drawStopMarkers();
 
-  // Appel OSRM
+   // Appel OSRM
   fetch(osrmUrl)
-    .then(r => { i
+    .then(r => { if(!r.ok) throw new Error('OSRM ' + r.status); return r.json(); })
+    .then(data => {
+      if(!data.routes || !data.routes[0]) throw new Error('Pas de route OSRM');
+      const geom = data.routes[0].geometry.coordinates;
+      const latLngs = geom.map(c => [c[1], c[0]]);
+
+      liveMap.removeLayer(provisoire);
+
+      // Tracer la vraie route
+      liveMapPolyline = L.polyline(latLngs, {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.9
+      }).addTo(liveMap);
+
+      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
+      toast('🗺 Tracé réaliste chargé');
+    })
+    .catch(err => {
+      // Fallback : garder la polyline provisoire comme définitive
+      liveMap.removeLayer(provisoire);
+      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
+        color: line.color || '#c0392b',
+        weight: 5,
+        opacity: 0.85
+      }).addTo(liveMap);
+      console.warn('OSRM indisponible, tracé droit utilisé :', err.message);
+    });
+}
+
+function liveMapUpdateBus() {
+  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
+
+  // Icône bus
+  const busIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;
+           background:#00d4ff;border:3px solid #fff;
+           display:flex;align-items:center;justify-content:center;
+           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  if(liveMapBusMarker) {
+    liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
+  } else {
+    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
+      .addTo(liveMap);
+  }
+
+  // Mettre à jour les couleurs des pastilles
+  liveMapRefreshStopColors();
+}
+
+function liveMapRefreshStopColors() {
+  if(!activeTrip || !liveMap) return;
+  const line = db.lines[activeTrip.lineIdx];
+  const trip = line?.trips?.[activeTrip.tripIdx];
+  if(!trip) return;
+
+  liveMapStopMarkers.forEach((marker, idx) => {
+    const stop = trip.stops[idx];
+    if(!stop) return;
+    const isCurrent = idx === gpsAutoNextIdx;
+    const isPassed  = idx < gpsAutoNextIdx;
+    const isRef     = stop.isRef;
+    const size  = isCurrent ? 16 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
+    const border = isCurrent ? '#fff' : '#333';
+    marker.setIcon(L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    }));
+  });
+}
+
+// ══ BOOT ═════════════════════════════════════════════════════
+// Recalibrer la carte Leaflet lors d'un changement d'orientation
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
+screen.orientation?.addEventListener('change', () => {
+  setTimeout(() => {
+    if(liveMap) liveMap.invalidateSize();
+    mapDraw();
+  }, 300);
+});
+// Démarrage asynchrone via IndexedDB
+idbBoot();
+</script>
+</body>
+</html>
