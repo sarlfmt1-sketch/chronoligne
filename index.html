@@ -591,11 +591,24 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
         <div class="prog-bar" style="margin-bottom:12px"><div class="prog-fill" id="gps-stops-prog" style="width:0%"></div></div>
         <!-- Actions globales -->
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button onclick="gpsPropagateByName()" class="btn btn-sm" style="flex:1;background:rgba(0,212,255,.15);border-color:var(--accent);color:var(--accent);font-weight:700">🔁 Propager GPS → même nom</button>
           <button onclick="gpsStopsDeleteAll()" class="btn btn-sm btn-danger" style="flex:1">🗑 Supprimer tous les points</button>
         </div>
         <!-- Liste des arrêts -->
         <div id="gps-stops-list" style="display:flex;flex-direction:column;gap:4px"></div>
       </div>
+    </div>
+
+    <!-- Propager GPS par nom -->
+    <div class="card" style="border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.04);margin-bottom:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--accent)">🔁 Propager coords par nom</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Copie les coords GPS sur tous les arrêts portant le même nom, toutes lignes confondues</div>
+        </div>
+        <button onclick="gpsPropagateByName()" class="btn btn-sm" style="background:rgba(0,212,255,.15);border-color:var(--accent);color:var(--accent);font-weight:700;white-space:nowrap">▶ Lancer</button>
+      </div>
+      <div id="gps-propagate-result" style="font-size:11px;color:var(--muted);margin-top:8px;display:none"></div>
     </div>
 
     <!-- Parseur GPS -->
@@ -6441,6 +6454,100 @@ function loadGpsCoordsDB() {
 function saveGpsCoordsDB() { idbSet(GPS_COORDS_KEY, JSON.stringify(gpsCoordsDB)); }
 
 function gpsCoordKey(lineNum, tripIdx, stopIdx) { return `${lineNum}_${tripIdx}_${stopIdx}`; }
+
+// ══ PROPAGATION GPS PAR NOM D'ARRÊT ════════════════════════════
+// Parcourt tous les arrêts de toutes les lignes qui ont déjà des coords GPS,
+// construit un dictionnaire nom normalisé → {lat, lon},
+// puis injecte ces coords sur tous les arrêts du même nom qui n'en ont pas encore.
+function gpsPropagateByName() {
+  function normName(s) {
+    return String(s).toUpperCase()
+      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+      .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  // 1. Construire le dictionnaire nom → coords depuis les entrées existantes
+  const nameCoords = {}; // normName → {lat, lon, origName}
+
+  db.lines.forEach(line => {
+    line.trips.forEach((trip, ti) => {
+      trip.stops.forEach((stop, si) => {
+        const key = gpsCoordKey(line.num, ti, si);
+        const c = gpsCoordsDB[key];
+        if(c) {
+          const norm = normName(stop.name);
+          if(!nameCoords[norm]) {
+            nameCoords[norm] = { lat: c.lat, lon: c.lon, origName: stop.name };
+          }
+        }
+      });
+    });
+  });
+
+  const totalKnown = Object.keys(nameCoords).length;
+  if(!totalKnown) {
+    toast('❌ Aucun point GPS enregistré à propager');
+    return;
+  }
+
+  // 2. Injecter sur tous les arrêts sans coords dont le nom est connu
+  let injected = 0;
+  let alreadyHad = 0;
+  let notFound = 0;
+
+  db.lines.forEach(line => {
+    line.trips.forEach((trip, ti) => {
+      trip.stops.forEach((stop, si) => {
+        const key = gpsCoordKey(line.num, ti, si);
+        if(gpsCoordsDB[key]) {
+          alreadyHad++;
+          return; // déjà renseigné
+        }
+        // Chercher d'abord correspondance exacte normalisée
+        const norm = normName(stop.name);
+        if(nameCoords[norm]) {
+          gpsCoordsDB[key] = { lat: nameCoords[norm].lat, lon: nameCoords[norm].lon, name: stop.name };
+          injected++;
+          return;
+        }
+        // Correspondance partielle (l'un contient l'autre)
+        let bestMatch = null;
+        let bestLen = 0;
+        for(const [n, c] of Object.entries(nameCoords)) {
+          if((norm.includes(n) || n.includes(norm)) && n.length > bestLen) {
+            bestLen = n.length;
+            bestMatch = c;
+          }
+        }
+        if(bestMatch) {
+          gpsCoordsDB[key] = { lat: bestMatch.lat, lon: bestMatch.lon, name: stop.name };
+          injected++;
+        } else {
+          notFound++;
+        }
+      });
+    });
+  });
+
+  saveGpsCoordsDB();
+
+  const msg = `✅ ${injected} coords injectées (${totalKnown} noms connus, ${notFound} arrêts sans correspondance)`;
+  toast(msg);
+
+  // Afficher résultat dans la card si visible
+  const resEl = document.getElementById('gps-propagate-result');
+  if(resEl) {
+    resEl.style.display = 'block';
+    resEl.style.color = injected > 0 ? 'var(--green)' : 'var(--muted)';
+    resEl.textContent = msg;
+  }
+
+  // Rafraîchir le panneau GPS si ouvert
+  if(document.getElementById('gps-stops-panel').style.display !== 'none') {
+    renderGpsStopsPanel();
+  }
+}
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000;
