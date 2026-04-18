@@ -3324,23 +3324,41 @@ function initDB() {
   if(!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
 
   // Version de purge : force la réinitialisation des trips au premier chargement
-  const TRIPS_VERSION = 'v7_with_1206_variants';
+  const TRIPS_VERSION = 'v8_no_duplicate_reload';
   const storedVersion = idbGet('chronoligne_trips_version');
   const needsPurge = storedVersion !== TRIPS_VERSION;
 
-  // Charger uniquement les 2 trajets officiels par ligne (aller + retour)
+  // Charger les trajets officiels par ligne
   db.lines.forEach(line => {
     const templates = PRELOADED_TRIPS[line.num] || [];
     if(templates.length > 0) {
       const preloadedLabels = templates.map(t => t.label);
-      // Si purge nécessaire : on ne garde aucun custom hérité de l'ancien localStorage
-      const custom = needsPurge ? [] : line.trips.filter(t => !preloadedLabels.includes(t.label));
-      const official = templates.map(t => ({
-        direction: t.direction,
-        label: t.label,
-        stops: t.stops.map(s => ({ name:s.name, time:'00:00', intervalAfter:s.intervalAfter||0 }))
-      }));
-      line.trips = [...official, ...custom];
+      if(needsPurge) {
+        // Purge forcée : on reconstruit depuis PRELOADED_TRIPS, custom perdus
+        const official = templates.map(t => ({
+          direction: t.direction,
+          label: t.label,
+          stops: t.stops.map(s => ({ name:s.name, time:'00:00', intervalAfter:s.intervalAfter||0 }))
+        }));
+        line.trips = official;
+      } else {
+        // Pas de purge : on ne touche PAS aux trips existants en DB
+        // On ajoute seulement les official qui sont totalement absents (nouveaux)
+        const existingLabels = line.trips.map(t => t.label);
+        const missing = templates.filter(t => !existingLabels.includes(t.label));
+        if(missing.length > 0) {
+          const newOfficial = missing.map(t => ({
+            direction: t.direction,
+            label: t.label,
+            stops: t.stops.map(s => ({ name:s.name, time:'00:00', intervalAfter:s.intervalAfter||0 }))
+          }));
+          // Ajouter en tête, avant les custom
+          const custom = line.trips.filter(t => !preloadedLabels.includes(t.label));
+          const existing = line.trips.filter(t => preloadedLabels.includes(t.label));
+          line.trips = [...existing, ...newOfficial, ...custom];
+        }
+        // Si tous les official sont déjà là (ou supprimés volontairement) → ne rien changer
+      }
     } else if(needsPurge) {
       line.trips = [];
     }
