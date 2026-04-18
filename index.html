@@ -874,6 +874,14 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
       </div>
     </div>
 
+    <!-- Sélecteur trajet précis (visible si plusieurs trajets dans ce sens) -->
+    <div id="sillon-trip-row" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Trajet exact</div>
+      <select id="sillon-trip-sel" style="width:100%;padding:8px 10px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
+        <option value="">— Choisir le trajet —</option>
+      </select>
+    </div>
+
     <!-- Bouton démarrer -->
     <button id="sillon-start-btn" onclick="sillonStart()"
       style="width:100%;padding:14px;font-size:16px;font-weight:700;
@@ -7392,13 +7400,43 @@ const SILLON_MAX_JUMP    = 150;    // m — saut max entre 2 positions (filtre e
 
 // ── Initialisation de la vue ──────────────────────────────────────────────────
 function sillonInitView() {
-  // Peupler le sélecteur de lignes depuis db.lines
   const sel = document.getElementById('sillon-line-sel');
   if(!sel) return;
   sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
     db.lines.map(l => `<option value="${l.num}">${l.num} — ${l.name||''}</option>`).join('');
-  // Remettre la direction active
+  sel.onchange = () => sillonUpdateTripSel();
   sillonSetDir(sillonDirection);
+}
+
+// ── Peupler le select de trajet précis selon ligne + direction ──
+function sillonUpdateTripSel() {
+  const lineNum = document.getElementById('sillon-line-sel')?.value;
+  const tripRow = document.getElementById('sillon-trip-row');
+  const tripSel = document.getElementById('sillon-trip-sel');
+  if(!tripSel || !tripRow) return;
+
+  if(!lineNum) { tripRow.style.display = 'none'; return; }
+
+  const line = db.lines.find(l => l.num === lineNum);
+  if(!line) { tripRow.style.display = 'none'; return; }
+
+  // Filtrer les trips selon la direction courante
+  const trips = line.trips
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => (t.direction || 'aller') === sillonDirection);
+
+  if(trips.length <= 1) {
+    // Un seul trajet dans ce sens → sélection auto, pas besoin d'afficher
+    tripRow.style.display = 'none';
+    if(trips.length === 1) tripSel.value = trips[0].i;
+    return;
+  }
+
+  // Plusieurs trajets → afficher le select
+  tripSel.innerHTML = trips.map(({ t, i }) =>
+    `<option value="${i}">${t.label || 'Trajet ' + (i+1)}</option>`
+  ).join('');
+  tripRow.style.display = 'block';
 }
 
 // ── Sélection de direction ────────────────────────────────────────────────────
@@ -7422,6 +7460,24 @@ function sillonSetDir(dir) {
     ba.style.borderColor  = 'rgba(0,212,255,.3)';
     ba.style.color        = 'var(--muted)';
   }
+  // Mettre à jour le select de trajet selon la nouvelle direction
+  sillonUpdateTripSel();
+}
+
+// ── Helper : récupérer le tripIdx précis sélectionné ─────────
+function sillonGetSelectedTripIdx() {
+  const tripSel = document.getElementById('sillon-trip-sel');
+  const tripRow = document.getElementById('sillon-trip-row');
+  // Si le select est affiché → utiliser sa valeur
+  if(tripRow && tripRow.style.display !== 'none' && tripSel && tripSel.value !== '') {
+    return parseInt(tripSel.value);
+  }
+  // Sinon → trouver le premier trip qui correspond à la direction
+  const lineNum = document.getElementById('sillon-line-sel')?.value;
+  if(!lineNum) return -1;
+  const line = db.lines.find(l => l.num === lineNum);
+  if(!line) return -1;
+  return line.trips.findIndex(t => (t.direction || 'aller') === sillonDirection);
 }
 
 // ── DÉMARRER l'apprentissage ──────────────────────────────────────────────────
@@ -8155,16 +8211,17 @@ function sillonSauvegarderDirectement() {
   if(!sillonPath || sillonPath.length < 2) { toast('❌ Aucun parcours enregistré'); return; }
   if(!sillonLineNum) { toast('❌ Ligne non définie'); return; }
 
-  // Trouver le tripIdx correspondant à la ligne + direction
+  // Trouver le tripIdx précis (sélectionné dans le select ou premier de la direction)
   const lineObj = db.lines.find(l => l.num === sillonLineNum);
   if(!lineObj) { toast('❌ Ligne introuvable dans la base'); return; }
   const lineIdx = db.lines.indexOf(lineObj);
-  const tripIdx = lineObj.trips.findIndex(t => (t.direction || 'aller') === sillonDirection);
+  const tripIdx = sillonGetSelectedTripIdx();
   if(tripIdx < 0) { toast('❌ Trajet introuvable pour cette direction'); return; }
 
   const points = sillonPath.map(p => [p.lat, p.lon]);
   traceLibrarySet(sillonLineNum, sillonDirection, points, tripIdx);
-  toast(`✅ Tracé sauvegardé — ${points.length} pts · Ligne ${sillonLineNum} ${sillonDirection}`);
+  const tripLabel = lineObj.trips[tripIdx]?.label || `trajet ${tripIdx+1}`;
+  toast(`✅ Tracé sauvegardé — ${points.length} pts · ${sillonLineNum} ${sillonDirection} · ${tripLabel}`);
 
   // Rafraîchir si trajet actif
   if(activeTrip?.lineIdx === lineIdx && activeTrip?.tripIdx === tripIdx) {
@@ -8182,7 +8239,7 @@ function sillonFusionnerKML() {
   const lineObj = db.lines.find(l => l.num === sillonLineNum);
   if(!lineObj) { toast('❌ Ligne introuvable'); return; }
   const lineIdx = db.lines.indexOf(lineObj);
-  const tripIdx = lineObj.trips.findIndex(t => (t.direction || 'aller') === sillonDirection);
+  const tripIdx = sillonGetSelectedTripIdx();
   if(tripIdx < 0) { toast('❌ Trajet introuvable'); return; }
 
   const kml = traceLibraryGet(sillonLineNum, sillonDirection, tripIdx);
