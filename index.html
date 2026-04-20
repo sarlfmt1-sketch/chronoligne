@@ -571,26 +571,25 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div class="card-title">🚍 Mes lignes</div>
     <div id="line-grid"></div>
   </div>
-
-  <!-- ══ DOSSIERS GIROUETTE ══ -->
-  <div class="card" style="border:1px solid rgba(255,193,7,.25);background:rgba(255,193,7,.04)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="card-title" style="margin:0;color:#ffc107">📁 Dossiers Girouette</div>
-      <button onclick="girOpenEditor(null)"
-        style="padding:6px 12px;background:rgba(255,193,7,.2);border:1px solid #ffc107;
-               color:#ffc107;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
-        + Nouveau
-      </button>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-      Chaque dossier contient le tracé KML et les points GPS d'un girouette.
-    </div>
-    <div id="gir-panel-content"></div>
-  </div>
   <div id="line-detail" style="display:none">
     <div class="card">
       <div id="line-detail-title" class="card-title"></div>
       <div id="trip-list"></div>
+    </div>
+
+    <!-- Dossiers girouette de cette ligne -->
+    <div id="gir-line-panel" style="display:none">
+      <div class="card" style="border:1px solid rgba(255,193,7,.25);background:rgba(255,193,7,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin:0;color:#ffc107">📁 Dossiers Girouette</div>
+          <button id="gir-line-add-btn"
+            style="padding:5px 12px;background:rgba(255,193,7,.2);border:1px solid #ffc107;
+                   color:#ffc107;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+            + Nouveau
+          </button>
+        </div>
+        <div id="gir-line-content"></div>
+      </div>
     </div>
 
     <!-- Panneau GPS arrêts enregistrés -->
@@ -1213,7 +1212,7 @@ function hDisplay(h) {
 
 // ══ COORDONNÉES GPS PRÉCHARGÉES ═══════════════════════════════
 const PRELOADED_GPS = {
-  '1201': {
+  '01': {
     aller: {
       'Gare de Pontoise (Quai Canrobert)':    { lat: 49.04639749219145,  lon: 2.093204101837572  },
       'Gare de Pontoise Canrobert':           { lat: 49.04639749219145,  lon: 2.093204101837572  },
@@ -1272,7 +1271,7 @@ const PRELOADED_GPS = {
     },
   },
 
-  '1233': {
+  '33': {
     aller: {
       'Gare de Pontoise':                  { lat: 49.04702710110386,  lon: 2.0960888305510443 },
       'Hotel Dieu':                        { lat: 49.047862421271056, lon: 2.1004255279573636 },
@@ -1319,7 +1318,7 @@ const PRELOADED_GPS = {
       'Gare de Pontoise':                  { lat: 49.047211386467666, lon: 2.0955233441970793 },
     },
   },
-  '1239': {
+  '39': {
     aller: {
       'Gare de Cergy Saint-Christophe':    { lat: 49.05006070381045,  lon: 2.0334316913409336 },
       'Cergy Saint-Christophe RER':        { lat: 49.05006070381045,  lon: 2.0334316913409336 },
@@ -1376,7 +1375,7 @@ const PRELOADED_GPS = {
       'Cergy Saint-Christophe RER':        { lat: 49.04989721715703,  lon: 2.0351120952843904 },
     },
   },
-  '1240': {
+  '40': {
     aller: {
       'Gare de Cergy Saint-Christophe':    { lat: 49.049842176313504, lon: 2.0338714550551185 },
       'Cergy Saint-Christophe RER':        { lat: 49.049842176313504, lon: 2.0338714550551185 },
@@ -1439,7 +1438,7 @@ const PRELOADED_GPS = {
       'La Siaule (Terminus Vauréal)':      { lat: 49.02099073013078,  lon: 2.016891680690493  },
     },
   },
-  '1230': {
+  '30': {
     // Circuit en boucle : format tableau indexé (stopIdx → coords)
     aller_indexed: [
       { lat: 49.04630, lon: 2.09330 },  // 0  Gare de Pontoise Canrobert
@@ -1464,7 +1463,7 @@ const PRELOADED_GPS = {
       { lat: 49.04654, lon: 2.09235 },  // 19 Gare de Pontoise Canrobert (retour boucle)
     ],
   },
-  '1206': {
+  '06': {
     aller: {
       'Gare de Pontoise':                        { lat: 49.047183, lon: 2.095953 },
       'Hôtel Dieu':                              { lat: 49.047856, lon: 2.100400 },
@@ -1588,7 +1587,7 @@ function parseGpsImport() {
 
 // ══ TRACÉS KML PRÉCHARGÉS ════════════════════════════════════
 const PRELOADED_TRACES = {
-  '1206': {
+  '06': {
     aller: [[49.047178,2.095961],[49.04749,2.09588],[49.04764,2.0965],[49.04709,2.09881],[49.04698,2.0994],[49.04706,2.09967],[49.0477,2.10019],[49.04837,2.10082],[49.04846,2.10105],[49.04869,2.10161],[49.04906,2.10225],[49.04965,2.10321],[49.04996,2.10347],[49.05018,2.10304],[49.05056,2.10227],[49.05124,2.10091],[49.05145,2.10041],[49.05164,2.09906],[49.05167,2.09844],[49.0517,2.09748],[49.05173,2.09707],[49.05197,2.09647],[49.05227,2.09595],[49.05286,2.09514],[49.05333,2.09445],[49.05396,2.09349],[49.05458,2.09262],[49.0547,2.09251],[49.05474,2.09252],[49.0548,2.09252],[49.05553,2.09192],[49.05574,2.09166],[49.05588,2.09164],[49.05592,2.09158],[49.05599,2.09151],[49.05635,2.09144],[49.05665,2.0914],[49.05763,2.09104],[49.05784,2.09092],[49.05827,2.09093],[49.05858,2.09095],[49.05885,2.09092],[49.05908,2.09079],[49.06028,2.09055],[49.06182,2.09022],[49.06237,2.09001],[49.0629,2.08997],[49.06293,2.09097],[49.06292,2.09234],[49.06288,2.09357],[49.06284,2.09383],[49.06282,2.09394],[49.06292,2.09395],[49.06339,2.09402],[49.06362,2.09407],[49.06375,2.0942],[49.06385,2.09423],[49.06387,2.0942],[49.06387,2.09409],[49.064,2.09406],[49.06412,2.09407],[49.06427,2.09411],[49.06441,2.09415],[49.06434,2.09412],[49.0642,2.09409],[49.06404,2.09407],[49.06386,2.09406],[49.06377,2.09405],[49.06352,2.09404],[49.06304,2.09401],[49.06292,2.09388],[49.06287,2.09382],[49.06282,2.09393],[49.06264,2.09397],[49.06106,2.09382],[49.06075,2.09369],[49.05971,2.09247],[49.05916,2.09181],[49.0588,2.0913],[49.05883,2.09097],[49.05887,2.09073],[49.05874,2.09052],[49.05864,2.0902],[49.05849,2.08946],[49.05809,2.08905],[49.05709,2.08791],[49.05641,2.0871],[49.05625,2.08668],[49.05626,2.08624],[49.05644,2.0858],[49.05679,2.08543],[49.05713,2.08528],[49.05805,2.08509],[49.05892,2.08499],[49.05916,2.08507],[49.05966,2.08542],[49.06025,2.08606],[49.06066,2.08653],[49.06183,2.08787],[49.06246,2.08863],[49.06266,2.089],[49.06283,2.08959],[49.06325,2.0895],[49.06369,2.08914],[49.06399,2.0888],[49.06424,2.08884],[49.06436,2.08878],[49.06446,2.08853],[49.06479,2.08803],[49.06507,2.08765],[49.0655,2.08714],[49.06596,2.08662],[49.0664,2.08613],[49.06683,2.08572],[49.06732,2.0853],[49.06802,2.08495],[49.06837,2.08465],[49.06873,2.08424],[49.0692,2.08377],[49.06974,2.08327],[49.07014,2.08299],[49.07021,2.08293],[49.07032,2.08286],[49.07046,2.08276],[49.07057,2.08272],[49.07068,2.08275],[49.07088,2.08278],[49.07102,2.08289],[49.07131,2.08332],[49.07153,2.08368],[49.07176,2.08401],[49.07197,2.08431],[49.07227,2.08473],[49.07259,2.08521],[49.07289,2.08576],[49.07314,2.08642],[49.07329,2.08712],[49.07341,2.08774],[49.07337,2.08823],[49.07327,2.08841],[49.07273,2.08882],[49.07338,2.08844],[49.07354,2.08856],[49.07361,2.08872],[49.07372,2.08925],[49.07385,2.08985],[49.07389,2.09021],[49.07382,2.09046],[49.07386,2.0907],[49.07398,2.09081],[49.07411,2.09078],[49.07421,2.09061],[49.07422,2.09046],[49.07416,2.09029],[49.07405,2.09017],[49.07392,2.08984],[49.0738,2.08928],[49.07367,2.08862],[49.07355,2.08808],[49.07343,2.08754],[49.07332,2.087],[49.07319,2.08648],[49.07296,2.08592],[49.07267,2.08533],[49.07237,2.08471],[49.07207,2.08425],[49.07182,2.08386],[49.07164,2.08356],[49.07144,2.08324],[49.07121,2.08287],[49.07112,2.08248],[49.07125,2.08196],[49.07147,2.08164],[49.0717,2.08132],[49.07197,2.08093],[49.07225,2.08053],[49.07257,2.08013],[49.07293,2.07969],[49.07338,2.07917],[49.0738,2.07867],[49.07561,2.07647],[49.07638,2.07591],[49.07683,2.07593],[49.07702,2.07613],[49.07722,2.07649],[49.07736,2.0766],[49.07753,2.07651],[49.07759,2.07625],[49.07752,2.07603],[49.07727,2.07593],[49.07708,2.07571],[49.07674,2.07507],[49.07663,2.07486],[49.07639,2.07433],[49.07592,2.07369],[49.07546,2.07324],[49.07513,2.07275],[49.07508,2.07251],[49.07498,2.07244],[49.07471,2.07232],[49.07443,2.07204],[49.0742,2.07195],[49.07361,2.07133],[49.07299,2.07068],[49.07235,2.07003],[49.07158,2.06967],[49.0707,2.06926],[49.06913,2.0685],[49.06818,2.06794],[49.06694,2.0672],[49.06634,2.06695],[49.0659,2.0668],[49.06528,2.06559],[49.06491,2.06547],[49.06467,2.06551],[49.06408,2.06504],[49.06355,2.06464],[49.06349,2.06451],[49.06339,2.06451],[49.06337,2.06465],[49.06327,2.06505],[49.06328,2.06561],[49.06328,2.06599],[49.06318,2.0663],[49.06303,2.06652],[49.06274,2.0668],[49.06261,2.06703],[49.06252,2.06709],[49.0622,2.06717],[49.06184,2.06716],[49.06147,2.06704],[49.06128,2.06678],[49.06117,2.06632],[49.06122,2.06587],[49.06152,2.06464],[49.06182,2.06369],[49.06229,2.06211],[49.06315,2.05866],[49.06331,2.058],[49.06353,2.05737],[49.06362,2.05716],[49.06381,2.05638],[49.06412,2.05534],[49.06425,2.05392],[49.06451,2.05157],[49.06457,2.05113],[49.06446,2.05094],[49.06406,2.0508],[49.06367,2.05069],[49.0634,2.05067],[49.0621,2.05069],[49.06191,2.05059],[49.06187,2.05051],[49.06179,2.05059],[49.0605,2.04978],[49.06,2.0495],[49.05932,2.04927],[49.05923,2.04914],[49.05898,2.04879],[49.05864,2.04818],[49.05837,2.04771],[49.05829,2.04732],[49.05816,2.04719],[49.05791,2.04725],[49.05748,2.04717],[49.05675,2.04694],[49.05637,2.04685],[49.05615,2.04681],[49.05592,2.04674],[49.05529,2.04667],[49.05437,2.04663],[49.05411,2.04641],[49.05391,2.04639],[49.05367,2.04658],[49.05244,2.04646],[49.05231,2.04635],[49.05227,2.04617],[49.05211,2.04599],[49.05191,2.04599],[49.05176,2.04618],[49.05124,2.04597],[49.05029,2.04534],[49.05051,2.04314],[49.05081,2.04009],[49.05105,2.03772],[49.05007,2.03718],[49.04964,2.03689],[49.04988,2.03439],[49.05009,2.03243],[49.0502,2.03164],[49.04976,2.03155],[49.0491,2.02993],[49.04911,2.0289],[49.04903,2.02695],[49.04915,2.02569],[49.04932,2.02482],[49.04953,2.0236],[49.04964,2.02247],[49.04993,2.01953],[49.04999,2.018],[49.04948,2.01725],[49.04873,2.01617],[49.04773,2.01475],[49.04682,2.0134],[49.04609,2.01236],[49.04624,2.0121],[49.0465,2.01093],[49.04695,2.01017]],
   },
 };
@@ -1745,12 +1744,12 @@ async function idbBoot() {
     await idbOpen();
     await idbLoadAll();
     idbMigrateFromLocalStorage();
+    migrateLineNumbers(); // ← migration 12xx → xx
     _idbReady = true;
   } catch(e) {
     console.error('IDB boot failed, fallback localStorage', e);
-    _idbReady = true; // continuer quand même
+    _idbReady = true;
   }
-  // Démarrer l'application
   initTheme();
   initDB();
   applyLiveMode();
@@ -1759,8 +1758,74 @@ async function idbBoot() {
   setInterval(updateClock, 1000);
   requestWakeLock();
   gdriveInit();
-  // Initialiser le panneau girouette si la vue est déjà active
-  if(document.getElementById('gir-panel-content')) renderGirPanel();
+}
+
+// ── Migration numéros de ligne 12xx → xx ─────────────────────
+// Exécutée une seule fois au boot si nécessaire
+function migrateLineNumbers() {
+  const MIGRATE_VERSION = 'line_num_v2_to_short';
+  if(idbGet('chronoligne_migration_' + MIGRATE_VERSION)) return; // déjà fait
+
+  const LINE_MAP = {
+    '1201':'01','1202':'02','1203':'03','1206':'06','1207':'07','1208':'08',
+    '1223':'23','1224':'24','1226':'26','1228':'28','1229':'29','1230':'30',
+    '1232':'32','1233':'33','1235':'35','1236':'36','1237':'37','1238':'38',
+    '1239':'39','1240':'40','1241':'41','1242':'42'
+  };
+
+  // Migrer la DB principale (lignes et trajets)
+  try {
+    const saved = idbGet('chronoligne_v2');
+    if(saved) {
+      let json = saved;
+      Object.entries(LINE_MAP).forEach(([old, neu]) => {
+        json = json.replaceAll(`"num":"${old}"`, `"num":"${neu}"`);
+        json = json.replaceAll(`"lineNum":"${old}"`, `"lineNum":"${neu}"`);
+      });
+      idbSet('chronoligne_v2', json);
+    }
+  } catch(e) { console.warn('Migration DB error', e); }
+
+  // Migrer les coords GPS (clés : lineNum_tripIdx_stopIdx)
+  try {
+    const gpsRaw = idbGet('chronoligne_gps_coords');
+    if(gpsRaw) {
+      let json = gpsRaw;
+      Object.entries(LINE_MAP).forEach(([old, neu]) => {
+        // Clés du type "1201_0_5" → "01_0_5"
+        json = json.replaceAll(`"${old}_`, `"${neu}_`);
+      });
+      idbSet('chronoligne_gps_coords', json);
+    }
+  } catch(e) { console.warn('Migration GPS error', e); }
+
+  // Migrer les feuilles de service
+  try {
+    const svcRaw = idbGet('chronoligne_roadmaps');
+    if(svcRaw) {
+      let json = svcRaw;
+      Object.entries(LINE_MAP).forEach(([old, neu]) => {
+        json = json.replaceAll(`"lineNum":"${old}"`, `"lineNum":"${neu}"`);
+        json = json.replaceAll(`"num":"${old}"`, `"num":"${neu}"`);
+      });
+      idbSet('chronoligne_roadmaps', json);
+    }
+  } catch(e) { console.warn('Migration SVC error', e); }
+
+  // Migrer les tracés KML (clés contenant le numéro de ligne)
+  try {
+    const tracesRaw = idbGet('chronoligne_traces');
+    if(tracesRaw) {
+      let json = tracesRaw;
+      Object.entries(LINE_MAP).forEach(([old, neu]) => {
+        json = json.replaceAll(`"${old}_`, `"${neu}_`);
+      });
+      idbSet('chronoligne_traces', json);
+    }
+  } catch(e) { console.warn('Migration traces error', e); }
+
+  idbSet('chronoligne_migration_' + MIGRATE_VERSION, '1');
+  console.log('✅ Migration numéros de ligne 12xx → xx effectuée');
 }
 
 const STORAGE_KEY = 'chronoligne_v2';
@@ -1780,28 +1845,28 @@ let svcFilter = 'semaine';
 
 // ══ LIGNES RÉELLES ════════════════════════════════════════════
 const REAL_LINES = [
-  { num:'1201', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#9b59b6' },
-  { num:'1202', name:'Gare Cergy-Préfecture → Les Beurriers', color:'#e67e22' },
-  { num:'1203', name:'Gare Cergy-Le Haut → Gare Neuville-Université', color:'#f1c40f' },
-  { num:'1206', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#27ae60' },
-  { num:'1207', name:'Cergy Les Plants → Jouy le Moutier Ecancourt', color:'#e74c3c' },
-  { num:'1208', name:'Gare Cergy-Préfecture → Gare Neuville-Université', color:'#16a085' },
-  { num:'1223', name:'Gare Pontoise → Osny Les Patis', color:'#8e44ad' },
-  { num:'1224', name:'Gare Cergy-Préfecture → Gare Cergy-Saint-Christophe', color:'#2980b9' },
-  { num:'1226', name:'Gare Cergy Préfecture → Gare de Méry sur Oise', color:'#795548' },
-  { num:'1228', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Rue de L\'équerre', color:'#00bcd4' },
-  { num:'1229', name:'Gare Neuville-Université → Gare Pontoise Canrobert', color:'#26c6da' },
-  { num:'1230', name:'Gare Pontoise → Cergy Les Plants via Les Touleuses', color:'#f48fb1' },
-  { num:'1232', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Lycée Jean Perrin', color:'#2e7d32' },
-  { num:'1233', name:'Gare Neuville-Université → Gare Pontoise Gal de Gaulle', color:'#388e3c' },
-  { num:'1235', name:'Gare Pontoise Canrobert → ZAC de Puiseux', color:'#c0392b' },
-  { num:'1236', name:'Gare Pontoise → Courdimanche Les Croizettes', color:'#7b1fa2' },
-  { num:'1237', name:'Vauréal La Bussie → Gare Conflans-Fin d\'Oise', color:'#4e342e' },
-  { num:'1238', name:'Cergy Les Plants → Menucourt La Taillette', color:'#d32f2f' },
-  { num:'1239', name:'Gare Cergy-Saint-Christophe → Menucourt Croix du Jubilé', color:'#1a237e' },
-  { num:'1240', name:'Vauréal → Gare Cergy-Saint-Christophe', color:'#1565c0' },
-  { num:'1241', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Fond de Vaux', color:'#ad1457' },
-  { num:'1242', name:'Gare Cergy-Préfecture → Osny Clinique Sainte Marie', color:'#c62828' },
+  { num:'01', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#9b59b6' },
+  { num:'02', name:'Gare Cergy-Préfecture → Les Beurriers', color:'#e67e22' },
+  { num:'03', name:'Gare Cergy-Le Haut → Gare Neuville-Université', color:'#f1c40f' },
+  { num:'06', name:'Gare Pontoise → Gare Cergy-Le Haut', color:'#27ae60' },
+  { num:'07', name:'Cergy Les Plants → Jouy le Moutier Ecancourt', color:'#e74c3c' },
+  { num:'08', name:'Gare Cergy-Préfecture → Gare Neuville-Université', color:'#16a085' },
+  { num:'23', name:'Gare Pontoise → Osny Les Patis', color:'#8e44ad' },
+  { num:'24', name:'Gare Cergy-Préfecture → Gare Cergy-Saint-Christophe', color:'#2980b9' },
+  { num:'26', name:'Gare Cergy Préfecture → Gare de Méry sur Oise', color:'#795548' },
+  { num:'28', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Rue de L\'équerre', color:'#00bcd4' },
+  { num:'29', name:'Gare Neuville-Université → Gare Pontoise Canrobert', color:'#26c6da' },
+  { num:'30', name:'Gare Pontoise → Cergy Les Plants via Les Touleuses', color:'#f48fb1' },
+  { num:'32', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Lycée Jean Perrin', color:'#2e7d32' },
+  { num:'33', name:'Gare Neuville-Université → Gare Pontoise Gal de Gaulle', color:'#388e3c' },
+  { num:'35', name:'Gare Pontoise Canrobert → ZAC de Puiseux', color:'#c0392b' },
+  { num:'36', name:'Gare Pontoise → Courdimanche Les Croizettes', color:'#7b1fa2' },
+  { num:'37', name:'Vauréal La Bussie → Gare Conflans-Fin d\'Oise', color:'#4e342e' },
+  { num:'38', name:'Cergy Les Plants → Menucourt La Taillette', color:'#d32f2f' },
+  { num:'39', name:'Gare Cergy-Saint-Christophe → Menucourt Croix du Jubilé', color:'#1a237e' },
+  { num:'40', name:'Vauréal → Gare Cergy-Saint-Christophe', color:'#1565c0' },
+  { num:'41', name:'Gare Cergy-Préfecture → Saint-Ouen l\'Aumône Fond de Vaux', color:'#ad1457' },
+  { num:'42', name:'Gare Cergy-Préfecture → Osny Clinique Sainte Marie', color:'#c62828' },
 ];
 
 // ══ TRAJETS PRÉCHARGÉS ════════════════════════════════════════
@@ -1864,7 +1929,7 @@ function installPreloadedServices() {
 }
 
 const PRELOADED_TRIPS = {
-  '1201': [
+  '01': [
     {
       direction: 'aller', label: 'Gare de Pontoise → Jules Verne (21 arrêts, 28 min)',
       stops: [
@@ -1998,7 +2063,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1202': [
+  '02': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Les Beurriers (13 arrêts, 22 min)',
       stops: [
@@ -2036,7 +2101,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1203': [
+  '03': [
     {
       direction: 'aller', label: 'Cergy Le Haut → Gare de Neuville Université (20 arrêts, 28 min)',
       stops: [
@@ -2148,7 +2213,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1206': [
+  '06': [
     {
       direction: 'aller', label: 'Cergy Le Haut → Stade Christian Léon (22 arrêts, 32 min)',
       stops: [
@@ -2349,7 +2414,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1207': [
+  '07': [
     {
       direction: 'aller', label: 'Les Toupets → Gare Cergy-Préfecture Quai L (29 arrêts, 25 min)',
       stops: [
@@ -2518,7 +2583,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1208': [
+  '08': [
     {
       direction: 'aller', label: 'Gare Neuville Université → Gare Cergy-Préfecture (19 arrêts, 30 min)',
       stops: [
@@ -2568,7 +2633,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1223': [
+  '23': [
     {
       direction: 'aller', label: 'Gare de Pontoise → Les Pâtis (15 arrêts, 17 min)',
       stops: [
@@ -2609,7 +2674,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1224': [
+  '24': [
     {
       direction: 'aller', label: 'Gare Cergy Saint-Christophe → Gare Cergy-Préfecture (22 arrêts, 27 min)',
       stops: [
@@ -2664,7 +2729,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1226': [
+  '26': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Gare de Méry-Sur-Oise (27 arrêts, 40 min)',
       stops: [
@@ -2730,7 +2795,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1228': [
+  '28': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Équerre (21 arrêts, 32 min)',
       stops: [
@@ -2784,7 +2849,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1229': [
+  '29': [
     {
       direction: 'aller', label: 'Pontoise Gare → Gare Neuville Université (10 arrêts, 23 min) — Sam/Dim',
       stops: [
@@ -2816,7 +2881,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1230': [
+  '30': [
     {
       direction: 'aller', label: '📅 Circuit 34 min — Pontoise → Pontoise (semaine)',
       stops: [
@@ -2843,7 +2908,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1232': [
+  '32': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Lycée Jean Perrin (26 arrêts, 42 min)',
       stops: [
@@ -2907,7 +2972,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1233': [
+  '33': [
     {
       direction: 'aller', label: 'Gare de Pontoise → Gare Neuville Université (18 arrêts, 31 min)',
       stops: [
@@ -2955,7 +3020,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1235': [
+  '35': [
     {
       direction: 'aller', label: 'Pontoise → Zac de Puiseux (12 arrêts)',
       stops: [
@@ -2991,7 +3056,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1236': [
+  '36': [
     {
       direction: 'aller', label: 'Les Croizettes → Gare de Pontoise (21 arrêts)',
       stops: [
@@ -3045,7 +3110,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1237': [
+  '37': [
     {
       direction: 'aller', label: 'Gare de Conflans → Georges Brassens (23 arrêts, 37 min)',
       stops: [
@@ -3105,7 +3170,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1238': [
+  '38': [
     {
       direction: 'aller', label: 'Lozier → Gare de Cergy Préfecture (9 arrêts)',
       stops: [
@@ -3186,7 +3251,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1239': [
+  '39': [
     {
       direction: 'aller', label: 'La Taillette → Gare Cergy Saint-Christophe (21 arrêts, 26 min)',
       stops: [
@@ -3240,7 +3305,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1240': [
+  '40': [
     {
       direction: 'aller', label: 'La Siaule → Cergy Saint-Christophe RER (20 arrêts, 27 min)',
       stops: [
@@ -3292,7 +3357,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1241': [
+  '41': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Fond de Vaux (15 arrêts, 27 min) — Lun-Ven',
       stops: [
@@ -3334,7 +3399,7 @@ const PRELOADED_TRIPS = {
       ]
     },
   ],
-  '1242': [
+  '42': [
     {
       direction: 'aller', label: 'Gare Cergy-Préfecture → Clinique Sainte Marie (17 arrêts, 23 min)',
       stops: [
@@ -3398,7 +3463,7 @@ function initDB() {
   if(!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
 
   // Version de purge : force la réinitialisation des trips au premier chargement
-  const TRIPS_VERSION = 'v8_no_duplicate_reload';
+  const TRIPS_VERSION = 'v9_short_line_numbers';
   const storedVersion = idbGet('chronoligne_trips_version');
   const needsPurge = storedVersion !== TRIPS_VERSION;
 
@@ -4031,7 +4096,52 @@ function renderLineDetail(idx) {
       </button>
     </div>`;
 
-  // Peupler le sélecteur GPS avec les trajets numérotés et nommés
+  // ── Section Dossiers Girouette de cette ligne ─────────────────
+  // Les girouettes de la ligne XX commencent par XX (ex: ligne 32 → 3201, 3202, 3203...)
+  const girContainer = document.getElementById('gir-line-panel');
+  if(girContainer) {
+    const lineCode = line.num; // ex: "32"
+    const lineGirs = girListAll().filter(code => code.startsWith(lineCode));
+    if(lineGirs.length) {
+      girContainer.style.display = '';
+      document.getElementById('gir-line-content').innerHTML = lineGirs.map(code => {
+        const meta     = JSON.parse(idbGet(GIR_PREFIX_META  + code) || '{}');
+        const hasTrace = !!idbGet(GIR_PREFIX_TRACE + code);
+        const hasStops = !!idbGet(GIR_PREFIX_STOPS + code);
+        const traceBadge = hasTrace
+          ? `<span style="color:var(--green);font-size:10px;font-weight:700">🗺 ${meta.nbPoints||0}pts</span>`
+          : `<span style="color:var(--muted);font-size:10px">🗺 —</span>`;
+        const gpsBadge = hasStops
+          ? `<span style="color:var(--accent);font-size:10px;font-weight:700">📍 ${meta.nbArrets||0}</span>`
+          : `<span style="color:var(--muted);font-size:10px">📍 —</span>`;
+        return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+                    border-radius:8px;background:rgba(255,255,255,.03);
+                    border:1px solid var(--border);margin-bottom:5px">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;
+                      color:#ffc107;min-width:44px">${code}</div>
+          <div style="flex:1;display:flex;gap:10px;align-items:center">
+            ${traceBadge} ${gpsBadge}
+          </div>
+          <button onclick="girOpenEditor('${code}')"
+            style="padding:5px 9px;background:rgba(0,212,255,.12);border:1px solid var(--accent);
+                   color:var(--accent);border-radius:7px;cursor:pointer;font-size:12px;font-weight:700">✏</button>
+          <button onclick="girDeleteConfirm('${code}')"
+            style="padding:5px 9px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);
+                   color:var(--red);border-radius:7px;cursor:pointer;font-size:12px">🗑</button>
+        </div>`;
+      }).join('');
+    } else {
+      girContainer.style.display = '';
+      document.getElementById('gir-line-content').innerHTML =
+        `<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">Aucun dossier girouette pour la ligne ${line.num}</div>`;
+    }
+    // Mettre à jour le bouton + avec le préfixe de la ligne
+    const girAddBtn = document.getElementById('gir-line-add-btn');
+    if(girAddBtn) girAddBtn.onclick = () => girOpenEditorForLine(line.num);
+  }
+
+  // Peupler le sélecteur GPS
   const sel = document.getElementById('gps-import-trip');
   if(sel) {
     sel.innerHTML = '<option value="-1">— Choisissez le trajet —</option>' +
@@ -5845,7 +5955,6 @@ function parseIneoFeuille() {
     if(/^(HLP|P\/L|LAV|PS)\b/i.test(line)) { i++; continue; }
 
     // Ligne de service : "1235 - GARE DE PONT >> GARE DE CERG[arrêts éventuellement collés]"
-    // Le regex tolère du texte collé après le terminus (cas INEO sans saut de ligne)
     const ligneMatch = line.match(/^(\d{3,4})\s*-\s*(.+?)\s*>>\s*(.+?)(\d{2}:\d{2}\s*-->.+)?$/);
     if(ligneMatch) {
       // Sauvegarder trajet précédent
@@ -5853,7 +5962,7 @@ function parseIneoFeuille() {
         const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection, currentGirouette);
         if(trip) trips.push(trip);
       }
-      currentLineNum = ligneMatch[1];
+      currentLineNum = normalizeLineNum(ligneMatch[1]);
       currentRefStops = [];
       currentGirouette = null;
 
@@ -5862,6 +5971,10 @@ function parseIneoFeuille() {
       const toPart = (ligneMatch[3] || '').replace(/\d{2}:\d{2}.*$/, '').trim();
       currentDirection = detectDirection(fromPart, toPart);
 
+      // Essayer d'extraire le girouette depuis cette ligne même
+      const girFromHeader = parseExtractGirouette(line);
+      if(girFromHeader) currentGirouette = girFromHeader;
+
       // Si des arrêts étaient collés après le terminus sur la même ligne, les extraire
       if(ligneMatch[4]) {
         extractStopsFromStr(ligneMatch[4]).forEach(s => currentRefStops.push(s));
@@ -5869,11 +5982,20 @@ function parseIneoFeuille() {
       i++; continue;
     }
 
-    // Ligne résumé trajet avec girouette : "  06:58  LIEU - CODE  07:23  LIEU - CODE  00:25  6010"
-    const girouetteExtracted = parseExtractGirouette(line);
-    if(girouetteExtracted && currentLineNum && !currentGirouette) {
-      currentGirouette = girouetteExtracted;
-      i++; continue;
+    // Ligne résumé trajet avec girouette :
+    // "  16:44  LYCÉE JEAN PERRIN - 580  17:34  GARE CERGY PRÉFECTURE - QUAI L - 247  00:50  3202"
+    // Cette ligne vient juste après la ligne "XXXX - FROM >> TO"
+    // Elle contient HH:MM NOM-CODE HH:MM NOM-CODE HH:MM GIROUETTE
+    if(currentLineNum && !currentGirouette && !line.startsWith('ITINERAIRE') && !line.match(/^\d{2}:\d{2}\s*-->/)) {
+      const girouetteExtracted = parseExtractGirouette(line);
+      if(girouetteExtracted) {
+        currentGirouette = girouetteExtracted;
+        // Si cette ligne contient aussi des arrêts collés (ITINERAIRE sans mot-clé)
+        if(line.includes('-->')) {
+          extractStopsFromStr(line).forEach(s => currentRefStops.push(s));
+        }
+        i++; continue;
+      }
     }
 
     // ITINERAIRE → collecter arrêts de référence avec codes arrêts
@@ -5996,11 +6118,11 @@ function parseIneoFeuilleNouveauFormat(lines) {
     const lgM = l.match(/^(\d{3,4})\s*[-–>]/);
     if(lgM && !REG.test(l)) {
       flushTrip();
-      currentLineNum = lgM[1];
+      currentLineNum = normalizeLineNum(lgM[1]);
       continue;
     }
     const lgM2 = l.match(REG_LIGNE2);
-    if(lgM2) { flushTrip(); currentLineNum = lgM2[1]; continue; }
+    if(lgM2) { flushTrip(); currentLineNum = normalizeLineNum(lgM2[1]); continue; }
 
     // HLP / P/L → séparateur de trajet
     if(/^(HLP|P\/L|HAUT LE PIED)/i.test(l)) { flushTrip(); continue; }
@@ -6052,6 +6174,9 @@ function parseIneoFeuilleNouveauFormat(lines) {
 //   refStops  : [{time, name}, ...] — arrêts extraits de la feuille de service
 //   direction : 'aller' | 'retour' | null (auto-détecté si null)
 function buildTripFromRef(lineNum, refStops, direction, girouette) {
+  // Normaliser : la feuille INEO donne "1232", la DB stocke "32"
+  lineNum = normalizeLineNum(lineNum);
+
   function normalize(s) {
     return String(s).toUpperCase()
       .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
@@ -6267,8 +6392,19 @@ function buildTripFromRef(lineNum, refStops, direction, girouette) {
   };
 }
 
+// ── Normalise le numéro de ligne : enlève le préfixe "12" si présent ──
+// La feuille INEO donne "1232", la DB stocke "32"
+function normalizeLineNum(num) {
+  if(!num) return num;
+  const s = String(num);
+  // Format "12XX" avec 4 chiffres → enlever "12"
+  if(s.length === 4 && s.startsWith('12')) return s.slice(2);
+  return s;
+}
+
 // Construit un trajet depuis le nouveau format (liste d'arrêts déjà propres)
 function buildTripFromNewFormat(lineNum, refStops) {
+  lineNum = normalizeLineNum(lineNum);
   function normalize(s) {
     return s.toUpperCase()
       .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
@@ -8922,6 +9058,21 @@ function renderGirPanel() {
   }).join('');
 }
 
+// ── Ouvrir l'éditeur girouette pré-rempli avec le préfixe de la ligne ──
+function girOpenEditorForLine(lineNum) {
+  girOpenEditor(null);
+  // Pré-remplir le code avec le préfixe de la ligne (ex: "32" pour la ligne 32)
+  const input = document.getElementById('gir-editor-code');
+  if(input) {
+    input.value = lineNum; // ex: "32" → l'utilisateur complète avec 01, 02, 03...
+    input.readOnly = false;
+    input.style.opacity = '1';
+    input.focus();
+    // Sélectionner pour que l'utilisateur tape directement les 2 derniers chiffres
+    setTimeout(() => { input.select(); }, 100);
+  }
+}
+
 function girOpenEditor(code) {
   girPanelCode = code || null;
   const overlay = document.getElementById('gir-editor-overlay');
@@ -9005,12 +9156,20 @@ function girDeleteConfirm(code) {
 // "  06:58  DEMI LIEUE - 165    07:23  GARE DE PONTOISE - 274    00:25   6010"
 // Regex : un nombre de 4 chiffres après un temps de trajet (HH:MM)
 function parseExtractGirouette(line) {
-  // Format tableau : ...  HH:MM   XXXX  (girouette en fin de ligne)
-  const m = line.match(/\b(\d{2}:\d{2})\s+(\d{4})\s*$/);
-  if(m) return m[2];
-  // Fallback : GIROU suivi d'un nombre
-  const m2 = line.match(/GIROU[.\s]*(\d{4})/i);
+  // Format 1 : "... 00:50   3202" — temps de trajet suivi du girouette en fin de ligne
+  // Le temps de trajet est toujours HH:MM avec H souvent 00
+  const m = line.match(/\b\d{2}:\d{2}\s+(\d{4})\s*$/);
+  if(m) return m[1];
+
+  // Format 2 : le girouette est le dernier nombre de 4 chiffres de la ligne
+  // (cas où il n'y a pas de temps de trajet visible)
+  const m2 = line.match(/\b(\d{4})\s*$/);
   if(m2) return m2[1];
+
+  // Format 3 : GIROU. suivi d'un nombre (entête de colonne parfois incluse)
+  const m3 = line.match(/GIROU[.\s]*(\d{4})/i);
+  if(m3) return m3[1];
+
   return null;
 }
 
