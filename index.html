@@ -9048,22 +9048,19 @@ function girImportKml(code, kmlText) {
     const lineStrings = kml.querySelectorAll('LineString coordinates');
     if(!lineStrings.length) { toast('❌ Aucune LineString dans ce KML'); return false; }
 
-    // Prendre la LineString la plus longue si plusieurs
-    let bestCoords = '';
+    // Fusionner TOUTES les LineStrings (aller + retour + variantes)
+    let allPoints = [];
     lineStrings.forEach(el => {
-      if(el.textContent.length > bestCoords.length) bestCoords = el.textContent;
+      const pts = el.textContent.trim().split(/\s+/).map(c => {
+        const parts = c.split(',').map(Number);
+        const lon = parts[0], lat = parts[1];
+        return [lat, lon];
+      }).filter(p => !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0 && p[1] !== 0);
+      allPoints = allPoints.concat(pts);
     });
 
-    // Parser les coordonnées — format KML : lon,lat ou lon,lat,altitude
-    // Les valeurs sont séparées par des espaces (un triplet/paire par point)
-    let points = bestCoords.trim().split(/\s+/).map(c => {
-      const parts = c.split(',').map(Number);
-      const lon = parts[0], lat = parts[1]; // altitude parts[2] ignorée
-      return [lat, lon];
-    }).filter(p => !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0 && p[1] !== 0);
-
-    // Simplifier : 1 point sur 4 (garder la précision suffisante pour le bus)
-    points = points.filter((_, i) => i % 4 === 0);
+    // Simplifier : 1 point sur 3 (précision suffisante pour le bus)
+    let points = allPoints.filter((_, i) => i % 3 === 0);
 
     if(points.length < 2) { toast('❌ Tracé KML trop court ou invalide'); return false; }
 
