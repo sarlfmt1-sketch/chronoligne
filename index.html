@@ -1619,8 +1619,8 @@ function installPreloadedGPS() {
       }
 
       // Format dictionnaire par nom (standard)
-      // Pas de fallback sur aller si direction=retour : chaque sens garde ses propres coords
-      const coords = lineGPS[dir] || (dir === 'aller' ? lineGPS : null);
+      // Fallback : si pas de coords pour ce sens précis, utiliser l'autre sens
+      const coords = lineGPS[dir] || lineGPS['aller'] || lineGPS['retour'] || null;
       if(!coords) return;
       trip.stops.forEach((stop, stopIdx) => {
         const key = gpsCoordKey(line.num, tripIdx, stopIdx);
@@ -6890,10 +6890,21 @@ function updateIneoBarGps(coords) {
   const prevIdx = Math.max(0, gpsAutoNextIdx - 1);
   const nextIdx = gpsAutoNextIdx;
 
-  const prevKey  = gpsCoordKey(line.num, activeTrip.tripIdx, prevIdx);
-  const nextKey  = gpsCoordKey(line.num, activeTrip.tripIdx, nextIdx);
-  const prevCoord = gpsCoordsDB[prevKey];
-  const nextCoord = gpsCoordsDB[nextKey];
+  function _getCoordIneo(idx) {
+    const k = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
+    if(gpsCoordsDB[k]) return gpsCoordsDB[k];
+    const s = trip.stops[idx];
+    if(!s) return null;
+    const lg = PRELOADED_GPS[line.num];
+    if(!lg) return null;
+    const dc = lg[trip.direction || 'aller'] || lg['aller'] || lg['retour'];
+    if(!dc || !dc[s.name]) return null;
+    const c = { lat: dc[s.name].lat, lon: dc[s.name].lon, name: s.name };
+    gpsCoordsDB[k] = c;
+    return c;
+  }
+  const prevCoord = _getCoordIneo(prevIdx);
+  const nextCoord = _getCoordIneo(nextIdx);
 
   if(!prevCoord || !nextCoord) return;
 
@@ -6962,7 +6973,17 @@ function gpsUpdatePrediction(coords) {
   if(!nextStop) return;
 
   const nextKey    = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx);
-  const nextCoords = gpsCoordsDB[nextKey];
+  let nextCoords = gpsCoordsDB[nextKey];
+  if(!nextCoords) {
+    const _lg = PRELOADED_GPS[line.num];
+    if(_lg) {
+      const _dc = _lg[trip.direction || 'aller'] || _lg['aller'] || _lg['retour'];
+      if(_dc && nextStop && _dc[nextStop.name]) {
+        nextCoords = _dc[nextStop.name];
+        gpsCoordsDB[nextKey] = { lat: nextCoords.lat, lon: nextCoords.lon, name: nextStop.name };
+      }
+    }
+  }
 
   const distEl   = document.getElementById('gps-pred-dist');
   const speedEl  = document.getElementById('gps-pred-speed');
@@ -7328,7 +7349,27 @@ function startGpsAuto() {
     toast('🗺 Démarrage sur tracé KML uniquement — recalage automatique actif');
   }
   gpsMode = 'auto';
-  gpsAutoNextIdx = 0;
+  // Démarrer à l'arrêt courant selon l'heure (pas toujours à 0)
+  {
+    const _startIdx = activeTrip.validatedStopIdx !== undefined && activeTrip.validatedStopIdx !== null
+      ? activeTrip.validatedStopIdx
+      : (() => {
+          if(!trip.stops.some(s => s.time && s.time !== '00:00')) return 0;
+          const _now = new Date();
+          const _nowMin = _now.getHours() * 60 + _now.getMinutes();
+          let idx = 0;
+          for(let i = 0; i < trip.stops.length; i++) {
+            const t = trip.stops[i].time;
+            if(!t || t === '00:00') continue;
+            const [h, m] = t.split(':').map(Number);
+            if(h * 60 + m >= _nowMin) { idx = Math.max(0, i - 1); break; }
+            idx = i;
+          }
+          return idx;
+        })();
+    gpsAutoNextIdx = _startIdx;
+    if(activeTrip) activeTrip.validatedStopIdx = _startIdx;
+  }
   gpsSession = [];
   gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
   cancelAutoAdvance(); // GPS prend le relais, plus besoin du timer
@@ -7390,12 +7431,28 @@ function checkGpsAutoDetect(coords) {
 
   const stop     = trip.stops[gpsAutoNextIdx];
   const key      = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx);
-  const stopCoords = gpsCoordsDB[key];
   const accEl    = document.getElementById('gps-auto-acc');
+
+  // Chercher coords : gpsCoordsDB en priorité, sinon PRELOADED_GPS par nom+direction
+  function getStopCoord(stopIdx) {
+    const k = gpsCoordKey(line.num, activeTrip.tripIdx, stopIdx);
+    if(gpsCoordsDB[k]) return gpsCoordsDB[k];
+    const s = trip.stops[stopIdx];
+    if(!s) return null;
+    const lineGPS = PRELOADED_GPS[line.num];
+    if(!lineGPS) return null;
+    const dir = trip.direction || 'aller';
+    const dirCoords = lineGPS[dir] || lineGPS['aller'] || lineGPS['retour'];
+    if(!dirCoords || !dirCoords[s.name]) return null;
+    const c = { lat: dirCoords[s.name].lat, lon: dirCoords[s.name].lon, name: s.name };
+    gpsCoordsDB[k] = c; // mémoriser pour la suite
+    return c;
+  }
+
+  const stopCoords = getStopCoord(gpsAutoNextIdx);
 
   if(!stopCoords) {
     if(accEl) accEl.textContent = `⚠️ Pas de GPS pour cet arrêt`;
-    // Pas de coordonnées → recalage par tracé si disponible
     gpsTraceRecaler(coords, trip, line);
     return;
   }
@@ -7403,8 +7460,7 @@ function checkGpsAutoDetect(coords) {
   const dist = haversine(coords.lat, coords.lon, stopCoords.lat, stopCoords.lon);
 
   // Coords arrêt suivant
-  const nextKey    = gpsCoordKey(line.num, activeTrip.tripIdx, gpsAutoNextIdx + 1);
-  const nextCoords = gpsCoordsDB[nextKey];
+  const nextCoords = getStopCoord(gpsAutoNextIdx + 1);
   const distNext   = nextCoords
     ? haversine(coords.lat, coords.lon, nextCoords.lat, nextCoords.lon)
     : Infinity;
