@@ -3463,7 +3463,7 @@ function initDB() {
   if(!db.settings) db.settings = { toleranceEarly:0, toleranceLate:120 };
 
   // Version de purge : force la réinitialisation des trips au premier chargement
-  const TRIPS_VERSION = 'v9_short_line_numbers';
+  const TRIPS_VERSION = 'v10_restore_trips';
   const storedVersion = idbGet('chronoligne_trips_version');
   const needsPurge = storedVersion !== TRIPS_VERSION;
 
@@ -4211,10 +4211,26 @@ function activateTrip(lineIdx, tripIdx) {
   if(!line) { toast('❌ Ligne introuvable'); return; }
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
-  activeTrip = { lineIdx, tripIdx, validatedStopIdx: null };
-  // Mémoriser le girouette dans activeTrip si disponible sur le trip
+
+  // Calculer l'arrêt de départ selon l'heure actuelle
+  let startIdx = 0;
+  const hasRealTimes = trip.stops.some(s => s.time && s.time !== '00:00');
+  if(hasRealTimes) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    // Trouver le premier arrêt dont l'heure >= maintenant
+    for(let i = 0; i < trip.stops.length; i++) {
+      const t = trip.stops[i].time;
+      if(!t || t === '00:00') continue;
+      const [h, m] = t.split(':').map(Number);
+      if(h * 60 + m >= nowMin) { startIdx = i; break; }
+      startIdx = i; // dernier arrêt passé
+    }
+  }
+
+  activeTrip = { lineIdx, tripIdx, validatedStopIdx: startIdx };
   if(trip._girouette) activeTrip._girouette = trip._girouette;
-  gpsAutoNextIdx = 0;
+  gpsAutoNextIdx = startIdx;
   gpsSession = [];
   cancelAutoAdvance();
 
@@ -6526,13 +6542,20 @@ function activateRoadmapTrip() {
   const t = currentRoadmap[roadmapCursor];
   const prevGpsMode = gpsMode;
 
+  // Normaliser le lineNum (feuilles sauvegardées peuvent encore avoir "1232" au lieu de "32")
+  const tLineNum = normalizeLineNum(t.lineNum);
+
   // Résolution robuste : on essaie plusieurs stratégies dans l'ordre
   let lineIdx = -1;
   let tripIdx = -1;
 
-  // Stratégie 1 : par lineNum (numéro de ligne ex: "95")
-  if(t.lineNum) {
-    lineIdx = db.lines.findIndex(l => l.num === t.lineNum);
+  // Stratégie 1 : par lineNum normalisé
+  if(tLineNum) {
+    lineIdx = db.lines.findIndex(l => l.num === tLineNum);
+    // Fallback : chercher aussi avec l'ancien format "12xx"
+    if(lineIdx < 0 && t.lineNum) {
+      lineIdx = db.lines.findIndex(l => l.num === t.lineNum);
+    }
   }
   // Stratégie 2 : par lineIdx direct si lineNum pas dispo
   if(lineIdx < 0 && t.lineIdx !== undefined) {
@@ -6565,15 +6588,71 @@ function activateRoadmapTrip() {
   }
 
   if(lineIdx < 0 || tripIdx < 0) {
-    toast(`❌ Impossible de trouver la ligne "${t.lineNum||t.lineIdx}" — recréez le service`);
-    console.warn('activateRoadmapTrip FAIL', JSON.stringify({lineNum:t.lineNum, label:t.label, lineIdx:t.lineIdx, tripIdx:t.tripIdx, availableLines:db.lines.map(l=>l.num)}));
-    return;
+    // Dernière chance : si un girouette est disponible, créer un trajet temporaire depuis ses arrêts
+    const girCode = t._girouette || null;
+    if(girCode && girHas(girCode) && lineIdx >= 0) {
+      const stopsGir = JSON.parse(idbGet(GIR_PREFIX_STOPS + girCode) || 'null');
+      if(stopsGir && stopsGir.length > 0) {
+        const tempTrip = {
+          label: t.label || `Girouette ${girCode}`,
+          direction: t.direction || 'aller',
+          _girouette: girCode,
+          stops: (t.stops && t.stops.length ? t.stops : stopsGir.map((s,i) => ({
+            name: s.nom,
+            time: '00:00',
+            intervalAfter: 1,
+            _codeArret: s.code
+          })))
+        };
+        const line = db.lines[lineIdx];
+        line.trips.push(tempTrip);
+        tripIdx = line.trips.length - 1;
+        saveDB();
+        toast(`⚠️ Trajet créé depuis girouette ${girCode}`);
+      }
+    }
+    if(lineIdx < 0 || tripIdx < 0) {
+      toast(`❌ Impossible de trouver la ligne "${tLineNum||t.lineNum||t.lineIdx}" — recréez le service`);
+      console.warn('activateRoadmapTrip FAIL', JSON.stringify({lineNum:tLineNum, label:t.label, availableLines:db.lines.map(l=>l.num)}));
+      return;
+    }
   }
 
   // Appliquer les horaires de la feuille dans db AVANT d'activer
+  // On applique SEULEMENT les horaires des arrêts de référence (isRef)
+  // sans écraser la liste complète des arrêts du trajet en DB
   if(t.stops && t.stops.length) {
     const _trip = db.lines[lineIdx]?.trips?.[tripIdx];
-    if(_trip) { _trip.stops = t.stops; saveDB(); }
+    if(_trip) {
+      // Si le nb d'arrêts est identique → appliquer directement
+      if(_trip.stops.length === t.stops.length) {
+        _trip.stops.forEach((s, si) => {
+          if(t.stops[si]?.time) s.time = t.stops[si].time;
+          if(t.stops[si]?.isRef !== undefined) s.isRef = t.stops[si].isRef;
+          if(t.stops[si]?._codeArret) s._codeArret = t.stops[si]._codeArret;
+        });
+      } else {
+        // Nb d'arrêts différent (trajet partiel INEO) → matcher par nom d'arrêt
+        function normStop(s) {
+          return String(s).toUpperCase()
+            .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+            .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+            .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+        }
+        t.stops.forEach(fs => {
+          if(!fs.time || fs.time === '00:00') return;
+          const fsNorm = normStop(fs.name);
+          const match = _trip.stops.find(s => normStop(s.name) === fsNorm ||
+            normStop(s.name).includes(fsNorm) || fsNorm.includes(normStop(s.name)));
+          if(match) {
+            match.time = fs.time;
+            if(fs.isRef) match.isRef = true;
+            if(fs._codeArret) match._codeArret = fs._codeArret;
+          }
+        });
+      }
+      saveDB();
+    }
   }
 
   // ── Injecter GPS depuis dossier girouette si disponible ──────
