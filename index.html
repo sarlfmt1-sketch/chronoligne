@@ -10463,8 +10463,6 @@ function liveMapRefresh() {
     if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
   });
 
-  if(stopPoints.length < 2) return;
-
   // ── Dessiner les marqueurs d'arrêts ──────────────────────────
   function drawStopMarkers() {
     stopPoints.forEach(sp => {
@@ -10504,7 +10502,8 @@ function liveMapRefresh() {
     return;
   }
 
-  // Pas de KML → fallback OSRM
+  // Pas de KML → fallback OSRM (seulement si on a des arrêts GPS)
+  if(stopPoints.length < 2) return;
   const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
   const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
 
