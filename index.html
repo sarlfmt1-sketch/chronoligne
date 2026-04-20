@@ -3527,7 +3527,7 @@ function showView(id) {
   if(id === 'view-lines') { renderLineGrid(); renderGirPanel(); }
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
   if(id === 'view-settings') { loadSettings(); }
-  if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
+  if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapDraw(); }, 200); }
   if(id === 'view-sillon') { sillonInitView(); }
 }
 
@@ -4268,7 +4268,7 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
-  setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 300);
+  setTimeout(() => { liveMapInit(); liveMapDraw(); }, 300);
 }
 
 function showStartFromStop() {
@@ -6685,7 +6685,6 @@ function activateRoadmapTrip() {
   activateTrip(lineIdx, tripIdx);
 
   // Forcer la réinitialisation de la carte pour ce nouveau trajet
-  liveMapInitialized = false;
   if(liveMap) { liveMap.remove(); liveMap = null; }
 
   // ── GPS auto automatique sur tous les trajets de la feuille ──
@@ -10367,246 +10366,150 @@ const _origShowView = typeof showView === 'function' ? showView : null;
 // ══ CARTE LEAFLET EN DIRECT ════════════════════════════════════
 let liveMap = null;
 let liveMapBusMarker = null;
-let liveMapPolyline = null;
+let liveMapTrace = null;
 let liveMapStopMarkers = [];
-let liveMapVisible = true;
-let liveMapInitialized = false;
 
 function liveMapToggle() {
-  const mapEl = document.getElementById('live-map');
+  const el = document.getElementById('live-map');
   const btn = document.getElementById('live-map-toggle-btn');
-  if(!mapEl) return;
-  liveMapVisible = !liveMapVisible;
-  mapEl.style.height = liveMapVisible ? '300px' : '0';
-  if(btn) btn.textContent = liveMapVisible ? '▼ Réduire' : '▶ Agrandir';
-  if(liveMapVisible && liveMap) setTimeout(() => liveMap.invalidateSize(), 100);
+  if(!el) return;
+  const visible = el.style.height !== '0px';
+  el.style.height = visible ? '0px' : '300px';
+  if(btn) btn.textContent = visible ? '▶ Agrandir' : '▼ Réduire';
+  if(!visible && liveMap) setTimeout(() => liveMap.invalidateSize(), 100);
 }
 
 function liveMapCenter() {
   if(!liveMap) return;
   if(gpsCoords) {
-    liveMap.setView([gpsCoords.lat, gpsCoords.lon], 16);
-  } else if(liveMapPolyline) {
-    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [20, 20]});
+    liveMap.setView([gpsCoords.lat, gpsCoords.lon], 15);
+  } else if(liveMapTrace) {
+    liveMap.fitBounds(liveMapTrace.getBounds(), {padding:[24,24]});
   }
 }
 
 function liveMapInit() {
-  if(liveMapInitialized || typeof L === 'undefined') return;
-  const mapEl = document.getElementById('live-map');
-  if(!mapEl) return;
+  if(liveMap || typeof L === 'undefined') return;
+  const el = document.getElementById('live-map');
+  if(!el) return;
 
-  liveMap = L.map('live-map', {
-    zoomControl: true,
-    attributionControl: false
-  }).setView([49.04, 2.07], 13);
+  liveMap = L.map('live-map', { zoomControl:true, attributionControl:false })
+             .setView([49.04, 2.08], 13);
 
-  // Sources de tuiles — essayées dans l'ordre jusqu'à ce qu'une marche
-  const tileSources = [
-    { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',       name: 'OSM' },
-    { url: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',      name: 'OSM FR' },
-    { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', name: 'CartoCDN' },
-    { url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png', name: 'Stadia' },
-  ];
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, subdomains:['a','b','c']
+  }).addTo(liveMap);
 
-  let tileLayer = null;
-  let sourceIdx = 0;
-
-  function tryNextSource() {
-    if(tileLayer) { liveMap.removeLayer(tileLayer); tileLayer = null; }
-    if(sourceIdx >= tileSources.length) {
-      // Toutes les sources ont échoué — mode sans tuiles (tracé seul)
-      toast('⚠️ Carte hors ligne — tracé uniquement');
-      return;
-    }
-    const src = tileSources[sourceIdx++];
-    tileLayer = L.tileLayer(src.url, {
-      maxZoom: 19,
-      subdomains: ['a','b','c'],
-      crossOrigin: true
-    });
-    // Détecter erreur de chargement → essayer la suivante
-    tileLayer.on('tileerror', () => {
-      if(sourceIdx < tileSources.length) tryNextSource();
-    });
-    tileLayer.addTo(liveMap);
-  }
-
-  tryNextSource();
-
-  liveMapInitialized = true;
-  liveMapRefresh();
+  liveMapDraw();
 }
 
-function liveMapRefresh() {
-  if(!liveMap || !liveMapInitialized) return;
+function liveMapDraw() {
+  if(!liveMap) return;
 
-  // Supprimer anciens éléments
-  if(liveMapPolyline) { liveMap.removeLayer(liveMapPolyline); liveMapPolyline = null; }
+  // Nettoyer
+  if(liveMapTrace)  { liveMap.removeLayer(liveMapTrace); liveMapTrace = null; }
   liveMapStopMarkers.forEach(m => liveMap.removeLayer(m));
   liveMapStopMarkers = [];
+  if(liveMapBusMarker) { liveMap.removeLayer(liveMapBusMarker); liveMapBusMarker = null; }
 
   if(!activeTrip) return;
-
   const line = db.lines[activeTrip.lineIdx];
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
 
-  // Toujours relire le code girouette depuis le trip en DB (pas depuis activeTrip qui peut être périmé)
-  const girCode = trip._girouette || activeTrip._girouette || null;
-  const girTrace = girCode ? girGetTrace(girCode) : null;
+  // ── 1. Chercher le tracé KML (girouette ou bibliothèque) ──────
+  const girCode = trip._girouette || null;
+  const tracePoints = (girCode ? girGetTrace(girCode) : null)
+    || traceLibraryGet(line.num, trip.direction || 'aller', activeTrip.tripIdx);
 
-  // ── PRIORITÉ 1 : Tracé girouette KML ──────────────────────────
-  if(girTrace && girTrace.length > 2) {
-    liveMapPolyline = L.polyline(girTrace, {
-      color: line.color || '#c0392b',
+  if(tracePoints && tracePoints.length > 1) {
+    liveMapTrace = L.polyline(tracePoints, {
+      color: line.color || '#00d4ff',
       weight: 5,
-      opacity: 0.9
+      opacity: 0.85
     }).addTo(liveMap);
-    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
-    // Dessiner arrêts par-dessus si coords dispo
-    loadGpsCoordsDB();
-    trip.stops.forEach((stop, idx) => {
-      const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
-      const c = gpsCoordsDB[key];
-      if(!c) return;
-      const isCurrent = idx === gpsAutoNextIdx;
-      const isPassed  = idx < gpsAutoNextIdx;
-      const isRef     = stop.isRef;
-      const size  = isCurrent ? 16 : isRef ? 12 : 8;
-      const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(200,200,200,0.8)';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #222;box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
-        iconSize: [size, size], iconAnchor: [size/2, size/2]
-      });
-      liveMapStopMarkers.push(
-        L.marker([c.lat, c.lon], {icon})
-          .bindPopup(`<b>${stop.name}</b>${stop.time ? `<br>⏱ ${stop.time}` : ''}`)
-          .addTo(liveMap)
-      );
-    });
-    return;
+    liveMap.fitBounds(liveMapTrace.getBounds(), {padding:[24,24]});
   }
 
-  // ── PRIORITÉ 2 : Tracé bibliothèque KML ───────────────────────
-  const libTrace = traceLibraryGet(line.num, trip.direction || 'aller', activeTrip.tripIdx);
-  if(libTrace && libTrace.length > 2) {
-    liveMapPolyline = L.polyline(libTrace, {
-      color: line.color || '#c0392b',
-      weight: 5,
-      opacity: 0.9
-    }).addTo(liveMap);
-    liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
-    return;
-  }
-
-  // ── PRIORITÉ 3 : Arrêts GPS → OSRM ───────────────────────────
+  // ── 2. Placer les pastilles d'arrêts (depuis PRELOADED_GPS ou gpsCoordsDB) ──
   loadGpsCoordsDB();
-  const stopPoints = [];
+  const dir = trip.direction || 'aller';
+  const preloaded = PRELOADED_GPS[line.num]?.[dir] || PRELOADED_GPS[line.num]?.['aller'] || {};
+
   trip.stops.forEach((stop, idx) => {
-    const key = gpsCoordKey(line.num, activeTrip.tripIdx, idx);
-    const c = gpsCoordsDB[key];
-    if(c) stopPoints.push({ lat: c.lat, lon: c.lon, name: stop.name, time: stop.time, idx, isRef: stop.isRef });
+    // Chercher coord : gpsCoordsDB → PRELOADED_GPS → ignorer
+    let c = gpsCoordsDB[gpsCoordKey(line.num, activeTrip.tripIdx, idx)];
+    if(!c && preloaded[stop.name]) {
+      c = preloaded[stop.name];
+    }
+    if(!c) return;
+
+    const isCurrent = idx === gpsAutoNextIdx;
+    const isPassed  = idx < gpsAutoNextIdx;
+    const isRef     = stop.isRef;
+    const size  = isCurrent ? 18 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#e74c3c' : '#aaaaaa';
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+             background:${color};border:2px solid #fff;
+             box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
+      iconSize:[size,size], iconAnchor:[size/2,size/2]
+    });
+
+    const m = L.marker([c.lat, c.lon], {icon})
+      .bindPopup(`<b>${stop.name}</b>${stop.time && stop.time!=='00:00' ? '<br>⏱ '+stop.time : ''}`)
+      .addTo(liveMap);
+    liveMapStopMarkers.push(m);
   });
 
-  if(stopPoints.length < 2) return;
-
-  function drawStopMarkers() {
-    stopPoints.forEach(sp => {
-      const isCurrent = sp.idx === gpsAutoNextIdx;
-      const isPassed  = sp.idx < gpsAutoNextIdx;
-      const isRef     = sp.isRef;
-      const size  = isCurrent ? 16 : isRef ? 12 : 8;
-      const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(200,200,200,0.8)';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #222;box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
-        iconSize: [size, size], iconAnchor: [size/2, size/2]
-      });
-      liveMapStopMarkers.push(
-        L.marker([sp.lat, sp.lon], {icon})
-          .bindPopup(`<b>${sp.name}</b>${sp.time ? `<br>⏱ ${sp.time}` : ''}`)
-          .addTo(liveMap)
-      );
-    });
+  // Si pas de tracé KML mais des arrêts → centrer sur les arrêts
+  if(!liveMapTrace && liveMapStopMarkers.length >= 2) {
+    const group = L.featureGroup(liveMapStopMarkers);
+    liveMap.fitBounds(group.getBounds(), {padding:[24,24]});
   }
-
-  const coordStr = stopPoints.map(sp => `${sp.lon},${sp.lat}`).join(';');
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
-
-  const provisoire = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
-    color: line.color || '#c0392b', weight: 4, opacity: 0.4, dashArray: '8 6'
-  }).addTo(liveMap);
-  liveMap.fitBounds(provisoire.getBounds(), {padding: [24, 24]});
-  drawStopMarkers();
-
-  fetch(osrmUrl)
-    .then(r => { if(!r.ok) throw new Error('OSRM ' + r.status); return r.json(); })
-    .then(data => {
-      if(!data.routes?.[0]) throw new Error('Pas de route OSRM');
-      liveMap.removeLayer(provisoire);
-      liveMapPolyline = L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), {
-        color: line.color || '#c0392b', weight: 5, opacity: 0.9
-      }).addTo(liveMap);
-      liveMap.fitBounds(liveMapPolyline.getBounds(), {padding: [24, 24]});
-    })
-    .catch(() => {
-      liveMap.removeLayer(provisoire);
-      liveMapPolyline = L.polyline(stopPoints.map(sp => [sp.lat, sp.lon]), {
-        color: line.color || '#c0392b', weight: 5, opacity: 0.85
-      }).addTo(liveMap);
-    });
 }
 
 function liveMapUpdateBus() {
-  if(!liveMap || !liveMapInitialized || !gpsCoords) return;
-
-  // Icône bus
-  const busIcon = L.divIcon({
+  if(!liveMap || !gpsCoords) return;
+  const icon = L.divIcon({
     className: '',
-    html: `<div style="width:22px;height:22px;border-radius:50%;
+    html: `<div style="width:24px;height:24px;border-radius:50%;
            background:#00d4ff;border:3px solid #fff;
            display:flex;align-items:center;justify-content:center;
-           font-size:12px;box-shadow:0 0 8px rgba(0,212,255,.6)">🚌</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11]
+           font-size:13px;box-shadow:0 0 8px rgba(0,212,255,.7)">🚌</div>`,
+    iconSize:[24,24], iconAnchor:[12,12]
   });
-
   if(liveMapBusMarker) {
     liveMapBusMarker.setLatLng([gpsCoords.lat, gpsCoords.lon]);
   } else {
-    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon: busIcon, zIndexOffset: 1000})
+    liveMapBusMarker = L.marker([gpsCoords.lat, gpsCoords.lon], {icon, zIndexOffset:1000})
       .addTo(liveMap);
   }
-
-  // Mettre à jour les couleurs des pastilles
-  liveMapRefreshStopColors();
-}
-
-function liveMapRefreshStopColors() {
-  if(!activeTrip || !liveMap) return;
-  const line = db.lines[activeTrip.lineIdx];
-  const trip = line?.trips?.[activeTrip.tripIdx];
-  if(!trip) return;
-
-  liveMapStopMarkers.forEach((marker, idx) => {
+  // Mettre à jour couleur pastille courante
+  liveMapStopMarkers.forEach((m, idx) => {
+    const trip = db.lines[activeTrip?.lineIdx]?.trips?.[activeTrip?.tripIdx];
+    if(!trip) return;
     const stop = trip.stops[idx];
     if(!stop) return;
     const isCurrent = idx === gpsAutoNextIdx;
     const isPassed  = idx < gpsAutoNextIdx;
     const isRef     = stop.isRef;
-    const size  = isCurrent ? 16 : isRef ? 12 : 8;
-    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#c0392b' : 'rgba(255,255,255,0.6)';
-    const border = isCurrent ? '#fff' : '#333';
-    marker.setIcon(L.divIcon({
+    const size  = isCurrent ? 18 : isRef ? 12 : 8;
+    const color = isCurrent ? '#ff9500' : isPassed ? '#27ae60' : isRef ? '#e74c3c' : '#aaaaaa';
+    m.setIcon(L.divIcon({
       className: '',
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 0 4px rgba(0,0,0,.5)"></div>`,
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+             background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>`,
+      iconSize:[size,size], iconAnchor:[size/2,size/2]
     }));
   });
 }
+
+// Alias utilisés ailleurs dans le code
+function liveMapRefresh() { liveMapDraw(); }
+function liveMapRefreshStopColors() { liveMapUpdateBus(); }
 
 // ══ BOOT ═════════════════════════════════════════════════════
 // Recalibrer la carte Leaflet lors d'un changement d'orientation
