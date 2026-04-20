@@ -1158,6 +1158,13 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
                border:2px solid rgba(255,193,7,.5);border-radius:10px;text-align:center">
     </div>
 
+    <!-- Bouton renommer -->
+    <button onclick="girRenameFromEditor()"
+      style="width:100%;padding:10px;margin-bottom:12px;font-size:13px;font-weight:700;cursor:pointer;
+             background:rgba(255,193,7,.15);border:2px solid #ffc107;color:#ffc107;border-radius:10px">
+      ✏️ Appliquer ce code girouette
+    </button>
+
     <!-- Statut actuel -->
     <div id="gir-editor-status" style="margin-bottom:14px"></div>
 
@@ -9217,8 +9224,10 @@ function girOpenEditor(code) {
   if(overlay) overlay.style.display = 'flex';
   if(codeInput) {
     codeInput.value = code || '';
-    codeInput.readOnly = !!code; // si nouveau : éditable, si existant : verrouillé
-    codeInput.style.opacity = code ? '0.6' : '1';
+    codeInput.readOnly = false; // toujours éditable
+    codeInput.style.opacity = '1';
+    // Stocker l'ancien code pour renommage si modifié
+    codeInput.dataset.oldCode = code || '';
   }
 
   // Afficher le statut actuel
@@ -9244,6 +9253,44 @@ function girCloseEditor() {
   const overlay = document.getElementById('gir-editor-overlay');
   if(overlay) overlay.style.display = 'none';
   girPanelCode = null;
+  renderGirPanel();
+}
+
+function girRenameFromEditor() {
+  const input = document.getElementById('gir-editor-code');
+  const newCode = input.value.trim();
+  const oldCode = input.dataset.oldCode || '';
+  if(!newCode) { toast('❌ Entrez un code'); return; }
+  if(newCode === oldCode) { toast('Code identique — rien à changer'); return; }
+  if(girHas(newCode)) {
+    if(!confirm('Le dossier ' + newCode + ' existe déjà. Fusionner ?')) return;
+  }
+  // Copier les données de oldCode vers newCode
+  if(oldCode) {
+    const trace = idbGet(GIR_PREFIX_TRACE + oldCode);
+    const stops = idbGet(GIR_PREFIX_STOPS + oldCode);
+    const meta  = idbGet(GIR_PREFIX_META  + oldCode);
+    if(trace) idbSet(GIR_PREFIX_TRACE + newCode, trace);
+    if(stops) idbSet(GIR_PREFIX_STOPS + newCode, stops);
+    if(meta)  idbSet(GIR_PREFIX_META  + newCode, meta);
+    // Supprimer l ancien dossier
+    idbDel(GIR_PREFIX_TRACE + oldCode);
+    idbDel(GIR_PREFIX_STOPS + oldCode);
+    idbDel(GIR_PREFIX_META  + oldCode);
+    // Mettre à jour les trajets qui référençaient l ancien code
+    db.lines.forEach(line => {
+      line.trips.forEach(trip => {
+        if(trip._girouette === oldCode) trip._girouette = newCode;
+      });
+    });
+    saveDB();
+    toast('✅ Dossier renommé ' + oldCode + ' → ' + newCode);
+  } else {
+    toast('✅ Code girouette ' + newCode + ' créé');
+  }
+  input.dataset.oldCode = newCode;
+  girPanelCode = newCode;
+  girOpenEditor(newCode);
   renderGirPanel();
 }
 
