@@ -190,7 +190,7 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
   #gps-auto-banner,
   #gps-lost-banner {
     grid-column: 1 / -1;
-    grid-row: 0;
+    grid-row: 1;
   }
 
   /* Prédiction GPS cachée en paysage (trop verbeux) */
@@ -571,6 +571,22 @@ hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
     <div class="card-title">🚍 Mes lignes</div>
     <div id="line-grid"></div>
   </div>
+
+  <!-- ══ DOSSIERS GIROUETTE ══ -->
+  <div class="card" style="border:1px solid rgba(255,193,7,.25);background:rgba(255,193,7,.04)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin:0;color:#ffc107">📁 Dossiers Girouette</div>
+      <button onclick="girOpenEditor(null)"
+        style="padding:6px 12px;background:rgba(255,193,7,.2);border:1px solid #ffc107;
+               color:#ffc107;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+        + Nouveau
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Chaque dossier contient le tracé KML et les points GPS d'un girouette.
+    </div>
+    <div id="gir-panel-content"></div>
+  </div>
   <div id="line-detail" style="display:none">
     <div class="card">
       <div id="line-detail-title" class="card-title"></div>
@@ -789,16 +805,6 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
 
     <div class="card">
       <div class="card-title">➕ Ajouter un trajet</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button id="svc-dir-aller" onclick="svcSetDir('aller')"
-          style="flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-radius:8px;cursor:pointer;border:2px solid var(--accent);background:rgba(0,212,255,.15);color:var(--accent)">
-          ↗ ALLER
-        </button>
-        <button id="svc-dir-retour" onclick="svcSetDir('retour')"
-          style="flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-radius:8px;cursor:pointer;border:2px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted)">
-          ↙ RETOUR
-        </button>
-      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <select id="svc-add-line" onchange="svcRenderTripOptions()" style="flex:1;min-width:120px;padding:7px 8px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
           <option value="">— Ligne —</option>
@@ -872,14 +878,6 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
           ↙ RETOUR
         </button>
       </div>
-    </div>
-
-    <!-- Sélecteur trajet précis (visible si plusieurs trajets dans ce sens) -->
-    <div id="sillon-trip-row" style="display:none;margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Trajet exact</div>
-      <select id="sillon-trip-sel" style="width:100%;padding:8px 10px;font-size:13px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px">
-        <option value="">— Choisir le trajet —</option>
-      </select>
     </div>
 
     <!-- Bouton démarrer -->
@@ -1133,6 +1131,72 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
       <button class="btn btn-danger" id="confirm-yes-btn" style="flex:1">Supprimer</button>
       <button class="btn btn-ghost" onclick="closeConfirm()" style="flex:1">Annuler</button>
     </div>
+  </div>
+</div>
+
+<!-- ÉDITEUR GIROUETTE -->
+<div id="gir-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+     z-index:600;align-items:flex-end;justify-content:center;padding-bottom:0">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;
+              width:100%;max-width:500px;padding:20px;max-height:90vh;overflow-y:auto">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#ffc107">
+        📁 Dossier Girouette
+      </div>
+      <button onclick="girCloseEditor()"
+        style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);
+               border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+
+    <!-- Code girouette -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px">CODE GIROUETTE</div>
+      <input type="number" id="gir-editor-code" placeholder="ex: 6010"
+        style="width:100%;padding:12px 14px;font-size:22px;font-family:'Rajdhani',sans-serif;
+               font-weight:700;letter-spacing:2px;background:var(--bg);color:#ffc107;
+               border:2px solid rgba(255,193,7,.5);border-radius:10px;text-align:center">
+    </div>
+
+    <!-- Statut actuel -->
+    <div id="gir-editor-status" style="margin-bottom:14px"></div>
+
+    <!-- Import KML -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px">TRACÉ KML</div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+                    width:100%;padding:14px;font-size:14px;font-weight:700;cursor:pointer;
+                    background:rgba(39,174,96,.12);border:2px dashed var(--green);
+                    color:var(--green);border-radius:10px;box-sizing:border-box">
+        🗺 Importer fichier .kml
+        <input type="file" accept=".kml" style="display:none" onchange="girEditorImportKml(event)">
+      </label>
+    </div>
+
+    <!-- Import TXT -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">ARRÊTS + GPS (.txt)</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:monospace;
+                  background:rgba(255,255,255,.04);padding:6px 10px;border-radius:6px;line-height:1.6">
+        165&nbsp;&nbsp;Demi Lieue&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;49.02665, 1.97432<br>
+        671&nbsp;&nbsp;Oseraie&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;49.03100, 1.98500
+      </div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+                    width:100%;padding:14px;font-size:14px;font-weight:700;cursor:pointer;
+                    background:rgba(0,212,255,.12);border:2px dashed var(--accent);
+                    color:var(--accent);border-radius:10px;box-sizing:border-box">
+        📍 Importer fichier .txt
+        <input type="file" accept=".txt,.csv" style="display:none" onchange="girEditorImportTxt(event)">
+      </label>
+    </div>
+
+    <!-- Bouton fermer -->
+    <button onclick="girCloseEditor()"
+      style="width:100%;padding:12px;background:rgba(255,255,255,.06);border:1px solid var(--border);
+             color:var(--text);border-radius:10px;cursor:pointer;font-size:14px;font-weight:700">
+      ✅ Fermer
+    </button>
   </div>
 </div>
 
@@ -1695,6 +1759,8 @@ async function idbBoot() {
   setInterval(updateClock, 1000);
   requestWakeLock();
   gdriveInit();
+  // Initialiser le panneau girouette si la vue est déjà active
+  if(document.getElementById('gir-panel-content')) renderGirPanel();
 }
 
 const STORAGE_KEY = 'chronoligne_v2';
@@ -3386,7 +3452,7 @@ function showView(id) {
   });
   const v = document.getElementById(id);
   if(v) v.classList.add('active');
-  if(id === 'view-lines') renderLineGrid();
+  if(id === 'view-lines') { renderLineGrid(); renderGirPanel(); }
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
   if(id === 'view-settings') { loadSettings(); }
   if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 200); }
@@ -3795,7 +3861,7 @@ function updateLive() {
   }
 }
 // ── Toggle Mode CLASSIQUE / INEO ─────────────────
-let liveMode = idbGet('chronoligne_livemode') || 'classique';
+let liveMode = 'classique'; // sera rechargé depuis IDB dans idbBoot → applyLiveMode
 
 function toggleLiveMode() {
   liveMode = liveMode === 'classique' ? 'ineo' : 'classique';
@@ -3804,6 +3870,8 @@ function toggleLiveMode() {
 }
 
 function applyLiveMode() {
+  // Charger depuis IDB (maintenant disponible au moment de l'appel depuis idbBoot)
+  liveMode = idbGet('chronoligne_livemode') || liveMode || 'classique';
   const btn = document.getElementById('live-mode-btn');
   const btn2 = document.getElementById('live-mode-btn-ineo');
   const cl = document.getElementById('mode-classique');
@@ -4023,6 +4091,7 @@ function addNewTripToLine(lineIdx, direction) {
   };
   line.trips.push(newTrip);
   saveDB();
+  // Ouvrir directement l'éditeur sur ce nouveau trajet
   openTripEditor(lineIdx, line.trips.length - 1);
   toast(`✅ Nouveau trajet ${dirLabel} créé — modifiez les horaires`);
 }
@@ -4033,11 +4102,32 @@ function activateTrip(lineIdx, tripIdx) {
   const trip = line.trips?.[tripIdx];
   if(!trip) { toast('❌ Trajet introuvable'); return; }
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: null };
+  // Mémoriser le girouette dans activeTrip si disponible sur le trip
+  if(trip._girouette) activeTrip._girouette = trip._girouette;
   gpsAutoNextIdx = 0;
   gpsSession = [];
   cancelAutoAdvance();
+
+  // ── Injection GPS depuis dossier girouette ────────────────────
+  const girCode = trip._girouette || null;
+  if(girCode && girHas(girCode)) {
+    loadGpsCoordsDB();
+    let injected = 0;
+    trip.stops.forEach((s, si) => {
+      const key = gpsCoordKey(line.num, tripIdx, si);
+      if(gpsCoordsDB[key]) return;
+      const coords = girGetStopCoords(s._codeArret || null, s.name);
+      if(coords) { gpsCoordsDB[key] = { lat: coords.lat, lon: coords.lon, name: s.name }; injected++; }
+    });
+    if(injected > 0) saveGpsCoordsDB();
+  }
+
   const col = line.color || '#00d4ff';
-  document.getElementById('live-trip-label').innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}`;
+  const girBadge = (trip._girouette)
+    ? `<span style="background:rgba(255,193,7,.2);border:1px solid #ffc107;color:#ffc107;padding:1px 6px;border-radius:4px;font-size:11px;margin-left:4px">📁 ${trip._girouette}</span>`
+    : '';
+  document.getElementById('live-trip-label').innerHTML =
+    `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:13px;margin-right:6px">${line.num}</span>${trip.label}${girBadge}`;
   document.getElementById('terminus-btn').style.display = '';
   showGpsBtns(true);
   updateLive();
@@ -4045,7 +4135,6 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
-  // Rafraîchir la carte Leaflet
   setTimeout(() => { liveMapInit(); liveMapRefresh(); }, 300);
 }
 
@@ -4145,38 +4234,54 @@ function renderGpsStopsPanel() {
     const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
     const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
     const num = String(si+1).padStart(2,'0');
-    const coordVal = hasGps ? `${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}` : '';
-    const inputId = `gps-input-${si}-val`;
+    const coordText = hasGps
+      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
+      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
     const delBtn = hasGps
       ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`
       : '';
-    const saveBtn = `<button onclick="gpsStopsSaveFromInput('${key}','${inputId}','${si}')"
-      style="padding:6px 10px;background:rgba(39,174,96,.25);border:1px solid var(--green);
-             color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0"
-      title="Enregistrer">💾</button>`;
+    // Bouton saisie manuelle — bascule l'input inline
+    const editId = `gps-input-${si}`;
+    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
+      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
+             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
+      title="Saisir coordonnées manuellement">✏</button>`;
 
-    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:6px;padding:8px 10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace;width:22px">${num}</span>
-        <span class="gps-row-icon" style="font-size:14px;flex-shrink:0;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-        <div style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
+    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
+        <span class="gps-row-icon" style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div class="gps-row-coord">${coordText}</div>
+        </div>
+        ${editBtn}
         ${delBtn}
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input id="${inputId}"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          placeholder="49.02665, 1.97432"
-          value="${coordVal}"
-          style="flex:1;padding:9px 10px;font-size:13px;font-family:monospace;border-radius:8px;
-                 border:2px solid ${hasGps ? 'rgba(39,174,96,.5)' : 'rgba(255,193,7,.5)'};
-                 background:${hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,193,7,.06)'};
-                 color:var(--text);
-                 -webkit-user-select:text !important;user-select:text !important;
-                 -webkit-touch-callout:default !important;
-                 touch-action:manipulation;cursor:text;pointer-events:auto">
-        ${saveBtn}
+      <!-- Champ saisie manuelle — caché par défaut -->
+      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
+          COORDONNÉES GPS — Collez ou saisissez : lat, lon
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="${editId}-val"
+            inputmode="decimal"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            placeholder="49.02665, 1.97432"
+            style="flex:1;padding:10px 10px;font-size:14px;font-family:monospace;border-radius:8px;
+                   border:2px solid rgba(255,193,7,.6);background:rgba(255,193,7,.08);color:var(--text);
+                   -webkit-user-select:text;user-select:text;touch-action:manipulation"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();gpsStopsSaveManual('${key}','${editId}')}"
+            oninput="gpsStopsAutoSave('${key}','${editId}',this.value)"
+            onpaste="setTimeout(()=>{const v=document.getElementById('${editId}-val').value;gpsStopsAutoSave('${key}','${editId}',v,true)},30)">
+          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
+            style="padding:10px 14px;background:rgba(39,174,96,.2);border:1px solid var(--green);
+                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;flex-shrink:0;
+                   touch-action:manipulation">
+            ✓
+          </button>
+        </div>
+        <div id="${editId}-hint" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px"></div>
       </div>
       <div id="gps-hint-${si}" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:13px"></div>
     </div>`;
@@ -4293,24 +4398,31 @@ function gpsStoreCoord(key, lat, lon, editId, doClose) {
   saveGpsCoordsDB();
 
   if(doClose) {
+    // Fermer le champ d'édition pour CET arrêt uniquement
     const editEl = document.getElementById(editId);
     if(editEl) editEl.style.display = 'none';
+    // Mettre à jour uniquement la ligne de cet arrêt (pas tout le panneau)
     gpsStopsUpdateRow(key, si, lat, lon);
-    // Mettre à jour uniquement le badge (pas renderLineDetail qui détruit le panneau)
-    _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
+    // Rafraîchir le badge dans la liste des trajets (léger)
+    renderLineDetail(gpsPanelLineIdx);
     toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
   } else {
+    // Mise à jour silencieuse (preview) — pas de toast, pas de fermeture
     gpsStopsUpdateRow(key, si, lat, lon);
   }
 }
 
 // ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
 function gpsStopsUpdateRow(key, si, lat, lon) {
+  const num = String(si+1).padStart(2,'0');
   const rowId = `gps-row-${si}`;
   const row = document.getElementById(rowId);
   if(!row) return;
+  // Mettre à jour l'icône et les coordonnées affichées
   const iconEl = row.querySelector('.gps-row-icon');
+  const coordEl = row.querySelector('.gps-row-coord');
   if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
+  if(coordEl) coordEl.innerHTML = `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>`;
   row.style.background = 'rgba(39,174,96,.08)';
   row.style.border = '1px solid rgba(39,174,96,.3)';
   // Mettre à jour la valeur de l'input visible
@@ -4437,8 +4549,10 @@ function gpsStopsSaveManual(key, editId) {
   if(!inp) return;
   const raw = (inp.value || '').trim();
   if(!raw) { toast('Entrez des coordonnées'); inp.focus(); return; }
+
   const parsed = gpsParseCoords(raw);
   if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
+
   gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
 }
 
@@ -4446,11 +4560,13 @@ function gpsStopsDeleteOne(key, si) {
   loadGpsCoordsDB();
   delete gpsCoordsDB[key];
   saveGpsCoordsDB();
+  // Mettre à jour uniquement la ligne concernée
   const row = document.getElementById(`gps-row-${si}`);
   if(row) {
     row.style.background = 'rgba(255,255,255,.02)';
     row.style.border = '1px solid var(--border)';
     const iconEl = row.querySelector('.gps-row-icon');
+    const coordEl = row.querySelector('.gps-row-coord');
     if(iconEl) { iconEl.textContent = '⬜'; iconEl.style.color = 'var(--muted)'; }
     const inp = document.getElementById(`gps-input-${si}-val`);
     if(inp) {
@@ -4593,7 +4709,14 @@ function importData(e) {
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    try { db = JSON.parse(ev.target.result); saveDB(); renderLineGrid(); toast('✓ Import réussi'); }
+    try {
+      db = JSON.parse(ev.target.result);
+      saveDB();
+      loadGpsCoordsDB();
+      renderLineGrid();
+      renderRoadmapView();
+      toast('✓ Import réussi');
+    }
     catch(err) { toast('❌ Fichier invalide'); }
   };
   reader.readAsText(file);
@@ -4614,9 +4737,30 @@ function reloadOfficialTrips() {
 
 function resetAll() {
   if(!confirm('Supprimer toutes les données ?')) return;
-  idbDel(STORAGE_KEY);
-  idbDel(ROADMAP_KEY);
-  initDB(); activeTrip=null; activeLine=null;
+  const ALL_KEYS = [
+    STORAGE_KEY, ROADMAP_KEY,
+    'chronoligne_gps_coords', 'chronoligne_gps_sessions',
+    'chronoligne_prime_sessions', 'chronoligne_settings',
+    'chronoligne_planning', 'chronoligne_intervals',
+    'chronoligne_service', 'chronoligne_services',
+    'chronoligne_traces', 'chronoligne_livemode',
+    'chronoligne_trips_version', 'chronoligne_gdrive_fid',
+    'chronoligne_theme'
+  ];
+  ALL_KEYS.forEach(k => idbDel(k));
+  // Supprimer tous les dossiers girouette et GPS arrêts physiques
+  Object.keys(_idbCache).forEach(k => {
+    if(k.startsWith(GIR_PREFIX_TRACE) || k.startsWith(GIR_PREFIX_STOPS) ||
+       k.startsWith(GIR_PREFIX_META)  || k.startsWith(GPS_ARRET_PREFIX)) {
+      idbDel(k);
+    }
+  });
+  gpsCoordsDB = {};
+  gdriveFileId = null;
+  liveMode = 'classique';
+  activeTrip = null; activeLine = null;
+  initDB();
+  renderGirPanel();
   toast('Réinitialisé ✓');
 }
 
@@ -5108,6 +5252,7 @@ function svcAddTrip() {
     const h = String(Math.floor(curMin/60)%24).padStart(2,'0');
     const m = String(curMin%60).padStart(2,'0');
     const time = `${h}:${m}`;
+    // Utiliser l'intervalle mémorisé pour cet arrêt, sinon celui du trajet de base, sinon global
     const savedInterval = db_int[intervalsKey(line.num, trip.label, s.name)];
     const iv = savedInterval !== undefined ? savedInterval : (s.intervalAfter !== undefined ? s.intervalAfter : intervalGlobal);
     if(i < rawStops.length-1) curMin += iv;
@@ -5128,13 +5273,26 @@ function svcAddTrip() {
 function renderSvcTrips() {
   const el = document.getElementById('svc-trips-container');
   if(!svcTrips.length) { el.innerHTML=''; return; }
-  el.innerHTML = svcTrips.map((t,ti) => `
+  el.innerHTML = svcTrips.map((t,ti) => {
+    const girCode = t._girouette || null;
+    const girHasData = girCode && girHas(girCode);
+    const girBadge = girCode
+      ? `<span style="background:${girHasData ? 'rgba(255,193,7,.2)' : 'rgba(255,255,255,.06)'};
+                      border:1px solid ${girHasData ? '#ffc107' : 'var(--border)'};
+                      color:${girHasData ? '#ffc107' : 'var(--muted)'};
+                      padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700"
+           title="${girHasData ? 'Dossier girouette trouvé ✅' : '⚠️ Dossier girouette manquant'}">
+           📁 ${girCode}</span>`
+      : `<span style="font-size:10px;color:rgba(255,255,255,.2)" title="Pas de code girouette détecté">📁 —</span>`;
+
+    return `
     <div class="card" style="margin-bottom:8px;padding:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="flex:1;min-width:0">
+        <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-size:13px;color:var(--muted)">${String(ti+1).padStart(2,'0')}.</span>
-          ${t.lineColor ? `<span style="background:${t.lineColor};color:#fff;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:700;margin-left:4px">${t.lineNum||''}</span>` : ''}
-          <span style="font-size:13px;font-weight:600;color:var(--text);margin-left:5px">${(t.label||'').replace(/^Ligne \S+ — /,'')}</span>
+          ${t.lineColor ? `<span style="background:${t.lineColor};color:#fff;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:700">${t.lineNum||''}</span>` : ''}
+          <span style="font-size:13px;font-weight:600;color:var(--text)">${(t.label||'').replace(/^Ligne \S+ — /,'')}</span>
+          ${girBadge}
         </div>
         <div style="display:flex;gap:4px;align-items:center">
           ${svcBuildMapBtn(t, ti)}
@@ -5145,12 +5303,15 @@ function renderSvcTrips() {
       </div>
       ${t.stops.some(s=>s.isRef) ? `<div style="font-size:10px;margin-bottom:6px"><span style="background:rgba(231,76,60,.2);color:#e74c3c;padding:2px 6px;border-radius:4px">🔴 Arrêt de régulation INEO</span> <span style="color:var(--muted)">= point obligatoire (tolérance +1 min avance)</span></div>` : ''}
       <table class="stop-table" style="font-size:12px">
-        <thead><tr><th>#</th><th>Arrêt</th><th>Heure</th></tr></thead>
+        <thead><tr><th>#</th><th>Arrêt</th><th>Code</th><th>Heure</th></tr></thead>
         <tbody>
           ${t.stops.map((s,si) => `
           <tr style="${s.isRef ? 'background:rgba(231,76,60,.08);' : ''}">
             <td style="color:var(--muted);font-size:11px">${String(si+1).padStart(2,'0')}</td>
             <td style="font-size:12px;${s.isRef ? 'color:#e74c3c;font-weight:700;' : ''}">${s.isRef ? '🔴 ' : ''}${s.name}</td>
+            <td style="font-family:monospace;font-size:10px;color:${s._codeArret ? 'var(--accent)' : 'rgba(255,255,255,.15)'}">
+              ${s._codeArret || '—'}
+            </td>
             <td><input type="text" id="stop-${ti}-${si}" value="${s.time||'00:00'}" inputmode="numeric"
               maxlength="5" placeholder="HH:MM"
               style="padding:5px 6px;font-size:15px;width:80px;font-family:'Share Tech Mono',monospace;
@@ -5169,7 +5330,8 @@ function renderSvcTrips() {
         <span style="font-size:11px;color:var(--muted)">min</span>
         <button class="btn btn-sm btn-ghost" onclick="svcRecalcTrip(${ti})" style="font-size:11px">🔄 Recalculer</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 
@@ -5282,108 +5444,46 @@ function svcFindTrace(t) {
   return null;
 }
 
-// ── Construit le bouton Voir Carte pour un trajet ─────────────
+// ── Construit le bouton Voir Carte pour un trajet (avec girouette) ──
 function svcBuildMapBtn(t, ti) {
-  const match = svcFindTrace(t);
-  if(match) {
-    const pts = match.points?.length || 0;
+  // Priorité 1 : dossier girouette
+  const girCode = t._girouette || null;
+  const girTrace = girCode ? girGetTrace(girCode) : null;
+  if(girTrace) {
     return `<button onclick="svcShowMap(${ti})"
       style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
-             background:rgba(39,174,96,.2);border:1px solid var(--green);color:var(--green);
-             white-space:nowrap"
-      title="Tracé trouvé (${pts} pts) — ${match.key}">🗺 Voir Carte</button>`;
-  } else {
-    return `<button onclick="svcPickTrace(${ti})"
-      style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
-             background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.35);
-             white-space:nowrap"
-      title="Aucune carte automatique — cliquez pour choisir manuellement">🗺 Carte ?</button>`;
+             background:rgba(255,193,7,.2);border:1px solid #ffc107;color:#ffc107;white-space:nowrap"
+      title="Tracé girouette ${girCode} (${girTrace.length} pts)">📁 ${girCode}</button>`;
   }
+  // Fallback : ancien système
+  const match = svcFindTraceWithManual(t);
+  if(match) {
+    const pts = match.points?.length || 0;
+    const icon = match.method === 'manual' ? '📌' : '🗺';
+    return `<button onclick="svcShowMap(${ti})"
+      style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
+             background:rgba(39,174,96,.2);border:1px solid var(--green);color:var(--green);white-space:nowrap"
+      title="${match.key} (${pts} pts)">${icon} Carte</button>`;
+  }
+  return `<button onclick="svcPickTrace(${ti})"
+    style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
+           background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.25);color:rgba(255,255,255,.4);
+           white-space:nowrap"
+    title="Aucune carte">🗺 ?</button>`;
 }
 
 // ── Afficher la carte d'un trajet de service ──────────────────
 function svcShowMap(ti) {
   const t = svcTrips[ti];
   if(!t) return;
-  const match = svcFindTrace(t);
+  // Priorité 1 : girouette
+  const girCode = t._girouette || null;
+  const girTrace = girCode ? girGetTrace(girCode) : null;
+  if(girTrace) { svcOpenMapModal(ti, `Girouette ${girCode}`, girTrace); return; }
+  // Fallback : ancien système
+  const match = svcFindTraceWithManual(t);
   if(!match) { svcPickTrace(ti); return; }
   svcOpenMapModal(ti, match.key, match.points);
-}
-
-// ── Génère un aperçu SVG miniature d'un tracé ────────────────
-function svcTraceMiniPreview(points, color) {
-  if(!points || points.length < 2) return '<div style="width:100%;height:60px;background:rgba(255,255,255,.04);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)">Aucun tracé</div>';
-  const lats = points.map(p => p[0]);
-  const lons = points.map(p => p[1]);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
-  const W = 280, H = 64, PAD = 8;
-  const scaleX = (lon) => PAD + ((lon - minLon) / (maxLon - minLon || 1)) * (W - PAD*2);
-  const scaleY = (lat) => H - PAD - ((lat - minLat) / (maxLat - minLat || 1)) * (H - PAD*2);
-  // Simplifier pour le SVG (max 80 points)
-  const step = Math.max(1, Math.floor(points.length / 80));
-  const pts = points.filter((_, i) => i % step === 0 || i === points.length - 1);
-  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${scaleX(p[1]).toFixed(1)},${scaleY(p[0]).toFixed(1)}`).join(' ');
-  const startPt = pts[0];
-  const endPt   = pts[pts.length - 1];
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-    style="width:100%;height:64px;background:rgba(0,0,0,.3);border-radius:6px;display:block">
-    <path d="${d}" fill="none" stroke="${color||'#c0392b'}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
-    <circle cx="${scaleX(startPt[1]).toFixed(1)}" cy="${scaleY(startPt[0]).toFixed(1)}" r="4" fill="#27ae60" stroke="#fff" stroke-width="1.5"/>
-    <circle cx="${scaleX(endPt[1]).toFixed(1)}" cy="${scaleY(endPt[0]).toFixed(1)}" r="4" fill="#e74c3c" stroke="#fff" stroke-width="1.5"/>
-  </svg>`;
-}
-
-// ── Import KML directement depuis le picker de service ────────
-function svcPickerImportKml(event, ti) {
-  const file = event.target.files[0];
-  if(!file) return;
-  document.getElementById('svc-trace-picker')?.remove();
-
-  const t = svcTrips[ti];
-  const reader = new FileReader();
-  reader.onload = e => {
-    const content = e.target.result;
-    let points = null;
-    try {
-      if(file.name.toLowerCase().endsWith('.kml')) {
-        const parser = new DOMParser();
-        const kml = parser.parseFromString(content, 'text/xml');
-        const coords = kml.querySelector('LineString coordinates');
-        if(!coords) { toast('❌ Aucune LineString dans ce KML'); return; }
-        points = coords.textContent.trim().split(/\s+/).map(c => {
-          const [lon, lat] = c.split(',').map(Number);
-          return [lat, lon];
-        }).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
-        points = points.filter((_,i) => i % 4 === 0);
-      } else {
-        const data = JSON.parse(content);
-        if(Array.isArray(data)) points = data;
-        else if(data.path) points = data.path.map(p => [p.lat, p.lon]);
-        else if(data.stops) points = data.stops.map(s => [s.lat, s.lon]);
-      }
-    } catch(err) { toast('❌ Erreur lecture : ' + err.message); return; }
-
-    if(!points || points.length < 2) { toast('❌ Tracé invalide ou vide'); return; }
-
-    // Mémoriser sous une clé basée sur le fingerprint du trajet de service
-    const fp = t._fingerprint || svcBuildFingerprint(t);
-    const keyName = fp || `svc_${ti}_${Date.now()}`;
-
-    const lib = traceLibraryLoad();
-    lib[keyName] = points;
-    traceLibrarySave(lib);
-
-    // Mémoriser aussi l'association trajet ↔ carte
-    if(fp) idbSet(`svcTraceMap_${fp}`, keyName);
-    svcTrips[ti]._manualTraceKey = keyName;
-
-    renderSvcTrips();
-    toast(`✅ Carte importée (${points.length} pts) et assignée à ce trajet`);
-    // Ouvrir la carte immédiatement
-    svcOpenMapModal(ti, keyName, points);
-  };
-  reader.readAsText(file);
 }
 
 // ── Modal de sélection manuelle d'une carte ───────────────────
@@ -5394,103 +5494,61 @@ function svcPickTrace(ti) {
 
   const overlay = document.createElement('div');
   overlay.id = 'svc-trace-picker';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0 80px';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px;overflow-y:auto';
 
   const tripLabel = (t.label || '').replace(/^Ligne \S+ — /, '');
-  const tripColor = t.lineColor || '#c0392b';
 
   const fp = t._fingerprint || svcBuildFingerprint(t);
   const currentMemo = fp ? idbGet(`svcTraceMap_${fp}`) : null;
 
-  // Bloc import KML — toujours présent
-  const importBlock = `
-    <div style="margin-bottom:16px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:.8px;margin-bottom:6px;font-weight:700">📂 IMPORTER UN FICHIER POUR CE TRAJET</div>
-      <label style="display:flex;align-items:center;justify-content:center;gap:8px;
-             width:100%;padding:14px;font-size:14px;font-weight:700;
-             background:rgba(0,212,255,.12);border:2px dashed rgba(0,212,255,.5);color:var(--accent);
-             border-radius:10px;cursor:pointer;box-sizing:border-box;text-align:center">
-        📂 Importer KML ou JSON pour ce trajet
-        <input type="file" accept=".kml,.json" style="display:none"
-          onchange="svcPickerImportKml(event,${ti})">
-      </label>
-      <div style="font-size:10px;color:var(--muted);margin-top:5px;text-align:center">Accepte .kml (Google Earth/Maps) et .json (tableau [[lat,lon]])</div>
-    </div>`;
-
-  let bodyHtml;
   if(!keys.length) {
-    bodyHtml = `
-      <div style="padding:16px;text-align:center">
-        <div style="font-size:40px;margin-bottom:10px">🗺</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Aucune carte disponible</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-          Importez un tracé KML directement ci-dessus, ou depuis l'onglet<br><b>TRAJET → icône 🗺 (appui long) → Importer KML</b>
-        </div>
+    overlay.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;width:90%;max-width:380px">
+      <div style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px">🗺 Aucune carte disponible</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Importez d'abord un tracé KML depuis l'onglet TRAJET → icône 🗺 → Importer KML.
       </div>
-      ${importBlock}`;
+      <button onclick="document.getElementById('svc-trace-picker').remove()"
+        style="width:100%;padding:12px;background:rgba(255,255,255,.08);border:1px solid var(--border);
+               color:var(--muted);border-radius:10px;cursor:pointer">Fermer</button>
+    </div>`;
   } else {
-    const cards = keys.map(k => {
-      const pts = lib[k] || [];
+    const buttons = keys.map(k => {
+      const pts = lib[k]?.length || 0;
       const isMemo = k === currentMemo;
-      const preview = svcTraceMiniPreview(pts, tripColor);
-      return `
-        <div style="margin-bottom:10px;border-radius:12px;overflow:hidden;
-               border:2px solid ${isMemo ? 'var(--green)' : 'rgba(255,255,255,.12)'};
-               background:${isMemo ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.03)'}">
-          <!-- Aperçu miniature du tracé -->
-          <div style="padding:0">${preview}</div>
-          <!-- Label + bouton -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;gap:8px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:700;color:${isMemo ? 'var(--green)' : 'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isMemo ? '📌 ' : ''}${k}</div>
-              <div style="font-size:10px;color:var(--muted)">${pts.length} points${isMemo ? ' — mémorisée' : ''}</div>
-            </div>
-            <button onclick="svcAssignTrace(${ti},'${k}')"
-              style="flex-shrink:0;padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;white-space:nowrap;
-                     background:${isMemo ? 'rgba(39,174,96,.25)' : 'rgba(0,212,255,.15)'};
-                     border:1px solid ${isMemo ? 'var(--green)' : 'var(--accent)'};
-                     color:${isMemo ? 'var(--green)' : 'var(--accent)'}">
-              ${isMemo ? '✓ Utilisée' : '← Utiliser'}
-            </button>
-          </div>
-        </div>`;
+      return `<button onclick="svcAssignTrace(${ti},'${k}')"
+        style="width:100%;padding:10px 14px;font-size:12px;font-weight:600;text-align:left;
+               background:${isMemo ? 'rgba(39,174,96,.15)' : 'rgba(0,212,255,.08)'};
+               border:1px solid ${isMemo ? 'var(--green)' : 'var(--border)'};
+               color:${isMemo ? 'var(--green)' : 'var(--text)'};
+               border-radius:10px;cursor:pointer;margin-bottom:6px;box-sizing:border-box"
+        onmouseover="this.style.background='rgba(0,212,255,.2)'"
+        onmouseout="this.style.background='${isMemo ? 'rgba(39,174,96,.15)' : 'rgba(0,212,255,.08)'}'">>
+        ${isMemo ? '📌' : '📍'} ${k} <span style="color:var(--muted);font-size:11px">(${pts} pts)${isMemo ? ' — mémorisée' : ''}</span>
+      </button>`;
     }).join('');
 
     const fpInfo = fp
-      ? `<div style="font-size:9px;color:rgba(255,255,255,.18);margin-top:4px;font-family:monospace;word-break:break-all">ID trajet: ${fp}</div>`
+      ? `<div style="font-size:9px;color:rgba(255,255,255,.2);margin-top:4px;font-family:monospace;word-break:break-all">ID: ${fp}</div>`
       : '';
 
-    bodyHtml = `
-      ${importBlock}
-      <div style="font-size:10px;color:var(--muted);letter-spacing:.8px;margin-bottom:8px;font-weight:700">🗺 CARTES DISPONIBLES — aperçu et sélection</div>
-      ${currentMemo ? `<div style="margin-bottom:10px;padding:7px 10px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;font-size:11px;color:var(--green)">📌 Carte en cours : <b>${currentMemo}</b></div>` : ''}
-      ${cards}
+    overlay.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;
+                              padding:20px;width:90%;max-width:380px;max-height:85vh;overflow-y:auto;margin-top:20px">
+      <div style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">🗺 Choisir une carte</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Trajet : <b>${tripLabel}</b></div>
+      ${fpInfo}
+      ${currentMemo ? `<div style="margin:8px 0;padding:6px 10px;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:8px;font-size:11px;color:var(--green)">📌 Carte mémorisée : <b>${currentMemo}</b></div>` : ''}
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;margin:10px 0 6px">CARTES DISPONIBLES — cliquer pour assigner et mémoriser</div>
+      ${buttons}
       ${currentMemo ? `<button onclick="svcForgetTrace(${ti},'${fp}')"
         style="width:100%;padding:9px;font-size:12px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);
-               color:var(--red);border-radius:10px;cursor:pointer;margin-top:4px;margin-bottom:6px;box-sizing:border-box">
+               color:var(--red);border-radius:10px;cursor:pointer;margin-bottom:6px">
         🗑 Oublier la carte mémorisée
       </button>` : ''}
-      ${fpInfo}`;
-  }
-
-  overlay.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;
-                padding:18px;width:92%;max-width:420px;margin-top:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <div style="font-size:16px;font-weight:700;color:var(--accent)">🗺 Carte du trajet</div>
-        <button onclick="document.getElementById('svc-trace-picker').remove()"
-          style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--muted);
-                 border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer">✕</button>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        ${t.lineColor ? `<span style="background:${t.lineColor};color:#fff;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700;margin-right:6px">${t.lineNum||''}</span>` : ''}
-        ${tripLabel}
-      </div>
-      ${bodyHtml}
       <button onclick="document.getElementById('svc-trace-picker').remove()"
-        style="width:100%;padding:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);
-               color:var(--muted);border-radius:10px;cursor:pointer;margin-top:8px;box-sizing:border-box">Fermer</button>
+        style="width:100%;padding:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);
+               color:var(--muted);border-radius:10px;cursor:pointer;margin-top:4px">Annuler</button>
     </div>`;
+  }
 
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
@@ -5523,7 +5581,7 @@ function svcAssignTrace(ti, key) {
 function svcBuildFingerprint(t) {
   if(!t || !t.stops || !t.stops.length) return null;
   const dir = t.direction || 'aller';
-  const lineNum = t.lineNum || t.lineIdx !== undefined ? (db.lines[t.lineIdx]?.num || t.lineNum || '?') : '?';
+  const lineNum = (t.lineNum) || (t.lineIdx !== undefined ? (db.lines[t.lineIdx]?.num || '?') : '?');
   const fp = t.stops.slice(0,3)
     .map(s => (s.name||'').replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toLowerCase())
     .join('|');
@@ -5563,10 +5621,10 @@ function svcOpenMapModal(ti, traceKey, points) {
 
   document.body.appendChild(modal);
 
-  // Init carte Leaflet dans le modal (avec chargement dynamique si nécessaire)
-  function _initSvcMap() {
+  // Init carte Leaflet dans le modal
+  setTimeout(() => {
     const mapEl = document.getElementById('svc-map-container');
-    if(!mapEl) return;
+    if(!mapEl || typeof L === 'undefined') { toast('❌ Leaflet non disponible'); modal.remove(); return; }
 
     const svcMap = L.map(mapEl, { zoomControl: true, attributionControl: false }).setView([49.04, 2.07], 13);
 
@@ -5608,9 +5666,7 @@ function svcOpenMapModal(ti, traceKey, points) {
 
     // Forcer le rendu (le div était caché)
     setTimeout(() => svcMap.invalidateSize(), 100);
-  }
-
-  _ensureLeaflet(_initSvcMap);
+  }, 80);
 }
 
 // ── Oublier une association mémorisée ────────────────────────
@@ -5632,47 +5688,6 @@ function svcFindTraceWithManual(t) {
     if(lib[t._manualTraceKey]) return { key: t._manualTraceKey, points: lib[t._manualTraceKey], score: 100, method: 'manual' };
   }
   return _svcFindTraceOrig(t);
-}
-
-// Patch svcBuildMapBtn — badge selon méthode de détection + bouton changer
-const _svcBuildMapBtnOrig = svcBuildMapBtn;
-function svcBuildMapBtn(t, ti) {
-  const match = svcFindTraceWithManual(t);
-  if(match) {
-    const pts = match.points?.length || 0;
-    const isMemorized = match.method === 'memorized' || match.method === 'manual';
-    const isVariant   = match.method?.startsWith('variant:');
-    const icon  = isMemorized ? '📌' : isVariant ? '🔀' : '🗺';
-    const label = isMemorized ? 'Carte mémo' : isVariant ? 'Variante ?' : 'Voir Carte';
-    const bg    = isMemorized ? 'rgba(255,193,7,.2)' : isVariant ? 'rgba(255,100,0,.15)' : 'rgba(39,174,96,.2)';
-    const border= isMemorized ? 'rgba(255,193,7,.8)' : isVariant ? 'rgba(255,140,0,.7)' : 'var(--green)';
-    const color = isMemorized ? '#ffc107' : isVariant ? 'orange' : 'var(--green)';
-    return `<div style="display:flex;gap:3px;align-items:center">
-      <button onclick="svcShowMap(${ti})"
-        style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
-               background:${bg};border:1px solid ${border};color:${color};white-space:nowrap"
-        title="${match.key} (${pts} pts) — ${match.method}">${icon} ${label}</button>
-      <button onclick="svcPickTrace(${ti})" title="Mauvaise carte ? Choisir ou importer un KML"
-        style="padding:4px 7px;font-size:11px;border-radius:6px;cursor:pointer;
-               background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);
-               color:rgba(255,255,255,.5);white-space:nowrap;line-height:1">✎</button>
-    </div>`;
-  } else {
-    return `<button onclick="svcPickTrace(${ti})"
-      style="padding:4px 10px;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;
-             background:rgba(255,165,0,.15);border:2px dashed rgba(255,165,0,.7);color:orange;
-             white-space:nowrap;animation:pulse 2s infinite"
-      title="Aucune carte auto-détectée — cliquer pour importer ou choisir">📂 Carte ?</button>`;
-  }
-}
-
-// Patch svcShowMap pour utiliser findTrace avec manuel
-function svcShowMap(ti) {
-  const t = svcTrips[ti];
-  if(!t) return;
-  const match = svcFindTraceWithManual(t);
-  if(!match) { svcPickTrace(ti); return; }
-  svcOpenMapModal(ti, match.key, match.points);
 }
 
 function svcFormatTimeInput(el, ti, si) {
@@ -5767,6 +5782,7 @@ function parseIneoFeuille() {
   let depotDepart = '', depotRetour = '';
   let trips = [];
   let currentLineNum = null, currentRefStops = [], currentDirection = 'aller';
+  let currentGirouette = null; // ← nouveau : code girouette du trajet en cours
   let i = 0;
 
   // Fonction pour normaliser un nom d'arrêt (pour matching)
@@ -5834,11 +5850,12 @@ function parseIneoFeuille() {
     if(ligneMatch) {
       // Sauvegarder trajet précédent
       if(currentLineNum && currentRefStops.length > 0) {
-        const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+        const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection, currentGirouette);
         if(trip) trips.push(trip);
       }
       currentLineNum = ligneMatch[1];
       currentRefStops = [];
+      currentGirouette = null;
 
       // Détecter direction depuis FROM >> TO
       const fromPart = ligneMatch[2].trim();
@@ -5852,15 +5869,37 @@ function parseIneoFeuille() {
       i++; continue;
     }
 
-    // ITINERAIRE ou ligne commençant par un horaire "-->"
+    // Ligne résumé trajet avec girouette : "  06:58  LIEU - CODE  07:23  LIEU - CODE  00:25  6010"
+    const girouetteExtracted = parseExtractGirouette(line);
+    if(girouetteExtracted && currentLineNum && !currentGirouette) {
+      currentGirouette = girouetteExtracted;
+      i++; continue;
+    }
+
+    // ITINERAIRE → collecter arrêts de référence avec codes arrêts
     if(line.startsWith('ITINERAIRE') || (line.match(/^\d{2}:\d{2}\s*-->/) && currentLineNum)) {
-      extractStopsFromStr(line).forEach(s => currentRefStops.push(s));
+      const splitLines = line.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+      splitLines.forEach(sl => {
+        const m = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+        if(m) {
+          const { nom, code } = parseExtractStopCode(m[2].replace(/\s*\d{5,}\s*$/, '').trim());
+          if(nom) currentRefStops.push({ time: m[1], name: nom, codeArret: code });
+        }
+      });
       i++;
       while(i < lines.length) {
         const al = lines[i];
-        if(!/\d{2}:\d{2}\s*-->/.test(al)) break;
-        extractStopsFromStr(al).forEach(s => currentRefStops.push(s));
-        i++;
+        const splitAl = al.replace(/(\d{2}:\d{2}\s*-->)/g, '\n$1').split('\n').map(l=>l.trim()).filter(l=>l);
+        let pushed = false;
+        splitAl.forEach(sl => {
+          const am = sl.match(/^(\d{2}:\d{2})\s*-->\s*(.+)$/);
+          if(am) {
+            const { nom, code } = parseExtractStopCode(am[2].replace(/\s*\d{5,}\s*$/, '').trim());
+            if(nom) { currentRefStops.push({ time: am[1], name: nom, codeArret: code }); pushed = true; }
+          }
+        });
+        if(pushed) i++;
+        else break;
       }
       continue;
     }
@@ -5872,7 +5911,7 @@ function parseIneoFeuille() {
 
   // Dernier trajet
   if(currentLineNum && currentRefStops.length > 0) {
-    const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
+    const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection, currentGirouette);
     if(trip) trips.push(trip);
   }
 
@@ -5888,7 +5927,12 @@ function parseIneoFeuille() {
   document.getElementById('ineo-text').value = '';
 
   const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
-  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
+  const nbGir = trips.filter(t => t._girouette).length;
+  const nbGirOk = trips.filter(t => t._girouette && girHas(t._girouette)).length;
+  const girInfo = nbGir > 0
+    ? ` · 📁 ${nbGirOk}/${nbGir} girouette(s) trouvé(s)`
+    : ' · ⚠️ Aucun girouette détecté';
+  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts 🔴${girInfo}`);
 }
 
 
@@ -6007,7 +6051,7 @@ function parseIneoFeuilleNouveauFormat(lines) {
 //   lineNum   : numéro de ligne (ex "1206")
 //   refStops  : [{time, name}, ...] — arrêts extraits de la feuille de service
 //   direction : 'aller' | 'retour' | null (auto-détecté si null)
-function buildTripFromRef(lineNum, refStops, direction) {
+function buildTripFromRef(lineNum, refStops, direction, girouette) {
   function normalize(s) {
     return String(s).toUpperCase()
       .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
@@ -6050,10 +6094,12 @@ function buildTripFromRef(lineNum, refStops, direction) {
     refNorms.forEach(rn => {
       if(tripNorms.some(tn => tn.includes(rn) || rn.includes(tn))) score++;
     });
+    // Bonus si la direction correspond explicitement
+    if(direction && t.direction === direction) score += 3;
     if(score > bestScore) {
       bestScore = score;
       bestTrip = t;
-      bestTripDir = t.direction || (ti % 2 === 0 ? 'aller' : 'retour');
+      bestTripDir = t.direction || 'aller';
     }
   });
 
@@ -6188,9 +6234,26 @@ function buildTripFromRef(lineNum, refStops, direction) {
   const mem = idbGet(`svcTraceMap_${fp}`);
 
   // Label : toujours basé sur les arrêts INEO réels (premier → dernier que le chauffeur fait)
-  // et non sur les arrêts DB qui peuvent être dans l'ordre inverse
   const labelFrom = refStops[0].name;
   const labelTo   = refStops[refStops.length - 1].name;
+
+  // Attacher les codes arrêts INEO aux arrêts finaux (pour lookup GPS précis)
+  finalStops.forEach(fs => {
+    const ref = refStops.find(r => _girNorm(r.name) === _girNorm(fs.name));
+    if(ref?.codeArret) fs._codeArret = ref.codeArret;
+  });
+
+  // Si un dossier girouette existe → enrichir les GPS des arrêts manquants
+  if(girouette && girHas(girouette)) {
+    const stopsGir = JSON.parse(idbGet(GIR_PREFIX_STOPS + girouette) || 'null');
+    if(stopsGir) {
+      finalStops.forEach(fs => {
+        if(fs._lat && fs._lon) return; // déjà renseigné
+        const coords = girGetStopCoords(fs._codeArret || null, fs.name);
+        if(coords) { fs._lat = coords.lat; fs._lon = coords.lon; }
+      });
+    }
+  }
 
   return {
     lineNum,
@@ -6198,6 +6261,7 @@ function buildTripFromRef(lineNum, refStops, direction) {
     label: `${labelFrom} → ${labelTo}`,
     direction: usedDir,
     stops: finalStops,
+    _girouette: girouette || null,
     _fingerprint: fp,
     _manualTraceKey: mem || null
   };
@@ -6376,26 +6440,49 @@ function activateRoadmapTrip() {
     if(_trip) { _trip.stops = t.stops; saveDB(); }
   }
 
+  // ── Injecter GPS depuis dossier girouette si disponible ──────
+  const girCode = t._girouette || null;
+  if(girCode && girHas(girCode)) {
+    const line2pre = db.lines[lineIdx];
+    const trip2pre = line2pre?.trips?.[tripIdx];
+    if(trip2pre) {
+      loadGpsCoordsDB();
+      const stopsGir = JSON.parse(idbGet(GIR_PREFIX_STOPS + girCode) || 'null');
+      let injected = 0;
+      trip2pre.stops.forEach((s, si) => {
+        const key = gpsCoordKey(line2pre.num, tripIdx, si);
+        if(gpsCoordsDB[key]) return; // déjà renseigné
+        // Chercher par code arrêt (s._codeArret) puis par nom
+        const coords = girGetStopCoords(s._codeArret || null, s.name);
+        if(coords) { gpsCoordsDB[key] = { lat: coords.lat, lon: coords.lon, name: s.name }; injected++; }
+      });
+      if(injected > 0) { saveGpsCoordsDB(); console.log(`[GIR] ${injected} GPS injectés depuis girouette ${girCode}`); }
+    }
+  }
+
   activateTrip(lineIdx, tripIdx);
+
+  // Forcer la réinitialisation de la carte pour ce nouveau trajet
+  liveMapInitialized = false;
+  if(liveMap) { liveMap.remove(); liveMap = null; }
 
   // ── GPS auto automatique sur tous les trajets de la feuille ──
   const line2 = db.lines[lineIdx];
   const trip2 = line2?.trips?.[tripIdx];
+  loadGpsCoordsDB();
   const hasCoords2 = trip2?.stops.some((s,i) => gpsCoordsDB[gpsCoordKey(line2.num, tripIdx, i)]);
-  const hasTrace2  = !!traceLibraryGet(line2?.num, trip2?.direction || 'aller', tripIdx);
+  const hasTrace2  = !!(girCode && girGetTrace(girCode)) || !!traceLibraryGet(line2?.num, trip2?.direction || 'aller', tripIdx);
 
   if(prevGpsMode === 'auto') {
-    // GPS était déjà actif → reset session, continue sans coupure
     gpsAutoNextIdx = 0;
     gpsSession = [];
     gpsPrevCoords = null; gpsPrevTime = null; gpsSpeedHistory = [];
     toast(`🚗 Trajet ${roadmapCursor+1}/${currentRoadmap.length} — GPS auto continue`);
   } else if(hasCoords2 || hasTrace2) {
-    // Démarrer le GPS auto automatiquement
     setTimeout(() => startGpsAuto(), 400);
     toast(`🚗 Trajet ${roadmapCursor+1}/${currentRoadmap.length} — GPS auto démarré`);
   } else {
-    toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} activé — pas de GPS (aucun point enregistré)`);
+    toast(`▶ Trajet ${roadmapCursor+1}/${currentRoadmap.length} activé — pas de GPS`);
   }
   renderRoadmapActive();
 }
@@ -7556,11 +7643,12 @@ const SILLON_MAX_JUMP    = 150;    // m — saut max entre 2 positions (filtre e
 
 // ── Initialisation de la vue ──────────────────────────────────────────────────
 function sillonInitView() {
+  // Peupler le sélecteur de lignes depuis db.lines
   const sel = document.getElementById('sillon-line-sel');
   if(!sel) return;
   sel.innerHTML = '<option value="">— Choisir une ligne —</option>' +
     db.lines.map(l => `<option value="${l.num}">${l.num} — ${l.name||''}</option>`).join('');
-  sel.onchange = () => sillonUpdateTripSel();
+  // Remettre la direction active
   sillonSetDir(sillonDirection);
 }
 
@@ -8555,12 +8643,395 @@ window.addEventListener('resize', () => {
 const TRACE_LIBRARY_KEY = 'chronoligne_traces';
 let _traceLongPressTimer = null;
 
-// ── Génère un MapID unique : LineNum_Sens_Terminus ────────────
+// ══════════════════════════════════════════════════════════════
+// ══ SYSTÈME DOSSIERS GIROUETTE ════════════════════════════════
+// Clés IDB :
+//   gir_trace_XXXX  → tableau de points [[lat,lon], ...]
+//   gir_gps_XXXX    → { "165": {lat, lon, nom}, "671": {lat, lon, nom}, ... }
+//   gir_stops_XXXX  → [ {code, nom, lat, lon}, ... ]  (ordre du trajet)
+//   gir_meta_XXXX   → { ligne, direction, girouette, nbArrets, importedAt }
+//
+// GPS par code arrêt physique (partagé entre toutes les lignes) :
+//   gps_arret_165   → { lat, lon, nom }
+// ══════════════════════════════════════════════════════════════
+
+const GIR_PREFIX_TRACE = 'gir_trace_';
+const GIR_PREFIX_GPS   = 'gir_gps_';
+const GIR_PREFIX_STOPS = 'gir_stops_';
+const GIR_PREFIX_META  = 'gir_meta_';
+const GPS_ARRET_PREFIX = 'gps_arret_';
+
+// ── Charger/sauvegarder un dossier girouette ──────────────────
+function girLoad(code) {
+  return {
+    trace : JSON.parse(idbGet(GIR_PREFIX_TRACE + code) || 'null'),
+    stops : JSON.parse(idbGet(GIR_PREFIX_STOPS + code) || 'null'),
+    meta  : JSON.parse(idbGet(GIR_PREFIX_META  + code) || 'null'),
+  };
+}
+
+function girHas(code) {
+  return !!(idbGet(GIR_PREFIX_TRACE + code) || idbGet(GIR_PREFIX_STOPS + code));
+}
+
+function girListAll() {
+  // Retrouver tous les codes girouette depuis le cache IDB
+  const codes = new Set();
+  Object.keys(_idbCache).forEach(k => {
+    if(k.startsWith(GIR_PREFIX_META)) codes.add(k.slice(GIR_PREFIX_META.length));
+    if(k.startsWith(GIR_PREFIX_STOPS)) codes.add(k.slice(GIR_PREFIX_STOPS.length));
+    if(k.startsWith(GIR_PREFIX_TRACE)) codes.add(k.slice(GIR_PREFIX_TRACE.length));
+  });
+  return [...codes].sort();
+}
+
+function girDelete(code) {
+  idbDel(GIR_PREFIX_TRACE + code);
+  idbDel(GIR_PREFIX_GPS   + code);
+  idbDel(GIR_PREFIX_STOPS + code);
+  idbDel(GIR_PREFIX_META  + code);
+  // Supprimer aussi les GPS arrêts associés à ce dossier
+  const stops = JSON.parse(idbGet(GIR_PREFIX_STOPS + code) || '[]');
+  stops.forEach(s => { if(s.code) idbDel(GPS_ARRET_PREFIX + s.code); });
+}
+
+// ── GPS par code arrêt physique ───────────────────────────────
+function gpsArretGet(code) {
+  const v = idbGet(GPS_ARRET_PREFIX + code);
+  return v ? JSON.parse(v) : null;
+}
+function gpsArretSet(code, lat, lon, nom) {
+  idbSet(GPS_ARRET_PREFIX + code, JSON.stringify({ lat, lon, nom }));
+}
+
+// ── Parser le TXT girouette ───────────────────────────────────
+// Format attendu (une ligne par arrêt, dans l'ordre du trajet) :
+//   165   Demi Lieue      49.02665, 1.97432
+//   671   Oseraie         49.03100, 1.98500
+// Le code arrêt est optionnel — si absent, le nom seul est utilisé
+function girParseTxt(txt) {
+  const stops = [];
+  txt.split('\n').forEach(line => {
+    line = line.trim();
+    if(!line) return;
+    // Format : CODE  NOM  LAT, LON  ou  NOM  LAT, LON
+    // Extraire les coordonnées d'abord (toujours en fin de ligne)
+    const coordMatch = line.match(/([\d]+\.[\d]+)[,\s]+([\d]+\.[\d]+)\s*$/);
+    if(!coordMatch) return;
+    const lat = parseFloat(coordMatch[1]);
+    const lon = parseFloat(coordMatch[2]);
+    if(isNaN(lat) || isNaN(lon)) return;
+    // Ce qui reste avant les coords
+    const before = line.slice(0, line.lastIndexOf(coordMatch[0])).trim();
+    // Essayer d'extraire un code numérique en début de ligne
+    const codeMatch = before.match(/^(\d{2,6})\s+(.+)$/);
+    let code = null, nom = before;
+    if(codeMatch) {
+      code = codeMatch[1];
+      nom  = codeMatch[2].trim();
+    }
+    if(nom) stops.push({ code, nom, lat, lon });
+  });
+  return stops;
+}
+
+// ── Importer un dossier girouette complet (TXT + KML) ─────────
+function girImportTxt(code, txt) {
+  const stops = girParseTxt(txt);
+  if(!stops.length) { toast('❌ Aucun arrêt reconnu dans le fichier'); return false; }
+
+  // Sauvegarder la liste ordonnée des arrêts
+  idbSet(GIR_PREFIX_STOPS + code, JSON.stringify(stops));
+
+  // Sauvegarder les GPS par code arrêt physique (partagé toutes lignes)
+  let withCode = 0;
+  stops.forEach(s => {
+    if(s.code) { gpsArretSet(s.code, s.lat, s.lon, s.nom); withCode++; }
+  });
+
+  // Mettre à jour les métadonnées
+  const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+  meta.girouette  = code;
+  meta.nbArrets   = stops.length;
+  meta.withCode   = withCode;
+  meta.importedAt = new Date().toISOString();
+  idbSet(GIR_PREFIX_META + code, JSON.stringify(meta));
+
+  toast(`✅ Girouette ${code} — ${stops.length} arrêts importés (${withCode} avec code)`);
+  return true;
+}
+
+function girImportKml(code, kmlText) {
+  try {
+    const parser = new DOMParser();
+    const kml = parser.parseFromString(kmlText, 'text/xml');
+
+    // Chercher LineString dans tous les Placemarks (pas seulement le premier)
+    const lineStrings = kml.querySelectorAll('LineString coordinates');
+    if(!lineStrings.length) { toast('❌ Aucune LineString dans ce KML'); return false; }
+
+    // Prendre la LineString la plus longue si plusieurs
+    let bestCoords = '';
+    lineStrings.forEach(el => {
+      if(el.textContent.length > bestCoords.length) bestCoords = el.textContent;
+    });
+
+    // Parser les coordonnées — format KML : lon,lat ou lon,lat,altitude
+    // Les valeurs sont séparées par des espaces (un triplet/paire par point)
+    let points = bestCoords.trim().split(/\s+/).map(c => {
+      const parts = c.split(',').map(Number);
+      const lon = parts[0], lat = parts[1]; // altitude parts[2] ignorée
+      return [lat, lon];
+    }).filter(p => !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0 && p[1] !== 0);
+
+    // Simplifier : 1 point sur 4 (garder la précision suffisante pour le bus)
+    points = points.filter((_, i) => i % 4 === 0);
+
+    if(points.length < 2) { toast('❌ Tracé KML trop court ou invalide'); return false; }
+
+    idbSet(GIR_PREFIX_TRACE + code, JSON.stringify(points));
+
+    const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+    meta.girouette  = code;
+    meta.nbPoints   = points.length;
+    meta.importedAt = new Date().toISOString();
+    idbSet(GIR_PREFIX_META + code, JSON.stringify(meta));
+
+    toast(`✅ Girouette ${code} — tracé importé (${points.length} points)`);
+    return true;
+  } catch(e) {
+    toast('❌ Erreur lecture KML : ' + e.message);
+    return false;
+  }
+}
+
+// ── Obtenir le tracé d'un girouette (avec fallback ancien système) ──
+function girGetTrace(code) {
+  if(!code) return null;
+  const v = idbGet(GIR_PREFIX_TRACE + code);
+  return v ? JSON.parse(v) : null;
+}
+
+// ── Obtenir les coords GPS d'un arrêt par code (avec fallback nom) ──
+function girGetStopCoords(code, nom) {
+  // Priorité 1 : code arrêt physique
+  if(code) {
+    const v = gpsArretGet(code);
+    if(v) return v;
+  }
+  // Priorité 2 : chercher dans tous les dossiers girouette par nom normalisé
+  const normNom = _girNorm(nom);
+  for(const k of Object.keys(_idbCache)) {
+    if(!k.startsWith(GIR_PREFIX_STOPS)) continue;
+    try {
+      const stops = JSON.parse(_idbCache[k]);
+      const found = stops.find(s => _girNorm(s.nom) === normNom);
+      if(found) return { lat: found.lat, lon: found.lon, nom: found.nom };
+    } catch(e) {}
+  }
+  return null;
+}
+
+function _girNorm(s) {
+  return String(s).toUpperCase()
+    .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜÚ]/g,'U')
+    .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
+    .replace(/[\u2019'\-\.]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// ── Résoudre le girouette depuis un trajet actif ──────────────
+// Retourne le code girouette associé au trajet si disponible
+function girGetForTrip(trip) {
+  return trip?._girouette || null;
+}
+
+// ── Enrichir le tracé et GPS depuis le dossier girouette ──────
+// Appelé après activation d'un trajet pour injecter les données girouette
+function girEnrichTrip(trip, girCode) {
+  if(!girCode || !trip) return;
+  const stopsGir = JSON.parse(idbGet(GIR_PREFIX_STOPS + girCode) || 'null');
+  if(!stopsGir) return;
+
+  // Injecter les GPS dans gpsCoordsDB pour les arrêts du trajet
+  // via le code arrêt quand disponible, sinon via le nom normalisé
+  loadGpsCoordsDB();
+  let injected = 0;
+  trip.stops.forEach((s, si) => {
+    const key = gpsCoordKey(trip._lineNum || '', trip._tripIdx || 0, si);
+    if(gpsCoordsDB[key]) return; // déjà renseigné
+    const coords = girGetStopCoords(s._codeArret || null, s.name);
+    if(coords) {
+      gpsCoordsDB[key] = { lat: coords.lat, lon: coords.lon, name: s.name };
+      injected++;
+    }
+  });
+  if(injected > 0) saveGpsCoordsDB();
+}
+
+// ══ PANNEAU GESTION DOSSIERS GIROUETTE ════════════════════════
+let girPanelCode = null; // code girouette ouvert dans le panneau
+
+function renderGirPanel() {
+  const el = document.getElementById('gir-panel-content');
+  if(!el) return;
+
+  const codes = girListAll();
+
+  if(!codes.length) {
+    el.innerHTML = `<div class="empty-state"><span class="ico">📁</span>Aucun dossier girouette<br><small>Appuyez sur + pour en créer un</small></div>`;
+    return;
+  }
+
+  el.innerHTML = codes.map(code => {
+    const meta  = JSON.parse(idbGet(GIR_PREFIX_META  + code) || '{}');
+    const hasTrace = !!idbGet(GIR_PREFIX_TRACE + code);
+    const hasStops = !!idbGet(GIR_PREFIX_STOPS + code);
+    const nbArrets = meta.nbArrets || 0;
+    const nbPts    = meta.nbPoints || 0;
+    const traceBadge = hasTrace
+      ? `<span style="color:var(--green);font-size:10px;font-weight:700">🗺 ${nbPts}pts</span>`
+      : `<span style="color:var(--muted);font-size:10px">🗺 —</span>`;
+    const gpsBadge = hasStops
+      ? `<span style="color:var(--accent);font-size:10px;font-weight:700">📍 ${nbArrets}</span>`
+      : `<span style="color:var(--muted);font-size:10px">📍 —</span>`;
+    const lineInfo = meta.ligne ? `<span style="font-size:10px;color:var(--muted)">Ligne ${meta.ligne}</span>` : '';
+
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;
+                border-radius:10px;background:rgba(255,255,255,.03);
+                border:1px solid var(--border);margin-bottom:6px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+                  color:var(--accent);min-width:48px">${code}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${traceBadge} ${gpsBadge} ${lineInfo}
+        </div>
+        ${meta.importedAt ? `<div style="font-size:9px;color:var(--muted);margin-top:2px">${new Date(meta.importedAt).toLocaleDateString('fr-FR')}</div>` : ''}
+      </div>
+      <button onclick="girOpenEditor('${code}')"
+        style="padding:6px 10px;background:rgba(0,212,255,.15);border:1px solid var(--accent);
+               color:var(--accent);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0">
+        ✏
+      </button>
+      <button onclick="girDeleteConfirm('${code}')"
+        style="padding:6px 10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.4);
+               color:var(--red);border-radius:8px;cursor:pointer;font-size:12px;flex-shrink:0">
+        🗑
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function girOpenEditor(code) {
+  girPanelCode = code || null;
+  const overlay = document.getElementById('gir-editor-overlay');
+  const codeInput = document.getElementById('gir-editor-code');
+  const statusEl = document.getElementById('gir-editor-status');
+
+  if(overlay) overlay.style.display = 'flex';
+  if(codeInput) {
+    codeInput.value = code || '';
+    codeInput.readOnly = !!code; // si nouveau : éditable, si existant : verrouillé
+    codeInput.style.opacity = code ? '0.6' : '1';
+  }
+
+  // Afficher le statut actuel
+  if(statusEl && code) {
+    const hasTrace = !!idbGet(GIR_PREFIX_TRACE + code);
+    const hasStops = !!idbGet(GIR_PREFIX_STOPS + code);
+    const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+    statusEl.innerHTML =
+      `<div style="display:flex;gap:12px;font-size:11px;margin-bottom:8px">
+        <span style="color:${hasTrace ? 'var(--green)' : 'var(--muted)'}">
+          ${hasTrace ? '✅' : '❌'} Tracé KML (${meta.nbPoints || 0} pts)
+        </span>
+        <span style="color:${hasStops ? 'var(--green)' : 'var(--muted)'}">
+          ${hasStops ? '✅' : '❌'} GPS arrêts (${meta.nbArrets || 0})
+        </span>
+      </div>`;
+  } else if(statusEl) {
+    statusEl.innerHTML = '';
+  }
+}
+
+function girCloseEditor() {
+  const overlay = document.getElementById('gir-editor-overlay');
+  if(overlay) overlay.style.display = 'none';
+  girPanelCode = null;
+  renderGirPanel();
+}
+
+function girEditorImportKml(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const code = document.getElementById('gir-editor-code').value.trim();
+  if(!code) { toast('❌ Entrez le code girouette d\'abord'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    if(girImportKml(code, e.target.result)) {
+      girOpenEditor(code); // refresh statut
+      renderGirPanel();
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function girEditorImportTxt(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const code = document.getElementById('gir-editor-code').value.trim();
+  if(!code) { toast('❌ Entrez le code girouette d\'abord'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    if(girImportTxt(code, e.target.result)) {
+      girOpenEditor(code); // refresh statut
+      renderGirPanel();
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function girDeleteConfirm(code) {
+  if(!confirm(`Supprimer le dossier girouette ${code} ?\nTracé, GPS et arrêts seront effacés.`)) return;
+  girDelete(code);
+  toast(`🗑 Dossier ${code} supprimé`);
+  renderGirPanel();
+}
+
+// ══ INTÉGRATION PARSEUR : extraire girouette de la feuille INEO ══
+// La colonne GIROU. apparaît sur la ligne de résumé du trajet :
+// "  06:58  DEMI LIEUE - 165    07:23  GARE DE PONTOISE - 274    00:25   6010"
+// Regex : un nombre de 4 chiffres après un temps de trajet (HH:MM)
+function parseExtractGirouette(line) {
+  // Format tableau : ...  HH:MM   XXXX  (girouette en fin de ligne)
+  const m = line.match(/\b(\d{2}:\d{2})\s+(\d{4})\s*$/);
+  if(m) return m[2];
+  // Fallback : GIROU suivi d'un nombre
+  const m2 = line.match(/GIROU[.\s]*(\d{4})/i);
+  if(m2) return m2[1];
+  return null;
+}
+
+// ── Enrichir refStops avec les codes arrêts extraits de la feuille INEO ──
+// "07:00 --> OSERAIE - 671" → { time, name: "OSERAIE", code: "671" }
+function parseExtractStopCode(nameRaw) {
+  const m = nameRaw.match(/^(.+?)\s*-\s*(\d{3,6})\s*$/);
+  if(m) return { nom: m[1].trim(), code: m[2] };
+  return { nom: nameRaw.trim(), code: null };
+}
+
 // Exemple : 1201_A_GareCergy  ou  1201_R_Pontoise
 // Le sens est déduit de trip.direction ('aller' → 'A', 'retour' → 'R', sinon 'X')
 // Le terminus est le dernier arrêt du trajet, normalisé (sans accents, espaces → underscores)
 function buildMapId(lineNum, dir, tripIdx) {
-  // Clé basée sur le LABEL du trajet — unique par trajet, indépendant du sens
+  // Sens : A = aller, R = retour, X = autre
+  const sensMap = { aller: 'A', retour: 'R' };
+  const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
+
+  // Chercher le dernier arrêt du trajet dans la DB
+  let terminus = '';
   try {
     const line = db.lines.find(l => String(l.num) === String(lineNum));
     if(line && tripIdx !== undefined && tripIdx !== null) {
@@ -8574,10 +9045,16 @@ function buildMapId(lineNum, dir, tripIdx) {
         return `${lineNum}_${normLabel}`;
       }
     }
+    // Normaliser : supprimer accents, remplacer espaces/tirets/points par _
+    if(terminus) {
+      terminus = terminus
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // accents
+        .replace(/[^a-zA-Z0-9]+/g, '_')                  // tout ce qui n'est pas alphanum
+        .replace(/^_+|_+$/g, '')                          // underscores en début/fin
+        .substring(0, 30);                                // max 30 chars
+    }
   } catch(e) {}
   // Fallback : lineNum + sens + tripIdx
-  const sensMap = { aller: 'A', retour: 'R' };
-  const sens = sensMap[dir] || (dir ? dir.substring(0,1).toUpperCase() : 'X');
   return `${lineNum}_${sens}_t${tripIdx !== undefined && tripIdx !== null ? tripIdx : 0}`;
 }
 
@@ -8589,7 +9066,12 @@ function traceLibrarySave(lib) {
 }
 function traceLibraryHas(key) {
   const lib = traceLibraryLoad();
-  return !!lib[key];
+  if(lib[key]) return true;
+  // Fallback PRELOADED_TRACES : clé legacy lineNum_dir (sans tripIdx)
+  const parts = key.split('_');
+  const num = parts[0];
+  const dir = parts[parts.length - 1];
+  return !!PRELOADED_TRACES?.[num]?.[dir];
 }
 function traceLibraryGet(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
@@ -8630,14 +9112,16 @@ function traceLibrarySet(lineNum, dir, points, tripIdx) {
 }
 function traceLibraryDelete(lineNum, dir, tripIdx) {
   const lib = traceLibraryLoad();
+  // Supprimer toutes les formes de clé connues pour ce trajet
   if(tripIdx !== undefined && tripIdx !== null) {
     // Supprimer le MapId principal
     const mapId = buildMapId(lineNum, dir, tripIdx);
     delete lib[mapId];
-    // Supprimer aussi format legacy v2 si présent
     const keyPrecise = `${lineNum}_${tripIdx}_${dir}`;
     delete lib[keyPrecise];
   }
+  const keyLegacy = `${lineNum}_${dir}`;
+  if(tripIdx === undefined || tripIdx === null || tripIdx === 0) delete lib[keyLegacy];
   traceLibrarySave(lib);
 }
 
@@ -8692,9 +9176,9 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
   document.body.appendChild(overlay);
 
   // Initialiser la mini-carte dans la modal
-  _ensureLeaflet(() => {
+  setTimeout(() => {
     const mapEl = document.getElementById('trace-map-view');
-    if(!mapEl) return;
+    if(!mapEl || typeof L === 'undefined') return;
 
     const m = L.map('trace-map-view', { zoomControl: true, attributionControl: false })
                .setView([49.04, 2.07], 13);
@@ -8745,33 +9229,7 @@ function traceLibraryOpen(lineNum, dir, lineIdx, tripIdx) {
         .bindPopup('📍 Votre position')
         .addTo(m);
     }
-  });
-}
-
-// ── Utilitaire : charger Leaflet dynamiquement si absent ─────
-function _ensureLeaflet(cb) {
-  if(typeof L !== 'undefined') { setTimeout(cb, 80); return; }
-  if(!document.querySelector('link[data-leaflet-css]')) {
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    css.setAttribute('data-leaflet-css', '1');
-    document.head.appendChild(css);
-  }
-  if(!document.querySelector('script[data-leaflet-js]')) {
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    s.setAttribute('data-leaflet-js', '1');
-    s.onload = () => setTimeout(cb, 100);
-    s.onerror = () => toast('🌐 Impossible de charger la carte — connexion requise');
-    document.head.appendChild(s);
-  } else {
-    let tries = 0;
-    const wait = setInterval(() => {
-      if(typeof L !== 'undefined') { clearInterval(wait); setTimeout(cb, 50); }
-      else if(++tries > 20) { clearInterval(wait); toast('🌐 Carte indisponible hors-ligne'); }
-    }, 200);
-  }
+  }, 150);
 }
 
 // ── Menu édition (appui long) ─────────────────────────────────
@@ -8844,13 +9302,6 @@ function traceLibraryEditMenu(lineNum, dir, lineIdx, tripIdx) {
         🗑 Supprimer la carte de ce trajet
       </button>` : ''}
 
-      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
-      <button onclick="traceLibraryPurgeOrphans('${lineNum}',${lineIdx})"
-        style="width:100%;padding:10px;font-size:12px;font-weight:700;
-               background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);
-               color:var(--red);border-radius:10px;cursor:pointer;margin-bottom:6px">
-        🧹 Purger les cartes orphelines (ligne ${lineNum})
-      </button>
       <button onclick="document.getElementById('trace-edit-overlay').remove()"
         style="width:100%;padding:10px;font-size:13px;
                background:rgba(255,255,255,.06);border:1px solid var(--border);
@@ -9037,7 +9488,7 @@ const GDRIVE_CLIENT_ID = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.goo
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'chronoligne_sync.json';
 const GDRIVE_KEYS = [
-  'chronoligne_db','chronoligne_roadmaps',
+  'chronoligne_v2','chronoligne_roadmaps',
   'chronoligne_gps_coords','chronoligne_gps_sessions',
   'chronoligne_prime_sessions',
   'chronoligne_settings','chronoligne_planning',
@@ -9045,10 +9496,22 @@ const GDRIVE_KEYS = [
   'chronoligne_traces'
 ];
 
+// Les dossiers girouette sont synchronisés dynamiquement (clés gir_* et gps_arret_*)
+function gdriveCollectGirouettes() {
+  const data = {};
+  Object.keys(_idbCache).forEach(k => {
+    if(k.startsWith(GIR_PREFIX_TRACE) || k.startsWith(GIR_PREFIX_STOPS) ||
+       k.startsWith(GIR_PREFIX_META)  || k.startsWith(GPS_ARRET_PREFIX)) {
+      data[k] = _idbCache[k];
+    }
+  });
+  return data;
+}
+
 let gdriveToken = null;
 let gdriveAutoSyncOn = false;
 let gdriveAutoTimer = null;
-let gdriveFileId = idbGet('chronoligne_gdrive_fid') || null;
+let gdriveFileId = null; // sera rechargé depuis IDB dans gdriveInit()
 
 function gdriveSignIn() {
   if(typeof google === 'undefined') {
@@ -9099,6 +9562,8 @@ function gdriveCheckFile() {
 function gdriveCollect() {
   const data = {};
   GDRIVE_KEYS.forEach(k => { const v = idbGet(k); if(v) data[k] = v; });
+  // Ajouter tous les dossiers girouette (gir_* et gps_arret_*)
+  Object.assign(data, gdriveCollectGirouettes());
   data._savedAt = new Date().toISOString();
   data._device  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '💻 PC';
   return data;
@@ -9142,6 +9607,15 @@ async function gdriveLoad() {
     if(data.error) throw new Error(data.error.message);
     let count = 0;
     GDRIVE_KEYS.forEach(k => { if(data[k]) { idbSet(k, data[k]); count++; } });
+    // Restaurer les dossiers girouette (gir_* et gps_arret_*)
+    Object.keys(data).forEach(k => {
+      if(k.startsWith(GIR_PREFIX_TRACE) || k.startsWith(GIR_PREFIX_STOPS) ||
+         k.startsWith(GIR_PREFIX_META)  || k.startsWith(GPS_ARRET_PREFIX)) {
+        idbSet(k, data[k]); count++;
+      }
+    });
+    // Recharger le fileId depuis les données Drive si présent
+    if(data['chronoligne_gdrive_fid']) gdriveFileId = data['chronoligne_gdrive_fid'];
     const device  = data._device  || '';
     const savedAt = data._savedAt ? new Date(data._savedAt).toLocaleString('fr-FR') : '';
     const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -9150,6 +9624,10 @@ async function gdriveLoad() {
     toast(`✅ ${count} données chargées depuis Drive`);
     setTimeout(() => {
       initDB();
+      loadGpsCoordsDB();
+      liveMode = idbGet('chronoligne_livemode') || 'classique';
+      applyLiveMode();
+      installPreloadedGPS();
       if(typeof renderLineGrid==='function') renderLineGrid();
       if(typeof renderRoadmapView==='function') renderRoadmapView();
       if(typeof renderPlanWeek==='function') renderPlanWeek();
@@ -9191,6 +9669,8 @@ function gdriveSignOut() {
 }
 
 function gdriveInit() {
+  // IDB est maintenant prête — charger l'ID fichier Drive sauvegardé
+  gdriveFileId = idbGet('chronoligne_gdrive_fid') || null;
   const notConn = document.getElementById('gdrive-not-connected');
   const conn    = document.getElementById('gdrive-connected');
   if(notConn) notConn.style.display = 'block';
@@ -9634,6 +10114,9 @@ function liveMapRefresh() {
   const trip = line?.trips?.[activeTrip.tripIdx];
   if(!trip) return;
 
+  // Recharger les coords GPS depuis IDB (peuvent avoir été modifiées)
+  loadGpsCoordsDB();
+
   // Collecter les coordonnées GPS des arrêts
   const stopPoints = [];
   trip.stops.forEach((stop, idx) => {
@@ -9666,10 +10149,12 @@ function liveMapRefresh() {
     });
   }
 
-  // ── Tracé : bibliothèque locale en priorité, sinon OSRM ──────
-  const kmlTrace = traceLibraryGet(line.num, activeTrip.direction || (line.trips[activeTrip.tripIdx]?.direction) || 'aller', activeTrip.tripIdx);
+  // ── Tracé : girouette en priorité, puis bibliothèque, puis OSRM ──
+  const girCode = activeTrip._girouette || trip._girouette || null;
+  const girTrace = girCode ? girGetTrace(girCode) : null;
+  const kmlTrace = girTrace || traceLibraryGet(line.num, activeTrip.direction || trip.direction || 'aller', activeTrip.tripIdx);
 
-  // Tracé KML disponible → affichage immédiat, pas de requête réseau
+  // Tracé disponible → affichage immédiat
   if(kmlTrace && kmlTrace.length > 2) {
     liveMapPolyline = L.polyline(kmlTrace, {
       color: line.color || '#c0392b',
