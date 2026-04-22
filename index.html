@@ -3568,7 +3568,11 @@ function activateTrip(lineIdx, tripIdx) {
 
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: startIdx };
   if(trip._girouette) activeTrip._girouette = trip._girouette;
-  gpsAutoNextIdx = startIdx;
+  // Ne jamais démarrer sur le dernier arrêt (sinon PROCHAIN = vide en mode INEO)
+  if(activeTrip.validatedStopIdx >= trip.stops.length - 1 && trip.stops.length > 1) {
+    activeTrip.validatedStopIdx = trip.stops.length - 2;
+  }
+  gpsAutoNextIdx = activeTrip.validatedStopIdx;
   gpsSession = [];
   cancelAutoAdvance();
 
@@ -3599,7 +3603,11 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
-  setTimeout(() => { liveMapInit(); liveMapDraw(); }, 300);
+  // Initialiser la carte uniquement si on est sur l'onglet EN DIRECT
+  const _liveView = document.getElementById('view-live');
+  if(_liveView && _liveView.classList.contains('active')) {
+    setTimeout(() => { liveMapInit(); liveMapDraw(); }, 300);
+  }
 }
 
 function showStartFromStop() {
@@ -5952,18 +5960,31 @@ function activateRoadmapTrip() {
   }
 
   // Appliquer les horaires de la feuille dans db AVANT d'activer
-  // On applique SEULEMENT les horaires des arrêts de référence (isRef)
-  // sans écraser la liste complète des arrêts du trajet en DB
+  // Priorité : si le trajet INEO a sa propre liste complète d'arrêts (avec horaires),
+  // on l'injecte directement dans le trajet DB pour garantir l'affichage correct.
   if(t.stops && t.stops.length) {
     const _trip = db.lines[lineIdx]?.trips?.[tripIdx];
     if(_trip) {
-      // Si le nb d'arrêts est identique → appliquer directement
+      // Réinitialiser les flags isRef de l'ancien trajet
+      _trip.stops.forEach(s => { s.isRef = false; });
+
+      // Si le nb d'arrêts est identique → appliquer directement (cas le plus fréquent)
       if(_trip.stops.length === t.stops.length) {
         _trip.stops.forEach((s, si) => {
           if(t.stops[si]?.time) s.time = t.stops[si].time;
           if(t.stops[si]?.isRef !== undefined) s.isRef = t.stops[si].isRef;
           if(t.stops[si]?._codeArret) s._codeArret = t.stops[si]._codeArret;
         });
+      } else if(t.stops.length > 0 && t.stops.every(s => s.name && s.time)) {
+        // Trajet INEO a sa propre liste complète → remplacer les arrêts DB directement
+        // (cas trajet partiel ou ligne inconnue en DB)
+        _trip.stops = t.stops.map(s => ({
+          name: s.name,
+          time: s.time || '00:00',
+          intervalAfter: s.intervalAfter || 0,
+          isRef: !!s.isRef,
+          _codeArret: s._codeArret || null
+        }));
       } else {
         // Nb d'arrêts différent (trajet partiel INEO) → matcher par nom d'arrêt
         function normStop(s) {
@@ -6008,10 +6029,12 @@ function activateRoadmapTrip() {
     }
   }
 
-  activateTrip(lineIdx, tripIdx);
+  // Forcer la réinitialisation de la carte AVANT activateTrip
+  // (activateTrip appelle liveMapInit+liveMapDraw en setTimeout 300ms)
+  if(liveMap) { try { liveMap.remove(); } catch(e){} liveMap = null; }
+  liveMapBusMarker = null; liveMapTrace = null; liveMapStopMarkers = [];
 
-  // Forcer la réinitialisation de la carte pour ce nouveau trajet
-  if(liveMap) { liveMap.remove(); liveMap = null; }
+  activateTrip(lineIdx, tripIdx);
 
   // ── GPS auto automatique sur tous les trajets de la feuille ──
   const line2 = db.lines[lineIdx];
