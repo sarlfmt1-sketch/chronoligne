@@ -868,13 +868,21 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
     </div>
     <button class="btn" onclick="saveSettings()" style="width:100%;background:var(--green);color:#000;font-weight:700">💾 Sauvegarder</button>
   </div>
-  <div class="card">
+  <div class="card" style="border:2px solid rgba(39,174,96,.3);background:rgba(39,174,96,.04)">
     <div class="card-title">💾 Sauvegarde</div>
+    <div style="font-size:12px;color:#ffc107;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.3);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5">
+      ⚠️ <b>Android efface parfois la mémoire de l'app.</b><br>
+      Appuie sur <b>💾 Sauvegarder le fichier</b> après chaque session pour conserver tes Maps, GPS et feuilles <b>dans le fichier HTML lui-même</b>. Réutilise ce nouveau fichier la prochaine fois.
+    </div>
+    <button class="btn" style="width:100%;background:var(--green);color:#000;font-weight:700;font-size:15px;margin-bottom:8px" onclick="saveHTMLCopy()">
+      💾 Sauvegarder le fichier (Maps + GPS + Feuilles)
+    </button>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <button class="btn btn-sm" style="background:var(--green);color:#000;font-weight:700" onclick="saveHTMLCopy()">💾 Copie HTML</button>
       <button class="btn btn-sm btn-ghost" onclick="exportData()">⬇ Exporter JSON</button>
       <label class="btn btn-sm btn-ghost" style="cursor:pointer">⬆ Importer JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
     </div>
+    <div id="backup-status" style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px"></div>
     <hr>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn btn-sm" onclick="reloadOfficialTrips()" style="background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);font-weight:700">🔄 Recharger trajets officiels</button>
@@ -1285,6 +1293,30 @@ async function idbBoot() {
     await idbOpen();
     await idbLoadAll();
     idbMigrateFromLocalStorage();
+
+    // ── Restauration depuis sauvegarde embarquée ────────────────
+    // Si l'IDB est vide (Android a nettoyé le stockage), on récupère
+    // les données depuis la balise <script id="CL_BACKUP"> du HTML.
+    const backupEl = document.getElementById('CL_BACKUP');
+    const backupTxt = backupEl ? backupEl.textContent.trim() : '';
+    const idbIsEmpty = Object.keys(_idbCache).length === 0;
+    if(idbIsEmpty && backupTxt) {
+      try {
+        const backup = JSON.parse(backupTxt);
+        let restored = 0;
+        Object.entries(backup).forEach(([k, v]) => {
+          idbSet(k, v);
+          restored++;
+        });
+        console.log(`✅ Restauration depuis sauvegarde embarquée : ${restored} clé(s)`);
+        toast(`♻️ Données restaurées depuis la sauvegarde (${restored} clés)`);
+        // Recharger le cache après restauration
+        await idbLoadAll();
+      } catch(e) {
+        console.warn('Restauration backup embarqué échouée', e);
+      }
+    }
+
     migrateLineNumbers(); // ← migration 12xx → xx
     _idbReady = true;
   } catch(e) {
@@ -1299,6 +1331,30 @@ async function idbBoot() {
   setInterval(updateClock, 1000);
   requestWakeLock();
   gdriveInit();
+  // Sauvegarde auto toutes les 3 minutes (silencieuse)
+  setInterval(() => autoEmbedBackup(false), 3 * 60 * 1000);
+  // Afficher l'état de la sauvegarde embarquée
+  setTimeout(() => {
+    const backupEl = document.getElementById('CL_BACKUP');
+    const statusEl = document.getElementById('backup-status');
+    if(statusEl && backupEl) {
+      const txt = backupEl.textContent.trim();
+      if(txt) {
+        try {
+          const b = JSON.parse(txt);
+          const d = b._savedAt ? new Date(b._savedAt).toLocaleString('fr-FR') : '?';
+          statusEl.textContent = `✅ Sauvegarde embarquée du ${d}`;
+          statusEl.style.color = 'var(--green)';
+        } catch(e) {
+          statusEl.textContent = '⚠️ Aucune sauvegarde embarquée — appuie sur 💾';
+          statusEl.style.color = '#ffc107';
+        }
+      } else {
+        statusEl.textContent = '⚠️ Aucune sauvegarde embarquée — appuie sur 💾 après cette session !';
+        statusEl.style.color = '#ffc107';
+      }
+    }
+  }, 1500);
 }
 
 // ── Migration numéros de ligne 12xx → xx ─────────────────────
@@ -3568,7 +3624,11 @@ function activateTrip(lineIdx, tripIdx) {
 
   activeTrip = { lineIdx, tripIdx, validatedStopIdx: startIdx };
   if(trip._girouette) activeTrip._girouette = trip._girouette;
-  gpsAutoNextIdx = startIdx;
+  // Ne jamais démarrer sur le dernier arrêt (sinon PROCHAIN = vide en mode INEO)
+  if(activeTrip.validatedStopIdx >= trip.stops.length - 1 && trip.stops.length > 1) {
+    activeTrip.validatedStopIdx = trip.stops.length - 2;
+  }
+  gpsAutoNextIdx = activeTrip.validatedStopIdx;
   gpsSession = [];
   cancelAutoAdvance();
 
@@ -3599,7 +3659,11 @@ function activateTrip(lineIdx, tripIdx) {
   updateGpsCountInfo();
   scheduleAutoAdvance();
   toast('▶ Trajet activé !');
-  setTimeout(() => { liveMapInit(); liveMapDraw(); }, 300);
+  // Initialiser la carte uniquement si on est sur l'onglet EN DIRECT
+  const _liveView = document.getElementById('view-live');
+  if(_liveView && _liveView.classList.contains('active')) {
+    setTimeout(() => { liveMapInit(); liveMapDraw(); }, 300);
+  }
 }
 
 function showStartFromStop() {
@@ -4149,8 +4213,46 @@ function toggleWakeLock() {
 }
 
 // ══ SAUVEGARDE ═══════════════════════════════════════════════
+// ── Collecter toutes les données IDB importantes ──────────────
+function collectAllData() {
+  const MAIN_KEYS = [
+    'chronoligne_v2', 'chronoligne_roadmaps',
+    'chronoligne_gps_coords', 'chronoligne_gps_sessions',
+    'chronoligne_prime_sessions', 'chronoligne_settings',
+    'chronoligne_planning', 'chronoligne_intervals',
+    'chronoligne_service', 'chronoligne_services',
+    'chronoligne_traces', 'chronoligne_livemode',
+    'chronoligne_theme', 'chronoligne_gdrive_fid',
+    'chronoligne_trips_version'
+  ];
+  const data = {};
+  MAIN_KEYS.forEach(k => { const v = idbGet(k); if(v) data[k] = v; });
+  // Ajouter tous les dossiers girouette et GPS arrêts
+  Object.keys(_idbCache).forEach(k => {
+    if(k.startsWith(GIR_PREFIX_TRACE) || k.startsWith(GIR_PREFIX_STOPS) ||
+       k.startsWith(GIR_PREFIX_META)  || k.startsWith(GPS_ARRET_PREFIX) ||
+       k.startsWith('svcTraceMap_')) {
+      data[k] = _idbCache[k];
+    }
+  });
+  data._savedAt = new Date().toISOString();
+  return data;
+}
+
+// ── Embarquer la sauvegarde dans le HTML et le télécharger ────
 function saveHTMLCopy() {
-  const html = document.documentElement.outerHTML;
+  // 1. Collecter toutes les données IDB
+  const data = collectAllData();
+  const dataJson = JSON.stringify(data);
+
+  // 2. Récupérer le HTML actuel et remplacer le contenu de CL_BACKUP
+  let html = document.documentElement.outerHTML;
+  // Remplacer le contenu entre les balises CL_BACKUP
+  html = html.replace(
+    /(<script[^>]*id="CL_BACKUP"[^>]*>)([\s\S]*?)(<\/script>)/,
+    `$1${dataJson}$3`
+  );
+
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -4158,7 +4260,20 @@ function saveHTMLCopy() {
   a.download = `chronoligne-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.html`;
   a.click();
   URL.revokeObjectURL(a.href);
-  toast('💾 Copie sauvegardée !');
+  toast('💾 Copie sauvegardée avec toutes les données !');
+}
+
+// ── Mise à jour silencieuse de la balise CL_BACKUP en mémoire ─
+// (ne télécharge pas, juste met à jour le DOM pour que la prochaine
+//  sauvegarde manuelle contienne les données fraîches)
+function autoEmbedBackup(verbose) {
+  try {
+    const backupEl = document.getElementById('CL_BACKUP');
+    if(!backupEl) return;
+    const data = collectAllData();
+    backupEl.textContent = JSON.stringify(data);
+    if(verbose) toast('💾 Backup auto mis à jour');
+  } catch(e) { console.warn('autoEmbedBackup error', e); }
 }
 
 function exportData() {
@@ -5952,18 +6067,31 @@ function activateRoadmapTrip() {
   }
 
   // Appliquer les horaires de la feuille dans db AVANT d'activer
-  // On applique SEULEMENT les horaires des arrêts de référence (isRef)
-  // sans écraser la liste complète des arrêts du trajet en DB
+  // Priorité : si le trajet INEO a sa propre liste complète d'arrêts (avec horaires),
+  // on l'injecte directement dans le trajet DB pour garantir l'affichage correct.
   if(t.stops && t.stops.length) {
     const _trip = db.lines[lineIdx]?.trips?.[tripIdx];
     if(_trip) {
-      // Si le nb d'arrêts est identique → appliquer directement
+      // Réinitialiser les flags isRef de l'ancien trajet
+      _trip.stops.forEach(s => { s.isRef = false; });
+
+      // Si le nb d'arrêts est identique → appliquer directement (cas le plus fréquent)
       if(_trip.stops.length === t.stops.length) {
         _trip.stops.forEach((s, si) => {
           if(t.stops[si]?.time) s.time = t.stops[si].time;
           if(t.stops[si]?.isRef !== undefined) s.isRef = t.stops[si].isRef;
           if(t.stops[si]?._codeArret) s._codeArret = t.stops[si]._codeArret;
         });
+      } else if(t.stops.length > 0 && t.stops.every(s => s.name && s.time)) {
+        // Trajet INEO a sa propre liste complète → remplacer les arrêts DB directement
+        // (cas trajet partiel ou ligne inconnue en DB)
+        _trip.stops = t.stops.map(s => ({
+          name: s.name,
+          time: s.time || '00:00',
+          intervalAfter: s.intervalAfter || 0,
+          isRef: !!s.isRef,
+          _codeArret: s._codeArret || null
+        }));
       } else {
         // Nb d'arrêts différent (trajet partiel INEO) → matcher par nom d'arrêt
         function normStop(s) {
@@ -6007,6 +6135,11 @@ function activateRoadmapTrip() {
       if(injected > 0) { saveGpsCoordsDB(); console.log(`[GIR] ${injected} GPS injectés depuis girouette ${girCode}`); }
     }
   }
+
+  // Forcer la réinitialisation de la carte AVANT activateTrip
+  // (activateTrip appelle liveMapInit+liveMapDraw en setTimeout 300ms)
+  if(liveMap) { try { liveMap.remove(); } catch(e){} liveMap = null; }
+  liveMapBusMarker = null; liveMapTrace = null; liveMapStopMarkers = [];
 
   activateTrip(lineIdx, tripIdx);
 
