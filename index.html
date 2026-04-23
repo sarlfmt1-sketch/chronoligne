@@ -927,7 +927,201 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
   </div>
 </div>
 
+
+<!-- ══ VIEW: GPS / GIROUETTE ══════════════════════════════════ -->
+<div class="view" id="view-gir">
+
+  <!-- En-tête -->
+  <div class="card" style="padding:12px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="card-title" style="margin:0;color:#ffc107">📁 Dossiers Girouette GPS</div>
+      <button onclick="girNewFolder()"
+        style="padding:6px 14px;background:rgba(255,193,7,.2);border:1px solid #ffc107;
+               color:#ffc107;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">
+        + Nouveau
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+      Chaque dossier = un code girouette. Stocke le tracé de ligne (KML/GPX) et les points GPS des arrêts.<br>
+      Le parseur INEO détecte le code et injecte automatiquement dans le trajet actif.
+    </div>
+    <input type="text" id="gir-view-search" placeholder="🔍 Filtrer par code ou nom…"
+      oninput="renderGirView()"
+      style="width:100%;padding:8px 10px;font-size:13px;background:var(--bg);
+             color:var(--text);border:1px solid var(--border);border-radius:8px;box-sizing:border-box">
+  </div>
+
+  <!-- Légende -->
+  <div style="display:flex;gap:12px;padding:0 4px 6px;flex-wrap:wrap">
+    <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span>Arrêts + Tracé
+    </span>
+    <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>Arrêts GPS seulement
+    </span>
+    <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#8e44ad;display:inline-block"></span>Tracé seulement
+    </span>
+    <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block"></span>Vide
+    </span>
+  </div>
+
+  <!-- Stats globales -->
+  <div id="gir-view-stats" style="font-size:11px;color:var(--muted);padding:0 2px 6px;text-align:right"></div>
+
+  <!-- Grille des dossiers -->
+  <div id="gir-view-list"></div>
+
+  <!-- Espace bas de page -->
+  <div style="height:20px"></div>
+</div>
+
+
 </div><!-- #app -->
+
+<!-- ══ ÉDITEUR GIROUETTE DÉDIÉ — overlay plein écran ══════════ -->
+<div id="gir-editor-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+            z-index:600;align-items:flex-end;justify-content:center">
+  <div id="gir-editor-sheet"
+       style="background:var(--card);border:1px solid rgba(255,193,7,.35);
+              border-radius:20px 20px 0 0;width:100%;max-width:560px;
+              max-height:93vh;overflow-y:auto;
+              box-shadow:0 -6px 40px rgba(0,0,0,.7)">
+
+    <!-- Handle -->
+    <div style="display:flex;justify-content:center;padding:10px 0 0">
+      <div style="width:36px;height:4px;background:rgba(255,255,255,.18);border-radius:2px"></div>
+    </div>
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px 0">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#ffc107">
+        📁 Dossier Girouette
+      </div>
+      <button onclick="girCloseEditor()"
+        style="background:rgba(255,255,255,.08);border:1px solid var(--border);
+               color:var(--text);border-radius:8px;width:32px;height:32px;
+               font-size:16px;cursor:pointer">✕</button>
+    </div>
+
+    <div style="padding:12px 18px 22px;display:flex;flex-direction:column;gap:12px">
+
+      <!-- Code girouette + Appliquer -->
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:1px;font-weight:700">CODE GIROUETTE</div>
+        <div style="display:flex;gap:8px">
+          <input type="number" id="gir-editor-code" placeholder="ex: 3202"
+            style="flex:1;padding:10px 14px;font-size:28px;font-family:'Rajdhani',sans-serif;
+                   font-weight:700;letter-spacing:2px;background:var(--bg);color:#ffc107;
+                   border:2px solid rgba(255,193,7,.5);border-radius:10px;text-align:center">
+          <button onclick="girApplyCode()"
+            style="padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+                   background:rgba(255,193,7,.18);border:2px solid #ffc107;color:#ffc107;border-radius:10px">
+            ✏️ Appliquer
+          </button>
+        </div>
+      </div>
+
+      <!-- Statut -->
+      <div id="gir-editor-status"></div>
+
+      <!-- Mini-carte -->
+      <div style="background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-weight:700;padding:8px 10px 4px">
+          CARTE DES POINTS GPS
+        </div>
+        <div id="gir-editor-map" style="height:210px;width:100%;background:#1a1f2e"></div>
+        <div style="display:flex;gap:6px;padding:6px 8px">
+          <button onclick="girMapRefresh()"
+            style="flex:1;padding:6px;font-size:11px;font-weight:700;cursor:pointer;
+                   background:rgba(0,212,255,.12);border:1px solid var(--accent);
+                   color:var(--accent);border-radius:7px">🔄 Actualiser</button>
+          <button onclick="girMapCenter()"
+            style="flex:1;padding:6px;font-size:11px;font-weight:700;cursor:pointer;
+                   background:rgba(255,255,255,.05);border:1px solid var(--border);
+                   color:var(--muted);border-radius:7px">📍 Centrer</button>
+        </div>
+      </div>
+
+      <!-- Saisie manuelle arrêts -->
+      <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:11px">
+        <div style="font-size:10px;color:var(--accent);margin-bottom:6px;letter-spacing:1px;font-weight:700">✍️ SAISIE MANUELLE — NOM + GPS</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:monospace;
+                    background:rgba(255,255,255,.04);padding:6px 8px;border-radius:6px;line-height:1.8">
+          Formats reconnus :<br>
+          <span style="color:#ffc107">NOM ARRÊT - 34 (49.03164, 2.08868)</span><br>
+          <span style="color:var(--text)">34  Nom Arrêt  49.03164, 2.08868</span><br>
+          <span style="color:var(--muted)">Nom Arrêt  49.03164, 2.08868</span>
+        </div>
+        <textarea id="gir-editor-stops-txt" rows="5"
+          placeholder="NOM ARRET - 34 (49.03164, 2.08868)&#10;165  Demi Lieue  49.02665, 1.97432&#10;Oseraie  49.03100, 1.98500"
+          style="width:100%;padding:8px;font-size:11px;font-family:monospace;line-height:1.6;
+                 background:var(--bg);color:var(--text);border:1px solid var(--border);
+                 border-radius:8px;resize:vertical;box-sizing:border-box;margin-bottom:7px"></textarea>
+        <button onclick="girSaveManualStops()"
+          style="width:100%;padding:11px;background:var(--accent);color:#000;
+                 font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:14px">
+          ⚡ Enregistrer ces arrêts GPS
+        </button>
+        <div id="gir-stops-result" style="font-size:11px;color:var(--muted);margin-top:5px;min-height:16px;text-align:center"></div>
+      </div>
+
+      <!-- Liste arrêts enregistrés -->
+      <div id="gir-stops-list-wrap" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-weight:700">ARRÊTS ENREGISTRÉS</div>
+          <button onclick="girDeleteAllStops()"
+            style="padding:3px 9px;font-size:11px;background:rgba(231,76,60,.12);
+                   border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:6px;cursor:pointer">
+            🗑 Vider
+          </button>
+        </div>
+        <div id="gir-stops-list"
+          style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:3px"></div>
+      </div>
+
+      <!-- Import KML / GPX -->
+      <div style="background:rgba(39,174,96,.04);border:1px solid rgba(39,174,96,.25);border-radius:10px;padding:11px">
+        <div style="font-size:10px;color:var(--green);margin-bottom:7px;letter-spacing:1px;font-weight:700">🗺 TRACÉ KML / GPX</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+                      width:100%;padding:12px;font-size:13px;font-weight:700;cursor:pointer;
+                      background:rgba(39,174,96,.12);border:2px dashed var(--green);
+                      color:var(--green);border-radius:8px;box-sizing:border-box">
+          📂 Importer .kml / .gpx
+          <input type="file" accept=".kml,.gpx" style="display:none" onchange="girImportTraceFile(event)">
+        </label>
+        <div id="gir-kml-status" style="font-size:11px;color:var(--muted);margin-top:5px;min-height:16px;text-align:center"></div>
+      </div>
+
+      <!-- Import TXT fichier -->
+      <div style="background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.18);border-radius:10px;padding:11px">
+        <div style="font-size:10px;color:var(--accent);margin-bottom:7px;letter-spacing:1px;font-weight:700">📄 IMPORTER FICHIER ARRÊTS .TXT</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+                      width:100%;padding:12px;font-size:13px;font-weight:700;cursor:pointer;
+                      background:rgba(0,212,255,.12);border:2px dashed var(--accent);
+                      color:var(--accent);border-radius:8px;box-sizing:border-box">
+          📂 Ouvrir .txt / .csv
+          <input type="file" accept=".txt,.csv" style="display:none" onchange="girImportStopsFile(event)">
+        </label>
+      </div>
+
+      <!-- Supprimer / Fermer -->
+      <div style="display:flex;gap:8px">
+        <button onclick="girDeleteCurrent()"
+          style="flex:1;padding:10px;font-size:12px;font-weight:700;cursor:pointer;
+                 background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.4);
+                 color:var(--red);border-radius:10px">🗑 Supprimer</button>
+        <button onclick="girCloseEditor()"
+          style="flex:2;padding:10px;font-size:14px;font-weight:700;cursor:pointer;
+                 background:rgba(255,255,255,.06);border:1px solid var(--border);
+                 color:var(--text);border-radius:10px">✅ Fermer</button>
+      </div>
+
+    </div><!-- /padding -->
+  </div><!-- /sheet -->
+</div><!-- /overlay -->
 
 <!-- NAV -->
 <nav id="nav">
@@ -941,6 +1135,9 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
     <span class="ico">🗺</span>SERVICE
   </button>
 
+  <button class="nav-btn" data-view="view-gir" onclick="showView('view-gir')">
+    <span class="ico">📁</span>GPS
+  </button>
   <button class="nav-btn" data-view="view-settings" onclick="showView('view-settings')">
     <span class="ico">⚙</span>OPTIONS
   </button>
@@ -958,78 +1155,6 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
   </div>
 </div>
 
-<!-- ÉDITEUR GIROUETTE -->
-<div id="gir-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
-     z-index:600;align-items:flex-end;justify-content:center;padding-bottom:0">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;
-              width:100%;max-width:500px;padding:20px;max-height:90vh;overflow-y:auto">
-
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#ffc107">
-        📁 Dossier Girouette
-      </div>
-      <button onclick="girCloseEditor()"
-        style="background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);
-               border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
-    </div>
-
-    <!-- Code girouette -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px">CODE GIROUETTE</div>
-      <input type="number" id="gir-editor-code" placeholder="ex: 6010"
-        style="width:100%;padding:12px 14px;font-size:22px;font-family:'Rajdhani',sans-serif;
-               font-weight:700;letter-spacing:2px;background:var(--bg);color:#ffc107;
-               border:2px solid rgba(255,193,7,.5);border-radius:10px;text-align:center">
-    </div>
-
-    <!-- Bouton renommer -->
-    <button onclick="girRenameFromEditor()"
-      style="width:100%;padding:10px;margin-bottom:12px;font-size:13px;font-weight:700;cursor:pointer;
-             background:rgba(255,193,7,.15);border:2px solid #ffc107;color:#ffc107;border-radius:10px">
-      ✏️ Appliquer ce code girouette
-    </button>
-
-    <!-- Statut actuel -->
-    <div id="gir-editor-status" style="margin-bottom:14px"></div>
-
-    <!-- Import KML -->
-    <div style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px">TRACÉ KML</div>
-      <label style="display:flex;align-items:center;justify-content:center;gap:8px;
-                    width:100%;padding:14px;font-size:14px;font-weight:700;cursor:pointer;
-                    background:rgba(39,174,96,.12);border:2px dashed var(--green);
-                    color:var(--green);border-radius:10px;box-sizing:border-box">
-        🗺 Importer fichier .kml
-        <input type="file" accept=".kml" style="display:none" onchange="girEditorImportKml(event)">
-      </label>
-    </div>
-
-    <!-- Import TXT -->
-    <div style="margin-bottom:16px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">ARRÊTS + GPS (.txt)</div>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:monospace;
-                  background:rgba(255,255,255,.04);padding:6px 10px;border-radius:6px;line-height:1.6">
-        165&nbsp;&nbsp;Demi Lieue&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;49.02665, 1.97432<br>
-        671&nbsp;&nbsp;Oseraie&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;49.03100, 1.98500
-      </div>
-      <label style="display:flex;align-items:center;justify-content:center;gap:8px;
-                    width:100%;padding:14px;font-size:14px;font-weight:700;cursor:pointer;
-                    background:rgba(0,212,255,.12);border:2px dashed var(--accent);
-                    color:var(--accent);border-radius:10px;box-sizing:border-box">
-        📍 Importer fichier .txt
-        <input type="file" accept=".txt,.csv" style="display:none" onchange="girEditorImportTxt(event)">
-      </label>
-    </div>
-
-    <!-- Bouton fermer -->
-    <button onclick="girCloseEditor()"
-      style="width:100%;padding:12px;background:rgba(255,255,255,.06);border:1px solid var(--border);
-             color:var(--text);border-radius:10px;cursor:pointer;font-size:14px;font-weight:700">
-      ✅ Fermer
-    </button>
-  </div>
-</div>
 
 <script>
 // ══ DATA ══════════════════════════════════════════════════════
@@ -2929,6 +3054,7 @@ function showView(id) {
   if(id === 'view-lines') { renderLineGrid(); renderGirPanel(); }
   if(id === 'view-roadmap') { renderRoadmapView(); renderPlanWeek(); }
   if(id === 'view-settings') { loadSettings(); }
+  if(id === 'view-gir') { renderGirView(); }
   if(id === 'view-live') { setTimeout(() => { liveMapInit(); liveMapDraw(); }, 200); }
 }
 
@@ -3762,60 +3888,44 @@ function renderGpsStopsPanel() {
     const bg = hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,255,255,.02)';
     const border = hasGps ? '1px solid rgba(39,174,96,.3)' : '1px solid var(--border)';
     const num = String(si+1).padStart(2,'0');
-    const coordText = hasGps
-      ? `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>`
-      : `<span style="font-size:10px;color:var(--muted);font-style:italic">Non enregistré</span>`;
+    const coordVal = hasGps ? `${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}` : '';
+    const inputId = `gps-input-${si}-val`;
     const delBtn = hasGps
-      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`
+      ? `<button onclick="gpsStopsDeleteOne('${key}','${si}')" style="padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">\u{1F5D1}</button>`
       : '';
-    // Bouton saisie manuelle — bascule l'input inline
-    const editId = `gps-input-${si}`;
-    const editBtn = `<button onclick="gpsStopsToggleInput('${editId}')"
-      style="padding:4px 8px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);
-             color:#ffc107;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0"
-      title="Saisir coordonnées manuellement">✏</button>`;
+    const saveBtn = `<button onclick="gpsStopsSaveFromInput('${key}','${inputId}','${si}')"
+      style="padding:6px 10px;background:rgba(39,174,96,.25);border:1px solid var(--green);
+             color:var(--green);border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0"
+      title="Enregistrer">\u{1F4BE}</button>`;
 
-    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace">${num}</span>
-        <span class="gps-row-icon" style="font-size:13px;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'📍':'⬜'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
-          <div class="gps-row-coord">${coordText}</div>
-        </div>
-        ${editBtn}
+    return `<div id="gps-row-${si}" style="border-radius:8px;background:${bg};border:${border};margin-bottom:6px;padding:8px 10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;font-family:monospace;width:22px">${num}</span>
+        <span class="gps-row-icon" style="font-size:14px;flex-shrink:0;${hasGps?'color:var(--green)':'color:var(--muted)'};">${hasGps?'\u{1F4CD}':'\u2B1C'}</span>
+        <div style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
         ${delBtn}
       </div>
-      <!-- Champ saisie manuelle — caché par défaut -->
-      <div id="${editId}" style="display:none;padding:0 10px 10px 10px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">
-          COORDONNÉES GPS — Collez ou saisissez : lat, lon
-        </div>
-        <div style="display:flex;gap:6px">
-          <input type="text" id="${editId}-val"
-            inputmode="decimal"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-            placeholder="49.02665, 1.97432"
-            style="flex:1;padding:10px 10px;font-size:14px;font-family:monospace;border-radius:8px;
-                   border:2px solid rgba(255,193,7,.6);background:rgba(255,193,7,.08);color:var(--text);
-                   -webkit-user-select:text;user-select:text;touch-action:manipulation"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();gpsStopsSaveManual('${key}','${editId}')}"
-            oninput="gpsStopsAutoSave('${key}','${editId}',this.value)"
-            onpaste="setTimeout(()=>{const v=document.getElementById('${editId}-val').value;gpsStopsAutoSave('${key}','${editId}',v,true)},30)">
-          <button onclick="gpsStopsSaveManual('${key}','${editId}')"
-            style="padding:10px 14px;background:rgba(39,174,96,.2);border:1px solid var(--green);
-                   color:var(--green);border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;flex-shrink:0;
-                   touch-action:manipulation">
-            ✓
-          </button>
-        </div>
-        <div id="${editId}-hint" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:14px"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="${inputId}"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          placeholder="49.02665, 1.97432"
+          value="${coordVal}"
+          style="flex:1;padding:9px 10px;font-size:13px;font-family:monospace;border-radius:8px;
+                 border:2px solid ${hasGps ? 'rgba(39,174,96,.5)' : 'rgba(255,193,7,.5)'};
+                 background:${hasGps ? 'rgba(39,174,96,.08)' : 'rgba(255,193,7,.06)'};
+                 color:var(--text);
+                 -webkit-user-select:text !important;user-select:text !important;
+                 -webkit-touch-callout:default !important;
+                 touch-action:manipulation;cursor:text;pointer-events:auto">
+        ${saveBtn}
       </div>
       <div id="gps-hint-${si}" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:13px"></div>
     </div>`;
   }).join('');
 
-  // Attacher les événements APRÈS insertion dans le DOM (évite les problèmes de innerHTML sur mobile)
+  // Attacher les événements APRÈS insertion dans le DOM
   setTimeout(() => {
     items.forEach(({key, si}) => {
       const inp = document.getElementById(`gps-input-${si}-val`);
@@ -3830,10 +3940,10 @@ function renderGpsStopsPanel() {
           const parsed = gpsParseCoords(v);
           const hint = document.getElementById(`gps-hint-${si}`);
           if(parsed) {
-            if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾`; hint.style.color = 'var(--green)'; }
+            if(hint) { hint.textContent = `\u2705 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} \u2014 appuie \u{1F4BE}`; hint.style.color = 'var(--green)'; }
             inp.style.borderColor = 'rgba(39,174,96,.8)';
           } else if(v) {
-            if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
+            if(hint) { hint.textContent = '\u26A0\uFE0F Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
           }
         }, 50);
       });
@@ -3842,10 +3952,10 @@ function renderGpsStopsPanel() {
         const parsed = gpsParseCoords(v);
         const hint = document.getElementById(`gps-hint-${si}`);
         if(parsed) {
-          if(hint) { hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie 💾 ou Entrée`; hint.style.color = 'var(--green)'; }
+          if(hint) { hint.textContent = `\u2705 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} \u2014 appuie \u{1F4BE} ou Entr\u00E9e`; hint.style.color = 'var(--green)'; }
           inp.style.borderColor = 'rgba(39,174,96,.8)';
         } else if(v.length > 3) {
-          if(hint) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
+          if(hint) { hint.textContent = '\u26A0\uFE0F Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; }
           inp.style.borderColor = 'rgba(255,165,0,.8)';
         } else {
           if(hint) hint.textContent = '';
@@ -3856,180 +3966,15 @@ function renderGpsStopsPanel() {
   }, 30);
 }
 
-// ── Basculer l'affichage du champ de saisie manuelle ─────────
-function gpsStopsToggleInput(editId) {
-  const el = document.getElementById(editId);
-  if(!el) return;
-  const isOpen = el.style.display !== 'none';
-  // Fermer tous les autres champs ouverts
-  document.querySelectorAll('[id^="gps-input-"]').forEach(e => e.style.display = 'none');
-  if(!isOpen) {
-    el.style.display = 'block';
-    const inp = document.getElementById(editId + '-val');
-    if(inp) {
-      inp.value = '';
-      document.getElementById(editId + '-hint').textContent = '';
-      inp.removeAttribute('readonly');
-      // Focus robuste mobile — plusieurs tentatives espacées
-      inp.focus();
-      setTimeout(() => { inp.focus(); inp.click(); }, 80);
-      setTimeout(() => { inp.focus(); }, 300);
-    }
-  }
-}
-
-// ── Aperçu en temps réel pendant la saisie / collage ─────────
-function gpsStopsAutoSave(key, editId, rawVal, doClose) {
-  const hint = document.getElementById(editId + '-hint');
-  if(!hint) return;
-  const raw = (rawVal || '').trim();
-  if(!raw) { hint.textContent = 'Collez les coordonnées — enregistrement automatique'; hint.style.color = 'var(--muted)'; return; }
-
-  const parsed = gpsParseCoords(raw);
-  if(!parsed) { hint.textContent = '⚠️ Format attendu : 49.0266, 1.9743'; hint.style.color = 'orange'; return; }
-
-  if(doClose) {
-    // Collage détecté : sauvegarder et fermer directement
-    hint.textContent = '';
-    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
-  } else {
-    // Frappe manuelle : aperçu en temps réel, appuyer Entrée pour valider
-    hint.textContent = `✅ ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} — appuie Entrée`;
-    hint.style.color = 'var(--green)';
-    gpsStoreCoord(key, parsed.lat, parsed.lon, editId, false);
-  }
-}
-
-// ── Parser universel de coordonnées GPS ──────────────────────
-// Accepte : "49.02665, 1.97432" / "49.02665 1.97432" / "(49.02665,1.97432)"
-// Aussi le format Maps : "49.02665202072263, 1.9743218893309282"
-function gpsParseCoords(raw) {
-  const clean = raw.replace(/[()[\]]/g, '').trim();
-  const parts = clean.split(/[,\s]+/).filter(Boolean);
-  if(parts.length < 2) return null;
-  const lat = parseFloat(parts[0].replace(',', '.'));
-  const lon = parseFloat(parts[1].replace(',', '.'));
-  if(isNaN(lat) || isNaN(lon)) return null;
-  if(lat < -90 || lat > 90)   return null;
-  if(lon < -180 || lon > 180) return null;
-  return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
-}
-
-// ── Stocker les coords sans re-render du panneau ─────────────
-function gpsStoreCoord(key, lat, lon, editId, doClose) {
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  const si = parseInt(key.split('_').pop());
-  const stopName = trip ? (trip.stops[si]?.name || key) : key;
-  gpsCoordsDB[key] = { lat, lon, name: stopName };
-  saveGpsCoordsDB();
-
-  if(doClose) {
-    // Fermer le champ d'édition pour CET arrêt uniquement
-    const editEl = document.getElementById(editId);
-    if(editEl) editEl.style.display = 'none';
-    // Mettre à jour uniquement la ligne de cet arrêt (pas tout le panneau)
-    gpsStopsUpdateRow(key, si, lat, lon);
-    // Rafraîchir le badge dans la liste des trajets (léger)
-    renderLineDetail(gpsPanelLineIdx);
-    toast(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)} enregistré`);
-  } else {
-    // Mise à jour silencieuse (preview) — pas de toast, pas de fermeture
-    gpsStopsUpdateRow(key, si, lat, lon);
-  }
-}
-
-// ── Mettre à jour UNE seule ligne du panneau sans tout re-render ──
-function gpsStopsUpdateRow(key, si, lat, lon) {
-  const num = String(si+1).padStart(2,'0');
-  const rowId = `gps-row-${si}`;
-  const row = document.getElementById(rowId);
-  if(!row) return;
-  // Mettre à jour l'icône et les coordonnées affichées
-  const iconEl = row.querySelector('.gps-row-icon');
-  const coordEl = row.querySelector('.gps-row-coord');
-  if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
-  if(coordEl) coordEl.innerHTML = `<span style="font-family:monospace;font-size:10px;color:var(--muted)">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>`;
-  row.style.background = 'rgba(39,174,96,.08)';
-  row.style.border = '1px solid rgba(39,174,96,.3)';
-  // Mettre à jour la valeur de l'input visible
-  const inp = document.getElementById(`gps-input-${si}-val`);
-  if(inp) {
-    inp.value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    inp.style.borderColor = 'rgba(39,174,96,.8)';
-    inp.style.background = 'rgba(39,174,96,.08)';
-  }
-  _gpsUpdateProgress();
-}
-
-function _gpsUpdateProgress() {
-  if(gpsPanelLineIdx < 0) return;
-  loadGpsCoordsDB();
-  const line = db.lines[gpsPanelLineIdx];
-  const trip = line?.trips?.[gpsPanelTripIdx];
-  if(!trip) return;
-  let recorded = 0;
-  trip.stops.forEach((s, si) => {
-    if(gpsCoordsDB[gpsCoordKey(line.num, gpsPanelTripIdx, si)]) recorded++;
-  });
-  const total = trip.stops.length;
-  const pct = Math.round(recorded / total * 100);
-  const pColor = pct === 100 ? 'var(--green)' : pct > 50 ? '#ffc107' : pct > 0 ? 'orange' : 'var(--red)';
-  const progEl = document.getElementById('gps-stops-prog');
-  if(progEl) { progEl.style.width = pct + '%'; progEl.style.background = pColor; }
-  const hdrEl = document.getElementById('gps-stops-panel-header');
-  if(hdrEl) {
-    const col = line.color || '#00d4ff';
-    hdrEl.innerHTML = `<span style="background:${col};color:#fff;padding:1px 8px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px">${line.num}</span>`+
-      `<strong>${trip.label}</strong><br>`+
-      `<span style="color:${pColor};font-weight:700">${recorded}/${total} arrêts avec GPS (${pct}%)</span>`;
-  }
-}
-
-// ── Mettre à jour le badge GPS dans la liste des trajets sans reconstruire le panneau ──
-function _gpsUpdateTripBadge(lineIdx, tripIdx) {
-  if(lineIdx < 0) return;
-  loadGpsCoordsDB();
-  const line = db.lines[lineIdx];
-  const trip = line?.trips?.[tripIdx];
-  if(!trip) return;
-  let gpsCount = 0;
-  trip.stops.forEach((s, si) => {
-    if(gpsCoordsDB[gpsCoordKey(line.num, tripIdx, si)]) gpsCount++;
-  });
-  const total = trip.stops.length;
-  const pct = Math.round(gpsCount / total * 100);
-  const gpsColor = pct === 100 ? 'var(--green)' : pct > 0 ? '#ffc107' : 'var(--muted)';
-  // Chercher le badge dans le bouton 📍 de cette ligne de trajet
-  const mapBtn = document.getElementById(`map-btn-${lineIdx}-${tripIdx}`);
-  if(mapBtn) {
-    // Trouver le span badge GPS à côté
-    const badgeEl = document.getElementById(`gps-badge-${lineIdx}-${tripIdx}`);
-    if(badgeEl) {
-      badgeEl.style.color = gpsColor;
-      badgeEl.textContent = gpsCount > 0 ? `📍 ${gpsCount}/${total}` : '📍 —';
-    }
-  }
-}
-
-// Accepte tous ces formats :
-//   49.02665202072263, 1.9743218893309282   (virgule + espace)
-//   49.02665202072263 1.9743218893309282    (espace seul)
-//   49.02665,1.97432                        (virgule sans espace)
-//   49.052621 2.022193                      (déjà court)
-//   (49.052621, 2.022193)                   (parenthèses)
-// ── Enregistrer depuis le champ input visible ─────────────────
 function gpsStopsSaveFromInput(key, inputId, si) {
   const inp = document.getElementById(inputId);
   if(!inp) return;
   const raw = (inp.value || '').trim();
-  if(!raw) { toast('⚠️ Collez ou saisissez des coordonnées GPS'); inp.focus(); return; }
+  if(!raw) { toast('\u26A0\uFE0F Collez ou saisissez des coordonn\u00E9es GPS'); inp.focus(); return; }
 
   const parsed = gpsParseCoords(raw);
-  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
+  if(!parsed) { toast('\u274C Format invalide \u2014 ex: 49.02665, 1.97432'); inp.focus(); return; }
 
-  // Sauvegarder directement sans passer par gpsStoreCoord (évite renderLineDetail)
   loadGpsCoordsDB();
   const line = db.lines[gpsPanelLineIdx];
   const trip = line?.trips?.[gpsPanelTripIdx];
@@ -4037,52 +3982,47 @@ function gpsStopsSaveFromInput(key, inputId, si) {
   gpsCoordsDB[key] = { lat: parsed.lat, lon: parsed.lon, name: stopName };
   saveGpsCoordsDB();
 
-  // Mettre à jour l'input avec les coords normalisées
   inp.value = `${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`;
   inp.style.borderColor = 'rgba(39,174,96,.8)';
   inp.style.background = 'rgba(39,174,96,.08)';
 
-  // Mettre à jour uniquement la ligne de cet arrêt dans le panneau
   const row = document.getElementById(`gps-row-${si}`);
   if(row) {
     row.style.background = 'rgba(39,174,96,.08)';
     row.style.border = '1px solid rgba(39,174,96,.3)';
     const iconEl = row.querySelector('.gps-row-icon');
-    if(iconEl) { iconEl.textContent = '📍'; iconEl.style.color = 'var(--green)'; }
-    // Ajouter le bouton 🗑 s'il est absent (cas d'un arrêt nouvellement enregistré)
+    if(iconEl) { iconEl.textContent = '\u{1F4CD}'; iconEl.style.color = 'var(--green)'; }
     if(!row.querySelector('button[onclick^="gpsStopsDeleteOne"]')) {
       const topRow = row.querySelector('div[style*="display:flex"]');
       if(topRow) {
         const delBtn = document.createElement('button');
         delBtn.onclick = () => gpsStopsDeleteOne(key, si);
         delBtn.style.cssText = 'padding:6px 10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--red);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0';
-        delBtn.textContent = '🗑';
+        delBtn.textContent = '\u{1F5D1}';
         topRow.appendChild(delBtn);
       }
     }
   }
 
   const hint = document.getElementById(`gps-hint-${si}`);
-  if(hint) { hint.textContent = `✅ Enregistré — ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`; hint.style.color = 'var(--green)'; }
+  if(hint) { hint.textContent = `\u2705 Enregistr\u00E9 \u2014 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)}`; hint.style.color = 'var(--green)'; }
 
-  // Mettre à jour barre de progression + badge du trajet (sans reconstruire le panneau)
   _gpsUpdateProgress();
   _gpsUpdateTripBadge(gpsPanelLineIdx, gpsPanelTripIdx);
-  toast(`📍 ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} enregistré`);
+  toast(`\u{1F4CD} ${parsed.lat.toFixed(6)}, ${parsed.lon.toFixed(6)} enregistr\u00E9`);
 }
 
-// ── [Legacy] Enregistrer depuis l'ancien système toggle ───────
+// [Legacy] Enregistrer depuis l'ancien système toggle
 function gpsStopsSaveManual(key, editId) {
   const inp = document.getElementById(editId + '-val');
   if(!inp) return;
   const raw = (inp.value || '').trim();
-  if(!raw) { toast('Entrez des coordonnées'); inp.focus(); return; }
-
+  if(!raw) { toast('Entrez des coordonn\u00E9es'); inp.focus(); return; }
   const parsed = gpsParseCoords(raw);
-  if(!parsed) { toast('❌ Format invalide — ex: 49.02665, 1.97432'); inp.focus(); return; }
-
+  if(!parsed) { toast('\u274C Format invalide \u2014 ex: 49.02665, 1.97432'); inp.focus(); return; }
   gpsStoreCoord(key, parsed.lat, parsed.lon, editId, true);
 }
+
 
 function gpsStopsDeleteOne(key, si) {
   loadGpsCoordsDB();
@@ -7639,6 +7579,8 @@ function girEnrichTrip(trip, girCode) {
 let girPanelCode = null; // code girouette ouvert dans le panneau
 
 function renderGirPanel() {
+  // gir-panel-content supprimé — l'espace dédié est maintenant view-gir
+  renderGirView();
   const el = document.getElementById('gir-panel-content');
   if(!el) return;
 
@@ -7704,7 +7646,8 @@ function girOpenEditorForLine(lineNum) {
   }
 }
 
-function girOpenEditor(code) {
+function _legacy_girOpenEditor(code) { /* replaced by new module below */ }
+function __unused_girOpenEditorOld(code) {
   girPanelCode = code || null;
   const overlay = document.getElementById('gir-editor-overlay');
   const codeInput = document.getElementById('gir-editor-code');
@@ -7738,7 +7681,8 @@ function girOpenEditor(code) {
   }
 }
 
-function girCloseEditor() {
+function _legacy_girCloseEditor() { /* replaced by new module below */ }
+function __unused_girCloseEditorOld() {
   const overlay = document.getElementById('gir-editor-overlay');
   if(overlay) overlay.style.display = 'none';
   girPanelCode = null;
@@ -7746,6 +7690,10 @@ function girCloseEditor() {
 }
 
 function girRenameFromEditor() {
+  // Redirigé vers le nouveau système
+  girApplyCode();
+}
+function _girRenameFromEditorLegacy() {
   const input = document.getElementById('gir-editor-code');
   const newCode = input.value.trim();
   const oldCode = input.dataset.oldCode || '';
@@ -7784,42 +7732,20 @@ function girRenameFromEditor() {
 }
 
 function girEditorImportKml(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const code = document.getElementById('gir-editor-code').value.trim();
-  if(!code) { toast('❌ Entrez le code girouette d\'abord'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    if(girImportKml(code, e.target.result)) {
-      girOpenEditor(code); // refresh statut
-      renderGirPanel();
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
+  // Redirigé vers le nouveau système dédié GPS
+  girImportTraceFile(event);
 }
 
 function girEditorImportTxt(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const code = document.getElementById('gir-editor-code').value.trim();
-  if(!code) { toast('❌ Entrez le code girouette d\'abord'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    if(girImportTxt(code, e.target.result)) {
-      girOpenEditor(code); // refresh statut
-      renderGirPanel();
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
+  // Redirigé vers le nouveau système dédié GPS
+  girImportStopsFile(event);
 }
 
 function girDeleteConfirm(code) {
   if(!confirm(`Supprimer le dossier girouette ${code} ?\nTracé, GPS et arrêts seront effacés.`)) return;
   girDelete(code);
   toast(`🗑 Dossier ${code} supprimé`);
-  renderGirPanel();
+  renderGirView();
 }
 
 // ══ INTÉGRATION PARSEUR : extraire girouette de la feuille INEO ══
@@ -9020,6 +8946,449 @@ screen.orientation?.addEventListener('change', () => {
 });
 // Démarrage asynchrone via IndexedDB
 idbBoot();
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE GPS / GIROUETTE — espace dédié (view-gir)
+// Stockage : IDB via idbGet/idbSet/idbDel (même base que le reste)
+// Préfixes : gir_meta_, gir_stops_, gir_trace_ (déjà définis plus haut)
+// ══════════════════════════════════════════════════════════════════
+
+// ── Variables état éditeur ──────────────────────────────────────
+let _girMap = null;           // instance Leaflet dans l'éditeur
+let _girMapMarkers = [];      // markers arrêts
+let _girMapPolyline = null;   // tracé ligne
+let _girCurrentCode = null;   // code girouette ouvert
+
+// ── Ouvrir un dossier (ou null = nouveau) ──────────────────────
+function girOpenEditor(code) {
+  _girCurrentCode = code || null;
+  const overlay  = document.getElementById('gir-editor-overlay');
+  const codeInput= document.getElementById('gir-editor-code');
+  if(overlay)   overlay.style.display = 'flex';
+  if(codeInput) {
+    codeInput.value = code || '';
+    codeInput.dataset.oldCode = code || '';
+  }
+  // Reset textarea si on ouvre un nouveau dossier
+  const ta = document.getElementById('gir-editor-stops-txt');
+  if(ta) ta.value = '';
+  // Refresh UI
+  setTimeout(() => _girRefreshEditorUI(code), 60);
+}
+
+// ── Créer un nouveau dossier (bouton + Nouveau) ─────────────────
+function girNewFolder() {
+  girOpenEditor(null);
+}
+
+// ── Appliquer / confirmer le code ──────────────────────────────
+function girApplyCode() {
+  const input = document.getElementById('gir-editor-code');
+  const newCode = String(input.value).trim();
+  const oldCode = input.dataset.oldCode || '';
+  if(!newCode) { toast('❌ Entrez un code girouette'); return; }
+
+  if(newCode === oldCode || !oldCode) {
+    // Créer ou confirmer le dossier
+    const meta = JSON.parse(idbGet(GIR_PREFIX_META + newCode) || '{}');
+    if(!meta.girouette) {
+      meta.girouette = newCode;
+      meta.createdAt = new Date().toISOString();
+      idbSet(GIR_PREFIX_META + newCode, JSON.stringify(meta));
+      toast('✅ Dossier ' + newCode + ' créé');
+    } else {
+      toast('📁 Dossier ' + newCode + ' — code confirmé');
+    }
+    _girCurrentCode = newCode;
+    input.dataset.oldCode = newCode;
+    _girRefreshEditorUI(newCode);
+    renderGirView();
+    return;
+  }
+
+  // Renommer
+  if(girHas(newCode) && !confirm('Le dossier ' + newCode + ' existe déjà. Fusionner ?')) return;
+  const trace = idbGet(GIR_PREFIX_TRACE + oldCode);
+  const stops = idbGet(GIR_PREFIX_STOPS + oldCode);
+  const meta  = idbGet(GIR_PREFIX_META  + oldCode);
+  if(trace) idbSet(GIR_PREFIX_TRACE + newCode, trace);
+  if(stops) idbSet(GIR_PREFIX_STOPS + newCode, stops);
+  if(meta)  idbSet(GIR_PREFIX_META  + newCode, meta);
+  idbDel(GIR_PREFIX_TRACE + oldCode);
+  idbDel(GIR_PREFIX_STOPS + oldCode);
+  idbDel(GIR_PREFIX_META  + oldCode);
+  db.lines.forEach(line => line.trips.forEach(trip => {
+    if(trip._girouette === oldCode) trip._girouette = newCode;
+  }));
+  saveDB();
+  toast('✅ Renommé ' + oldCode + ' → ' + newCode);
+  _girCurrentCode = newCode;
+  input.dataset.oldCode = newCode;
+  _girRefreshEditorUI(newCode);
+  renderGirView();
+}
+
+// ── Fermer l'éditeur ────────────────────────────────────────────
+function girCloseEditor() {
+  const overlay = document.getElementById('gir-editor-overlay');
+  if(overlay) overlay.style.display = 'none';
+  // Détruire la carte Leaflet pour réinitialisation propre
+  if(_girMap) { try { _girMap.remove(); } catch(e){} _girMap = null; _girMapMarkers = []; _girMapPolyline = null; }
+  _girCurrentCode = null;
+  renderGirView(); // rafraîchit la grille
+}
+
+// ── Supprimer le dossier courant ────────────────────────────────
+function girDeleteCurrent() {
+  const code = _girCurrentCode;
+  if(!code) { toast('❌ Aucun dossier ouvert'); return; }
+  if(!confirm('Supprimer le dossier ' + code + ' ?\nTracé, GPS et arrêts seront effacés.')) return;
+  girDelete(code);
+  toast('🗑 Dossier ' + code + ' supprimé');
+  girCloseEditor();
+}
+
+// ── Rafraîchir l'UI de l'éditeur ───────────────────────────────
+function _girRefreshEditorUI(code) {
+  // Statut
+  const statusEl = document.getElementById('gir-editor-status');
+  if(statusEl) {
+    if(code) {
+      const hasTrace = !!idbGet(GIR_PREFIX_TRACE + code);
+      const hasStops = !!idbGet(GIR_PREFIX_STOPS + code);
+      const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+      statusEl.innerHTML = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;padding:7px 10px;
+                    background:rgba(255,255,255,.04);border-radius:8px">
+          <span style="color:${hasTrace?'var(--green)':'var(--muted)'}">
+            ${hasTrace?'✅':'❌'} Tracé KML/GPX (${meta.nbPoints||0} pts)
+          </span>
+          <span style="color:${hasStops?'var(--accent)':'var(--muted)'}">
+            ${hasStops?'✅':'❌'} Arrêts GPS (${meta.nbArrets||0})
+          </span>
+        </div>`;
+    } else {
+      statusEl.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 10px;background:rgba(255,255,255,.04);border-radius:8px">🆕 Nouveau dossier — entrez un code et appuyez sur Appliquer</div>';
+    }
+  }
+
+  // Pré-remplir textarea avec arrêts existants
+  const ta = document.getElementById('gir-editor-stops-txt');
+  if(ta && code && !ta.value.trim()) {
+    const stops = JSON.parse(idbGet(GIR_PREFIX_STOPS + code) || '[]');
+    if(stops.length) {
+      ta.value = stops.map(s => {
+        if(s.code) return `${s.nom} - ${s.code} (${s.lat}, ${s.lon})`;
+        return `${s.nom}  ${s.lat}, ${s.lon}`;
+      }).join('\n');
+    }
+  }
+
+  _girRenderStopsList(code);
+  _girMapLoad(code);
+}
+
+// ── Liste des arrêts enregistrés ────────────────────────────────
+function _girRenderStopsList(code) {
+  const wrap  = document.getElementById('gir-stops-list-wrap');
+  const listEl= document.getElementById('gir-stops-list');
+  if(!wrap || !listEl) return;
+  if(!code) { wrap.style.display='none'; return; }
+  const stops = JSON.parse(idbGet(GIR_PREFIX_STOPS + code) || '[]');
+  if(!stops.length) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  listEl.innerHTML = stops.map((s,i) => `
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 8px;
+                background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.1);border-radius:6px">
+      <span style="font-size:10px;color:var(--accent);font-weight:700;min-width:28px">${s.code||'—'}</span>
+      <span style="flex:1;font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${s.nom||''}</span>
+      <span style="font-size:9px;color:var(--muted);white-space:nowrap">${(+s.lat).toFixed(4)}, ${(+s.lon).toFixed(4)}</span>
+      <button onclick="_girDeleteStop('${code}',${i})"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0">✕</button>
+    </div>`).join('');
+}
+
+function _girDeleteStop(code, idx) {
+  const stops = JSON.parse(idbGet(GIR_PREFIX_STOPS + code) || '[]');
+  stops.splice(idx, 1);
+  idbSet(GIR_PREFIX_STOPS + code, JSON.stringify(stops));
+  const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+  meta.nbArrets = stops.length;
+  idbSet(GIR_PREFIX_META + code, JSON.stringify(meta));
+  _girRenderStopsList(code);
+  _girMapLoad(code);
+  renderGirView();
+}
+
+function girDeleteAllStops() {
+  const code = _girCurrentCode;
+  if(!code || !confirm('Supprimer tous les arrêts de ' + code + ' ?')) return;
+  idbDel(GIR_PREFIX_STOPS + code);
+  const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+  meta.nbArrets = 0;
+  idbSet(GIR_PREFIX_META + code, JSON.stringify(meta));
+  const ta = document.getElementById('gir-editor-stops-txt');
+  if(ta) ta.value = '';
+  document.getElementById('gir-stops-result').textContent = '';
+  _girRenderStopsList(code);
+  _girMapLoad(code);
+  renderGirView();
+  toast('🗑 Arrêts supprimés');
+}
+
+// ── Enregistrer arrêts depuis textarea (multi-format) ──────────
+function girSaveManualStops() {
+  const code = _girCurrentCode;
+  if(!code) { toast('❌ Appuyez sur Appliquer d\'abord pour créer le dossier'); return; }
+  const ta = document.getElementById('gir-editor-stops-txt');
+  const txt = ta ? ta.value.trim() : '';
+  if(!txt) { toast('❌ Textarea vide'); return; }
+  const resultEl = document.getElementById('gir-stops-result');
+
+  const stops = []; let errors = 0;
+  txt.split('\n').forEach(line => {
+    line = line.trim(); if(!line) return;
+    let nom='', code_='', lat=NaN, lon=NaN, m;
+
+    // Format 1 : NOM - CODE (lat, lon)
+    m = line.match(/^(.+?)\s*-\s*(\d+)\s*\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+    if(m){ nom=m[1].trim(); code_=m[2]; lat=+m[3]; lon=+m[4]; }
+
+    // Format 2 : CODE  NOM  lat, lon
+    if(isNaN(lat)){ m=line.match(/^(\d+)\s+(.+?)\s+([-\d.]+)[,\s]+([-\d.]+)\s*$/); if(m){code_=m[1];nom=m[2].trim();lat=+m[3];lon=+m[4];} }
+
+    // Format 3 : NOM  lat, lon
+    if(isNaN(lat)){ m=line.match(/^(.+?)\s+([-\d.]+)\s*,\s*([-\d.]+)\s*$/); if(m){nom=m[1].trim();lat=+m[2];lon=+m[3];} }
+
+    // Format 4 : CODE  NOM  (lat, lon)
+    if(isNaN(lat)){ m=line.match(/^(\d+)\s+(.+?)\s*\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/); if(m){code_=m[1];nom=m[2].trim();lat=+m[3];lon=+m[4];} }
+
+    if(!isNaN(lat)&&!isNaN(lon)&&nom){ stops.push({code:code_,nom,lat,lon}); }
+    else { errors++; }
+  });
+
+  if(!stops.length){
+    if(resultEl) resultEl.innerHTML='<span style="color:var(--red)">❌ Aucune ligne valide — vérifiez le format</span>';
+    return;
+  }
+
+  // Sauvegarder
+  idbSet(GIR_PREFIX_STOPS + code, JSON.stringify(stops));
+  // Indexer aussi par code arrêt physique (partagé toutes lignes)
+  stops.forEach(s => { if(s.code) gpsArretSet(s.code, s.lat, s.lon, s.nom); });
+  const meta = JSON.parse(idbGet(GIR_PREFIX_META + code) || '{}');
+  meta.girouette = code; meta.nbArrets = stops.length; meta.updatedAt = Date.now();
+  idbSet(GIR_PREFIX_META + code, JSON.stringify(meta));
+
+  if(resultEl) resultEl.innerHTML=`<span style="color:var(--green)">✅ ${stops.length} arrêt(s) enregistrés${errors?' ('+errors+' ligne(s) ignorée(s))':''}</span>`;
+  _girRefreshEditorUI(code);
+  renderGirView();
+}
+
+// ── Import fichier tracé KML / GPX ─────────────────────────────
+function girImportTraceFile(event) {
+  const file = event.target.files[0]; if(!file) return;
+  const code = _girCurrentCode;
+  if(!code){ toast('❌ Appuyez sur Appliquer d\'abord'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const ok = _girParseTrace(code, e.target.result, file.name);
+    if(ok) {
+      const meta = JSON.parse(idbGet(GIR_PREFIX_META+code)||'{}');
+      const kmlEl = document.getElementById('gir-kml-status');
+      if(kmlEl) kmlEl.innerHTML=`<span style="color:var(--green)">✅ ${meta.format||'KML'} — ${meta.nbPoints||0} pts importés</span>`;
+      _girRefreshEditorUI(code);
+      renderGirView();
+    }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+// ── Import fichier arrêts TXT ───────────────────────────────────
+function girImportStopsFile(event) {
+  const file = event.target.files[0]; if(!file) return;
+  const code = _girCurrentCode;
+  if(!code){ toast('❌ Appuyez sur Appliquer d\'abord'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    if(girImportTxt(code, e.target.result)){
+      _girRefreshEditorUI(code);
+      renderGirView();
+    }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+// ── Parser KML ou GPX ──────────────────────────────────────────
+function _girParseTrace(code, text, filename) {
+  const isGpx = /\.gpx$/i.test(filename||'') || /<gpx[\s>]/i.test(text);
+  try {
+    const parser = new DOMParser();
+    let points = [];
+    if(isGpx) {
+      const gpx = parser.parseFromString(text, 'text/xml');
+      const src = gpx.querySelectorAll('trkseg trkpt').length
+        ? gpx.querySelectorAll('trkseg trkpt')
+        : gpx.querySelectorAll('rtept');
+      points = Array.from(src).map(p => [+p.getAttribute('lat'), +p.getAttribute('lon')])
+                              .filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+    } else {
+      const kml = parser.parseFromString(text, 'text/xml');
+      kml.querySelectorAll('LineString coordinates').forEach(el => {
+        el.textContent.trim().split(/\s+/).forEach(c => {
+          const p = c.split(','); const lon=+p[0],lat=+p[1];
+          if(!isNaN(lat)&&!isNaN(lon)&&lat!==0) points.push([lat,lon]);
+        });
+      });
+    }
+    if(points.length < 2){ toast('❌ Tracé trop court ou invalide'); return false; }
+    // Simplifier : 1 pt/3
+    points = points.filter((_,i)=>i%3===0);
+    idbSet(GIR_PREFIX_TRACE+code, JSON.stringify(points));
+    const meta = JSON.parse(idbGet(GIR_PREFIX_META+code)||'{}');
+    meta.girouette=code; meta.nbPoints=points.length; meta.format=isGpx?'GPX':'KML'; meta.importedAt=new Date().toISOString();
+    idbSet(GIR_PREFIX_META+code, JSON.stringify(meta));
+    toast(`✅ ${isGpx?'GPX':'KML'} — ${points.length} pts`);
+    return true;
+  } catch(e){ toast('❌ Erreur: '+e.message); return false; }
+}
+
+// ── Mini-carte Leaflet dans l'éditeur ──────────────────────────
+function _girMapInit() {
+  const el = document.getElementById('gir-editor-map');
+  if(!el || _girMap) return;
+  if(typeof L === 'undefined') {
+    el.innerHTML='<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Carte non disponible</div>';
+    return;
+  }
+  _girMap = L.map('gir-editor-map', { zoomControl:true, attributionControl:false, center:[48.95,2.1], zoom:12 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,opacity:.85}).addTo(_girMap);
+}
+
+function _girMapLoad(code) {
+  const doLoad = () => {
+    try {
+      _girMapInit();
+      if(!_girMap) return;
+      _girMap.invalidateSize();
+      setTimeout(()=>_girMap.invalidateSize(),300);
+      // Nettoyer
+      _girMapMarkers.forEach(m=>{try{m.remove();}catch(e){}});
+      _girMapMarkers=[];
+      if(_girMapPolyline){try{_girMapPolyline.remove();}catch(e){}}_girMapPolyline=null;
+      if(!code) return;
+      const bounds=[];
+      // Tracé
+      const trace = JSON.parse(idbGet(GIR_PREFIX_TRACE+code)||'null');
+      if(trace&&trace.length){
+        const ll=trace.map(p=>Array.isArray(p)?p:[p.lat,p.lon]);
+        _girMapPolyline=L.polyline(ll,{color:'#27ae60',weight:3,opacity:.85}).addTo(_girMap);
+        ll.forEach(p=>bounds.push(p));
+      }
+      // Arrêts
+      const stops=JSON.parse(idbGet(GIR_PREFIX_STOPS+code)||'[]');
+      stops.forEach(s=>{
+        const ico=L.divIcon({html:'<div style="background:#00d4ff;border:2px solid #fff;border-radius:50%;width:10px;height:10px;margin:-5px 0 0 -5px"></div>',className:'',iconSize:[10,10]});
+        const mk=L.marker([+s.lat,+s.lon],{icon:ico}).bindTooltip(`${s.code?s.code+' — ':''}${s.nom||''}`,{permanent:false,direction:'top',offset:[0,-6]}).addTo(_girMap);
+        _girMapMarkers.push(mk);
+        bounds.push([+s.lat,+s.lon]);
+      });
+      if(bounds.length) try{_girMap.fitBounds(bounds,{padding:[18,18],maxZoom:15});}catch(e){}
+    } catch(err){ console.warn('girMap error:',err); }
+  };
+  setTimeout(doLoad, 160);
+  setTimeout(doLoad, 550);
+}
+
+function girMapRefresh() {
+  _girMapLoad(_girCurrentCode);
+}
+
+function girMapCenter() {
+  if(_girMap) _girMap.setView([48.95,2.1],12);
+}
+
+// ── Rendu de la vue GPS (grille des dossiers) ──────────────────
+function renderGirView() {
+  const container = document.getElementById('gir-view-list');
+  const statsEl   = document.getElementById('gir-view-stats');
+  if(!container) return;
+
+  const search = (document.getElementById('gir-view-search')?.value||'').trim().toLowerCase();
+  const all = girListAll();
+
+  // Filtrer
+  const codes = search ? all.filter(c => {
+    if(c.toLowerCase().includes(search)) return true;
+    const meta = JSON.parse(idbGet(GIR_PREFIX_META+c)||'{}');
+    return (meta.label||'').toLowerCase().includes(search);
+  }) : all;
+
+  if(statsEl) {
+    const nbTrace = all.filter(c=>!!idbGet(GIR_PREFIX_TRACE+c)).length;
+    const nbStops = all.filter(c=>!!idbGet(GIR_PREFIX_STOPS+c)).length;
+    statsEl.textContent = `${all.length} dossier(s) — ${nbStops} avec GPS — ${nbTrace} avec tracé`;
+  }
+
+  if(!codes.length) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:40px 20px;text-align:center">
+        <div style="font-size:40px;margin-bottom:8px">📁</div>
+        <div style="color:var(--muted);font-size:13px">${search?'Aucun résultat':'Aucun dossier girouette<br>Appuyez sur <b style=\"color:#ffc107\">+ Nouveau</b> pour créer le premier'}</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = codes.map(code => {
+    const meta     = JSON.parse(idbGet(GIR_PREFIX_META+code)||'{}');
+    const hasTrace = !!idbGet(GIR_PREFIX_TRACE+code);
+    const hasStops = !!idbGet(GIR_PREFIX_STOPS+code);
+    const full     = hasTrace && hasStops;
+
+    const borderCol = full ? '#27ae60' : hasStops ? '#00d4ff' : hasTrace ? '#8e44ad' : 'var(--border)';
+    const bgCol     = full ? 'rgba(39,174,96,.08)' : hasStops ? 'rgba(0,212,255,.06)' : hasTrace ? 'rgba(142,68,173,.06)' : 'rgba(255,255,255,.02)';
+    const dot       = full ? '#27ae60' : hasStops ? '#00d4ff' : hasTrace ? '#8e44ad' : 'var(--border)';
+
+    const badges = [
+      hasStops ? `<span style="font-size:10px;font-weight:700;color:var(--accent)">📍${meta.nbArrets||0} arrêts</span>` : '',
+      hasTrace ? `<span style="font-size:10px;font-weight:700;color:var(--green)">🗺${meta.nbPoints||0} pts</span>` : ''
+    ].filter(Boolean).join(' ');
+
+    const dateStr = meta.updatedAt
+      ? new Date(meta.updatedAt).toLocaleDateString('fr-FR')
+      : meta.importedAt
+      ? new Date(meta.importedAt).toLocaleDateString('fr-FR')
+      : '';
+
+    return `
+    <div onclick="girOpenEditor('${code}')"
+      style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+             background:${bgCol};border:1px solid ${borderCol};border-radius:10px;
+             margin-bottom:6px;cursor:pointer;transition:transform .12s"
+      onmouseover="this.style.transform='scale(1.01)'"
+      onmouseout="this.style.transform=''">
+      <!-- Point couleur -->
+      <div style="width:10px;height:10px;border-radius:50%;background:${dot};flex-shrink:0"></div>
+      <!-- Code + badges -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <span style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#ffc107">${code}</span>
+          <span style="font-size:9px;color:var(--muted)">${dateStr}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${badges||'<span style="font-size:10px;color:var(--border)">vide</span>'}</div>
+      </div>
+      <!-- Bouton éditer -->
+      <div style="padding:7px 10px;background:rgba(255,193,7,.15);border:1px solid #ffc107;
+                  color:#ffc107;border-radius:8px;font-size:12px;font-weight:700;flex-shrink:0">✏</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Appel showView → render ─────────────────────────────────────
+// (intégré dans showView existant via patch ci-dessous)
+
 </script>
 </body>
 </html>
