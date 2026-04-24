@@ -915,6 +915,9 @@ Format 2 (nouveau) : 05:40 > RÉSIDENCE DE VAUX - 759 [RÉSIDENCE DE]
         <button onclick="gdriveLoad()" class="btn" style="flex:1;background:rgba(66,133,244,.2);border:1px solid #4285f4;color:#4285f4;font-weight:700">
           ⬇️ Charger
         </button>
+        <button onclick="gdriveMerge()" class="btn" style="width:100%;background:rgba(255,193,7,.18);border:1px solid #ffc107;color:#ffc107;font-weight:700;margin-top:6px">
+          🔀 Fusionner PC ↔ Téléphone
+        </button>
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="gdriveToggleAuto()" id="gdrive-autosync-btn" class="btn btn-sm btn-ghost" style="flex:1">
@@ -8391,6 +8394,333 @@ async function gdriveLoad() {
   } catch(e) {
     toast('❌ Erreur Drive : ' + e.message);
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// FUSION PC ↔ TÉLÉPHONE
+// Stratégie :
+//   • Girouettes (gir_meta/stops/trace, gps_arret_*) → UNION des deux
+//     côtés, en gardant la version la plus récente si conflit
+//   • Données métier (trajets, roadmaps, planning…) → gagne la version
+//     avec le timestamp _savedAt le plus récent
+//   • Résultats affichés dans un panneau détaillé avant confirmation
+// ══════════════════════════════════════════════════════════════════
+
+async function gdriveMerge() {
+  if(!gdriveToken)  { toast('❌ Connectez-vous à Drive d\'abord'); return; }
+  if(!gdriveFileId) { toast('❌ Aucune sauvegarde Drive — faites ☁️ Sauvegarder d\'abord'); return; }
+
+  toast('🔄 Lecture Drive…');
+
+  let remote;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + gdriveToken } }
+    );
+    remote = await res.json();
+    if(remote.error) throw new Error(remote.error.message);
+  } catch(e) {
+    toast('❌ Erreur lecture Drive : ' + e.message);
+    return;
+  }
+
+  // Collecter données locales
+  const local = gdriveCollect();
+
+  // Construire le rapport de fusion
+  const report = _mergeAnalyse(local, remote);
+
+  // Afficher le panneau de confirmation
+  _mergeShowPanel(report, local, remote);
+}
+
+// ── Analyser les différences entre local et remote ──────────────
+function _mergeAnalyse(local, remote) {
+  const report = {
+    girouettes: { added: [], updated: [], unchanged: [] },
+    gpsArrets:  { added: [], updated: [], unchanged: [] },
+    business:   {},          // par clé GDRIVE_KEYS
+    localNewer:  null,       // true = local plus récent
+    remoteAt:   remote._savedAt || null,
+    localAt:    local._savedAt  || null,
+    remoteDevice: remote._device || '?',
+    localDevice:  local._device  || '?',
+  };
+
+  // Qui est plus récent ?
+  report.localNewer = !report.remoteAt ||
+    new Date(report.localAt) >= new Date(report.remoteAt);
+
+  // ── Girouettes : comparer les META pour déterminer laquelle est plus récente ──
+  const allGirCodes = new Set();
+  Object.keys(local) .filter(k=>k.startsWith(GIR_PREFIX_META)).forEach(k=>allGirCodes.add(k.slice(GIR_PREFIX_META.length)));
+  Object.keys(remote).filter(k=>k.startsWith(GIR_PREFIX_META)).forEach(k=>allGirCodes.add(k.slice(GIR_PREFIX_META.length)));
+
+  allGirCodes.forEach(code => {
+    const lMeta = JSON.parse(local [GIR_PREFIX_META+code] || 'null');
+    const rMeta = JSON.parse(remote[GIR_PREFIX_META+code] || 'null');
+    const lTime = lMeta?.updatedAt || lMeta?.importedAt || null;
+    const rTime = rMeta?.updatedAt || rMeta?.importedAt || null;
+
+    const lHas = !!lMeta, rHas = !!rMeta;
+
+    if(lHas && !rHas) {
+      report.girouettes.added.push({ code, from:'local',  lMeta, rMeta, lTime, rTime });
+    } else if(!lHas && rHas) {
+      report.girouettes.added.push({ code, from:'remote', lMeta, rMeta, lTime, rTime });
+    } else if(lHas && rHas) {
+      // Comparer contenu
+      const lStops = local [GIR_PREFIX_STOPS+code] || '';
+      const rStops = remote[GIR_PREFIX_STOPS+code] || '';
+      const lTrace = local [GIR_PREFIX_TRACE+code] || '';
+      const rTrace = remote[GIR_PREFIX_TRACE+code] || '';
+      if(lStops !== rStops || lTrace !== rTrace) {
+        const rNewer = rTime && lTime ? new Date(rTime) > new Date(lTime) : !lTime;
+        report.girouettes.updated.push({ code, lMeta, rMeta, lTime, rTime, rNewer });
+      } else {
+        report.girouettes.unchanged.push(code);
+      }
+    }
+  });
+
+  // ── GPS arrêts individuels ──
+  const allArrets = new Set();
+  Object.keys(local) .filter(k=>k.startsWith(GPS_ARRET_PREFIX)).forEach(k=>allArrets.add(k));
+  Object.keys(remote).filter(k=>k.startsWith(GPS_ARRET_PREFIX)).forEach(k=>allArrets.add(k));
+  allArrets.forEach(k => {
+    const lv = local[k], rv = remote[k];
+    if(!lv && rv)          report.gpsArrets.added.push({ k, from:'remote' });
+    else if(lv && !rv)     report.gpsArrets.added.push({ k, from:'local'  });
+    else if(lv !== rv)     report.gpsArrets.updated.push({ k });
+    else                   report.gpsArrets.unchanged.push(k);
+  });
+
+  // ── Données métier (GDRIVE_KEYS) ──
+  GDRIVE_KEYS.forEach(k => {
+    const lv = local[k], rv = remote[k];
+    if(!lv && !rv) return;
+    if(!lv)        report.business[k] = { status:'remote_only' };
+    else if(!rv)   report.business[k] = { status:'local_only'  };
+    else if(lv===rv) report.business[k] = { status:'same' };
+    else           report.business[k] = { status:'conflict', useLocal: report.localNewer };
+  });
+
+  return report;
+}
+
+// ── Appliquer la fusion ─────────────────────────────────────────
+function _mergeApply(report, local, remote) {
+  let count = 0;
+
+  // ── Girouettes : UNION — nouveau dossier de l'autre côté ajouté ──
+  report.girouettes.added.forEach(({ code, from }) => {
+    const src = from === 'local' ? local : remote;
+    // Écrire dans IDB local
+    if(src[GIR_PREFIX_META  +code]) { idbSet(GIR_PREFIX_META  +code, src[GIR_PREFIX_META  +code]); count++; }
+    if(src[GIR_PREFIX_STOPS +code]) { idbSet(GIR_PREFIX_STOPS +code, src[GIR_PREFIX_STOPS +code]); count++; }
+    if(src[GIR_PREFIX_TRACE +code]) { idbSet(GIR_PREFIX_TRACE +code, src[GIR_PREFIX_TRACE +code]); count++; }
+  });
+
+  // ── Girouettes en conflit : garder la plus récente ──────────
+  report.girouettes.updated.forEach(({ code, rNewer }) => {
+    const src = rNewer ? remote : local;
+    if(src[GIR_PREFIX_META  +code]) idbSet(GIR_PREFIX_META  +code, src[GIR_PREFIX_META  +code]);
+    if(src[GIR_PREFIX_STOPS +code]) idbSet(GIR_PREFIX_STOPS +code, src[GIR_PREFIX_STOPS +code]);
+    if(src[GIR_PREFIX_TRACE +code]) idbSet(GIR_PREFIX_TRACE +code, src[GIR_PREFIX_TRACE +code]);
+    count++;
+  });
+
+  // ── GPS arrêts individuels : UNION, remote gagne si conflit ──
+  report.gpsArrets.added.forEach(({ k, from }) => {
+    if(from === 'remote' && remote[k]) { idbSet(k, remote[k]); count++; }
+    // local déjà dans IDB
+  });
+  report.gpsArrets.updated.forEach(({ k }) => {
+    if(remote[k]) { idbSet(k, remote[k]); count++; } // remote wins pour les coords GPS
+  });
+
+  // ── Données métier : le plus récent gagne ───────────────────
+  Object.entries(report.business).forEach(([k, info]) => {
+    if(info.status === 'remote_only' || (info.status === 'conflict' && !info.useLocal)) {
+      if(remote[k]) { idbSet(k, remote[k]); count++; }
+    }
+    // local_only → déjà en IDB, rien à faire
+    // same / local_wins → déjà en IDB, rien à faire
+  });
+
+  // ── Sauvegarder la fusion sur Drive ─────────────────────────
+  gdriveSave();
+
+  // ── Recharger l'app ──────────────────────────────────────────
+  setTimeout(() => {
+    initDB();
+    loadGpsCoordsDB();
+    renderGirView();
+    if(typeof renderLineGrid   ==='function') renderLineGrid();
+    if(typeof renderRoadmapView==='function') renderRoadmapView();
+    if(typeof renderPlanWeek   ==='function') renderPlanWeek();
+  }, 300);
+
+  return count;
+}
+
+// ── Panneau de confirmation de la fusion ────────────────────────
+function _mergeShowPanel(report, local, remote) {
+  // Supprimer ancien panneau
+  const old = document.getElementById('merge-panel-overlay');
+  if(old) old.remove();
+
+  const girAdded    = report.girouettes.added.length;
+  const girUpdated  = report.girouettes.updated.length;
+  const girUnchanged= report.girouettes.unchanged.length;
+  const gpsAdded    = report.gpsArrets.added.length;
+  const gpsUpdated  = report.gpsArrets.updated.length;
+  const conflicts   = Object.values(report.business).filter(v=>v.status==='conflict').length;
+
+  const localDate  = report.localAt  ? new Date(report.localAt ).toLocaleString('fr-FR') : 'inconnu';
+  const remoteDate = report.remoteAt ? new Date(report.remoteAt).toLocaleString('fr-FR') : 'inconnu';
+
+  // Détail girouettes en conflit
+  const conflictRows = report.girouettes.updated.map(({ code, lTime, rTime, rNewer }) => {
+    const lStr = lTime ? new Date(lTime).toLocaleString('fr-FR') : '?';
+    const rStr = rTime ? new Date(rTime).toLocaleString('fr-FR') : '?';
+    return `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,193,7,.05);
+                  border:1px solid rgba(255,193,7,.15);border-radius:6px;font-size:10px">
+        <span style="color:#ffc107;font-weight:700;min-width:40px">${code}</span>
+        <span style="flex:1;color:var(--muted)">
+          💻 ${lStr} vs 📱 ${rStr}
+        </span>
+        <span style="color:${rNewer?'var(--accent)':'var(--green)'};font-weight:700">
+          → ${rNewer?'📱 Drive':'💻 Local'}
+        </span>
+      </div>`;
+  }).join('');
+
+  const addedRows = report.girouettes.added.map(({ code, from }) => `
+    <div style="font-size:10px;padding:3px 8px;background:rgba(39,174,96,.06);
+                border:1px solid rgba(39,174,96,.2);border-radius:5px;display:flex;gap:6px">
+      <span style="color:var(--green);font-weight:700">+${code}</span>
+      <span style="color:var(--muted)">depuis ${from==='local'?'💻 local':'☁️ Drive'}</span>
+    </div>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'merge-panel-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:700;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(255,193,7,.4);border-radius:20px 20px 0 0;
+                width:100%;max-width:540px;max-height:88vh;overflow-y:auto;
+                box-shadow:0 -6px 40px rgba(0,0,0,.7)">
+
+      <div style="display:flex;justify-content:center;padding:10px 0 0">
+        <div style="width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px"></div>
+      </div>
+
+      <div style="padding:14px 18px 22px;display:flex;flex-direction:column;gap:12px">
+
+        <!-- Titre -->
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#ffc107">
+            🔀 Fusion PC ↔ Téléphone
+          </div>
+          <button onclick="document.getElementById('merge-panel-overlay').remove()"
+            style="background:rgba(255,255,255,.08);border:1px solid var(--border);
+                   color:var(--text);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+        </div>
+
+        <!-- Sources -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">💻 LOCAL (cet appareil)</div>
+            <div style="font-size:11px;color:var(--text)">${localDate}</div>
+            <div style="font-size:10px;color:var(--muted)">${report.localDevice}</div>
+          </div>
+          <div style="background:rgba(66,133,244,.08);border:1px solid rgba(66,133,244,.3);border-radius:8px;padding:10px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.5px">☁️ DRIVE</div>
+            <div style="font-size:11px;color:var(--text)">${remoteDate}</div>
+            <div style="font-size:10px;color:var(--muted)">${report.remoteDevice}</div>
+          </div>
+        </div>
+
+        <!-- Résumé -->
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-weight:700;margin-bottom:8px">RÉSUMÉ DE LA FUSION</div>
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:12px">
+            <div style="display:flex;justify-content:space-between">
+              <span>📁 Nouveaux dossiers girouette</span>
+              <span style="color:${girAdded?'var(--green)':'var(--muted)'};font-weight:700">${girAdded}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span>🔄 Dossiers mis à jour (conflits)</span>
+              <span style="color:${girUpdated?'#ffc107':'var(--muted)'};font-weight:700">${girUpdated}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span>✅ Dossiers identiques</span>
+              <span style="color:var(--muted)">${girUnchanged}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span>📍 Arrêts GPS nouveaux/mis à jour</span>
+              <span style="color:${(gpsAdded+gpsUpdated)?'var(--accent)':'var(--muted)'};font-weight:700">${gpsAdded+gpsUpdated}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span>⚠️ Conflits données métier</span>
+              <span style="color:${conflicts?'var(--red)':'var(--muted)'};font-weight:700">${conflicts} ${conflicts?('→ '+(report.localNewer?'💻 local':'☁️ Drive')+'  gagne'):''}</span>
+            </div>
+          </div>
+        </div>
+
+        ${girAdded ? `
+        <!-- Nouveaux dossiers -->
+        <div>
+          <div style="font-size:10px;color:var(--green);letter-spacing:1px;font-weight:700;margin-bottom:6px">📁 DOSSIERS À AJOUTER</div>
+          <div style="display:flex;flex-direction:column;gap:3px">${addedRows}</div>
+        </div>` : ''}
+
+        ${girUpdated ? `
+        <!-- Conflits girouettes -->
+        <div>
+          <div style="font-size:10px;color:#ffc107;letter-spacing:1px;font-weight:700;margin-bottom:6px">⚡ RÉSOLUTION CONFLITS GIROUETTES</div>
+          <div style="display:flex;flex-direction:column;gap:3px">${conflictRows}</div>
+        </div>` : ''}
+
+        ${girAdded===0 && girUpdated===0 && gpsAdded===0 && gpsUpdated===0 && conflicts===0 ? `
+        <div style="text-align:center;padding:20px;color:var(--muted)">
+          <div style="font-size:30px;margin-bottom:8px">✅</div>
+          <div>Les deux appareils sont déjà synchronisés — rien à fusionner.</div>
+        </div>` : ''}
+
+        <!-- Boutons -->
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('merge-panel-overlay').remove()"
+            style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid var(--border);
+                   color:var(--text);border-radius:10px;cursor:pointer;font-size:13px;font-weight:700">
+            Annuler
+          </button>
+          <button onclick="_mergeConfirm()"
+            style="flex:2;padding:12px;background:rgba(255,193,7,.2);border:2px solid #ffc107;
+                   color:#ffc107;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700">
+            ✅ Appliquer la fusion
+          </button>
+        </div>
+
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Stocker rapport pour confirmation
+  window._pendingMerge = { report, local, remote };
+}
+
+function _mergeConfirm() {
+  const m = window._pendingMerge;
+  if(!m) return;
+  document.getElementById('merge-panel-overlay')?.remove();
+  const count = _mergeApply(m.report, m.local, m.remote);
+  toast(`✅ Fusion terminée — ${count} clés mises à jour`);
+  window._pendingMerge = null;
 }
 
 function gdriveToggleAuto() {
