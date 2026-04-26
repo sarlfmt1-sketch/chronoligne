@@ -274,7 +274,7 @@ select option { background: var(--bg2); }
     <div id="clock-display">--:--:--</div>
     <div class="clock-badges">
       <div id="gps-dot" title="GPS"></div>
-      <button id="terminus-btn" onclick="confirmTerminus()">🏁 TERMINUS</button>
+      <button id="terminus-btn" onclick="confirmTerminus()" style="display:none!important">🏁 TERMINUS</button>
     </div>
   </div>
 
@@ -299,14 +299,13 @@ select option { background: var(--bg2); }
         <div class="next-service-countdown" id="next-svc-countdown">--:--</div>
       </div>
 
-      <!-- Arrêt ACTUEL -->
-      <div class="live-card" id="live-current-card">
-        <div class="stop-label">ACTUEL</div>
-        <div class="stop-time" id="live-current-time">--:--</div>
-        <div class="stop-name" id="live-current-name">—</div>
-        <div id="live-delta"></div>
-        <div class="progress-bar" style="margin-top:12px">
-          <div class="progress-fill" id="live-progress"></div>
+      <!-- Arrêt SUIVANT +2 -->
+      <div class="next2-card" id="live-next2-card">
+        <div class="next2-time" id="live-next2-time">--:--</div>
+        <div class="next2-info">
+          <div class="stop-label" style="margin:0 0 2px;font-size:10px">DANS 2 ARRÊTS</div>
+          <div class="next2-name" id="live-next2-name">—</div>
+          <div class="next2-min" id="live-next2-min"></div>
         </div>
       </div>
 
@@ -320,13 +319,14 @@ select option { background: var(--bg2); }
         </div>
       </div>
 
-      <!-- Arrêt SUIVANT +2 -->
-      <div class="next2-card" id="live-next2-card">
-        <div class="next2-time" id="live-next2-time">--:--</div>
-        <div class="next2-info">
-          <div class="stop-label" style="margin:0 0 2px;font-size:10px">DANS 2 ARRÊTS</div>
-          <div class="next2-name" id="live-next2-name">—</div>
-          <div class="next2-min" id="live-next2-min"></div>
+      <!-- Arrêt ACTUEL -->
+      <div class="live-card" id="live-current-card">
+        <div class="stop-label">ACTUEL</div>
+        <div class="stop-time" id="live-current-time">--:--</div>
+        <div class="stop-name" id="live-current-name">—</div>
+        <div id="live-delta"></div>
+        <div class="progress-bar" style="margin-top:12px">
+          <div class="progress-fill" id="live-progress"></div>
         </div>
       </div>
 
@@ -818,21 +818,55 @@ function applyLibraryDefaults() {
   let added = 0;
   GPS_LIBRARY_DEFAULTS.forEach(function(row) {
     const ineo = String(row[0]), name = row[1], lat = row[2], lng = row[3];
-    const dir = row[4] || null;  // 'aller' | 'retour' | null
+    const dir = row[4] || null;
     const ki = 'ineo_' + ineo;
     const base = 'name_' + name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9']+/g,' ').trim();
     const kn = base;
     const knd = dir ? base + '_' + dir : null;
-    // N'écrase jamais un point déjà personnalisé
     if(!db.stopLibrary[ki]) {
       const entry = { ineo, name, lat, lng };
       if(dir) entry.dir = dir;
       db.stopLibrary[ki] = entry;
       if(knd) db.stopLibrary[knd] = entry;
-      // Clé générique : priorité à l'aller, ne pas écraser si déjà un aller
       if(!db.stopLibrary[kn] || dir === 'aller') db.stopLibrary[kn] = entry;
       added++;
     }
+  });
+  return added;
+}
+
+// ══════════════════════════════════════════════
+// FUSION PRELOADED_TRIPS → bibliothèque GPS
+// Parcourt tous les arrêts de PRELOADED_TRIPS qui ont lat/lng
+// et les injecte dans db.stopLibrary si absents
+// ══════════════════════════════════════════════
+function mergePreloadedTripsToLibrary() {
+  if(typeof PRELOADED_TRIPS === 'undefined') return 0;
+  let added = 0;
+  Object.entries(PRELOADED_TRIPS).forEach(function([lineNum, trips]) {
+    trips.forEach(function(trip) {
+      const dir = trip.direction || null;
+      (trip.stops || []).forEach(function(stop) {
+        if(!stop.lat || !stop.lng) return; // pas de coords → on skip
+        const ineo = stop.ineo ? String(stop.ineo) : null;
+        const name = stop.name || '';
+        const base = 'name_' + name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9']+/g,' ').trim();
+        const ki = ineo ? 'ineo_' + ineo : null;
+        const kn = base;
+        const knd = dir ? base + '_' + dir : null;
+        // N'écrase jamais un point déjà en bibliothèque
+        const alreadyThere = (ki && db.stopLibrary[ki]) || db.stopLibrary[kn];
+        if(!alreadyThere) {
+          const entry = { name, lat: stop.lat, lng: stop.lng };
+          if(ineo) entry.ineo = ineo;
+          if(dir)  entry.dir  = dir;
+          if(ki)   db.stopLibrary[ki]  = entry;
+          if(knd)  db.stopLibrary[knd] = entry;
+          if(!db.stopLibrary[kn] || dir === 'aller') db.stopLibrary[kn] = entry;
+          added++;
+        }
+      });
+    });
   });
   return added;
 }
@@ -846,9 +880,11 @@ function loadDB() {
   if(!db.gpsCoords) db.gpsCoords = {};
   if(!db.stopLibrary) db.stopLibrary = {};
   if(!db.options) db.options = { gpsRadius: 80, earlyTol: 30, lateTol: 120 };
-  // Fusionner les défauts (seulement les entrées manquantes)
-  const added = applyLibraryDefaults();
-  if(added > 0) saveDB();
+  // 1. Fusionner GPS_LIBRARY_DEFAULTS (arrêts manuels)
+  const a1 = applyLibraryDefaults();
+  // 2. Fusionner PRELOADED_TRIPS (arrêts avec lat/lng dans les trajets)
+  const a2 = mergePreloadedTripsToLibrary();
+  if(a1 + a2 > 0) saveDB();
 }
 
 // Clé GPS unique par arrêt
@@ -957,19 +993,9 @@ function updateLive() {
     next2Card.style.display = 'none';
   }
 
-  // Barre trajet suivant
+  // Barre trajet suivant — masquée car passage automatique
   const nextTripBar = document.getElementById('next-trip-bar');
-  const isLastStop = activeStopIdx >= trip.stops.length - 1;
-  const nextTripIdx = activeTripIdx + 1;
-  if(isLastStop && nextTripIdx < activeService.trips.length) {
-    const nt = activeService.trips[nextTripIdx];
-    nextTripBar.style.display = 'flex';
-    document.getElementById('next-trip-label').textContent = nt.label || ('Trajet ' + (nextTripIdx+1));
-    const ntFirst = nt.stops[0];
-    document.getElementById('next-trip-time').textContent = ntFirst?.time ? '1er arrêt : ' + ntFirst.time : '';
-  } else {
-    nextTripBar.style.display = 'none';
-  }
+  if(nextTripBar) nextTripBar.style.display = 'none';
 
   // Barre de progression entre arrêts
   if(stop.time && nextStop?.time) {
@@ -1010,7 +1036,18 @@ function validateCurrentStop() {
     renderTrajetIfVisible();
     toast('▶ ' + trip.stops[activeStopIdx].name);
   } else {
-    toast('🏁 Dernier arrêt — appuie sur TERMINUS');
+    // Dernier arrêt : passage automatique au trajet suivant
+    const nextIdx = activeTripIdx + 1;
+    if(nextIdx < activeService.trips.length) {
+      const nextLabel = activeService.trips[nextIdx].label || ('Trajet ' + (nextIdx+1));
+      activeTripIdx = nextIdx;
+      activeStopIdx = 0;
+      updateLive();
+      renderTrajetIfVisible();
+      toast('🚌 AUTO → ' + nextLabel);
+    } else {
+      toast('🏁 Fin de service — dernier trajet terminé');
+    }
   }
 }
 
@@ -1144,7 +1181,29 @@ function startGPS() {
             const coord = db.gpsCoords[key];
             if(!coord) continue;
             const d = haversine(lastGPSPos.lat, lastGPSPos.lng, coord.lat, coord.lng);
-            if(d <= radius) { activeStopIdx = i; updateLive(); renderTrajetIfVisible(); break; }
+            if(d <= radius) {
+              activeStopIdx = i;
+              // Si c'est le dernier arrêt du trajet → passage auto au suivant
+              if(activeStopIdx >= trip.stops.length - 1) {
+                const nextIdx = activeTripIdx + 1;
+                if(nextIdx < activeService.trips.length) {
+                  const nextLabel = activeService.trips[nextIdx].label || ('Trajet ' + (nextIdx+1));
+                  activeTripIdx = nextIdx;
+                  activeStopIdx = 0;
+                  updateLive();
+                  renderTrajetIfVisible();
+                  toast('🚌 AUTO GPS → ' + nextLabel);
+                } else {
+                  updateLive();
+                  renderTrajetIfVisible();
+                  toast('🏁 Fin de service — dernier trajet terminé');
+                }
+              } else {
+                updateLive();
+                renderTrajetIfVisible();
+              }
+              break;
+            }
           }
         }
       }
@@ -1235,6 +1294,14 @@ function injectLibraryGPS(svc) {
   svc.trips.forEach((trip, ti) => {
     const dir = trip.direction || null;
     trip.stops.forEach((stop, si) => {
+      // 1. Coordonnees directement dans l'arret (lat/lng embarques dans le trajet)
+      if(stop.lat && stop.lng) {
+        db.gpsCoords[gpsKey(svc.id, ti, si)] = { lat: stop.lat, lng: stop.lng };
+        libSet(stop.ineo || null, stop.name, stop.lat, stop.lng, dir);
+        injected++;
+        return;
+      }
+      // 2. Fallback : chercher dans la bibliotheque
       const coord = libLookup(stop.ineo, stop.name, dir);
       if(coord) {
         db.gpsCoords[gpsKey(svc.id, ti, si)] = { lat: coord.lat, lng: coord.lng };
@@ -1248,7 +1315,7 @@ function injectLibraryGPS(svc) {
   const total = svc.trips.reduce((a,t) => a + t.stops.length, 0);
   const pct = Math.round(injected / total * 100);
   if(injected > 0) toast('\u{1F4CD} ' + injected + '/' + total + ' arr\xEAts GPS inject\xE9s (' + pct + '%)');
-  if(missing.length > 0) console.log('GPS manquants:', missing);
+  if(missing.length > 0) console.log('GPS manquants:', missing.join(', '));
 }
 
 // ══════════════════════════════════════════════
@@ -3549,7 +3616,7 @@ function startServiceDirect(num, jour) {
     day: jour === 'semaine' ? 'sem' : jour === 'samedi' ? 'sam' : 'dim',
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
-      stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null }))
+      stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
     }))
   };
 
