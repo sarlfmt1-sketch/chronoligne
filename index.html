@@ -609,16 +609,37 @@ select option { background: var(--bg2); }
     </div>
 
     <div class="card" id="card-install" style="border-color:rgba(0,212,255,.3)">
-      <div class="card-title">📲 INSTALLATION</div>
-      <div id="install-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-        Installe l'app sur ton écran d'accueil pour l'utiliser hors-ligne comme une vraie appli.
+      <div class="card-title">📲 INSTALLER SUR ANDROID</div>
+      <div style="font-size:12px;color:var(--orange);background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.3);border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.7">
+        ⚠️ Ce fichier HTML ne peut pas s'installer automatiquement.<br>
+        Suis ces étapes dans <b>Chrome</b> :
       </div>
-      <button class="btn btn-primary" id="install-btn" style="width:100%;margin-bottom:8px" onclick="pwaInstall()">
-        📲 Installer sur Android
+      <div style="font-size:13px;line-height:2;color:var(--text)">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <span style="background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;margin-top:2px">1</span>
+          <span>Ouvre ce fichier dans <b>Google Chrome</b> sur Android</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <span style="background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;margin-top:2px">2</span>
+          <span>Appuie sur les <b>3 points ⋮</b> en haut à droite</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <span style="background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;margin-top:2px">3</span>
+          <span>Appuie sur <b>"Ajouter à l'écran d'accueil"</b></span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <span style="background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;margin-top:2px">4</span>
+          <span>Confirme avec <b>"Ajouter"</b> → icône sur l'écran d'accueil ✅</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.5">
+        💡 Sur Samsung Internet : Menu → "Ajouter page à" → "Écran d'accueil"
+      </div>
+      <!-- Bouton caché, activé si Chrome détecte le prompt natif -->
+      <button class="btn btn-primary" id="install-btn" style="width:100%;margin-top:10px;display:none" onclick="pwaInstall()">
+        📲 Installer automatiquement
       </button>
-      <div style="font-size:11px;color:var(--muted);text-align:center" id="install-hint">
-        Si le bouton n'apparaît pas : Menu Chrome ⋮ → "Ajouter à l'écran d'accueil"
-      </div>
+      <div id="install-hint" style="display:none"></div>
     </div>
 
     <div class="card" style="border-color:rgba(255,193,7,.3)">
@@ -935,7 +956,14 @@ function updateLive() {
 
   // Arrêt actuel
   document.getElementById('live-current-name').textContent = stop.name;
-  document.getElementById('live-current-time').textContent = stop.time || '--:--';
+  // Heure actuel avec secondes en direct
+  if(stop.time) {
+    const now = new Date();
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('live-current-time').textContent = stop.time + ':' + ss;
+  } else {
+    document.getElementById('live-current-time').textContent = '--:--:--';
+  }
 
   // Delta (avance/retard)
   const deltaEl = document.getElementById('live-delta');
@@ -4339,9 +4367,8 @@ window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredInstallPrompt = e;
   const btn = document.getElementById('install-btn');
-  const hint = document.getElementById('install-hint');
-  if(btn) { btn.textContent = '📲 Installer ChronoLigne'; btn.disabled = false; }
-  if(hint) hint.style.display = 'none';
+  // Afficher le bouton natif Chrome si disponible
+  if(btn) { btn.style.display = 'block'; btn.textContent = '📲 Installer ChronoLigne (automatique)'; btn.disabled = false; }
 });
 
 window.addEventListener('appinstalled', () => {
