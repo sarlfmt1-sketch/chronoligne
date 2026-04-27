@@ -604,8 +604,10 @@ select option { background: var(--bg2); }
   <div class="view" id="view-options">
     <div class="card">
       <div class="card-title">⚙ PARAMÈTRES</div>
-      <div class="form-label">RAYON GPS AUTO (mètres)</div>
+      <div class="form-label">RAYON ARRIVÉE GPS (mètres)</div>
       <input type="number" id="opt-gps-radius" value="80" min="20" max="300">
+      <div class="form-label">RAYON DÉPART (mètres) — affiche prochain arrêt dès que tu t'éloignes</div>
+      <input type="number" id="opt-depart-radius" value="50" min="10" max="200">
       <div class="form-label">AVANCE TOLÉRÉE (sec)</div>
       <input type="number" id="opt-early" value="30" min="0" max="120">
       <div class="form-label">RETARD TOLÉRÉ (sec)</div>
@@ -733,7 +735,7 @@ let db = {
   services: [],        // { id, name, day:'sem'|'sam'|'dim', trips:[] }
   gpsCoords: {},       // { 'svcId_tripIdx_stopIdx': {lat,lng} }
   stopLibrary: {},     // { 'ineo_227': {lat,lng,name}, ... }
-  options: { gpsRadius: 80, earlyTol: 30, lateTol: 120 }
+  options: { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 }
 };
 
 let activeService = null;  // service courant
@@ -925,7 +927,8 @@ function loadDB() {
   if(!db.services) db.services = [];
   if(!db.gpsCoords) db.gpsCoords = {};
   if(!db.stopLibrary) db.stopLibrary = {};
-  if(!db.options) db.options = { gpsRadius: 80, earlyTol: 30, lateTol: 120 };
+  if(!db.options) db.options = { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 };
+  if(!db.options.departRadius) db.options.departRadius = 50;
   // 1. Fusionner GPS_LIBRARY_DEFAULTS (arrêts manuels)
   const a1 = applyLibraryDefaults();
   // 2. Fusionner PRELOADED_TRIPS (arrêts avec lat/lng dans les trajets)
@@ -975,12 +978,16 @@ function updateLive() {
   const trip = activeService.trips[activeTripIdx];
   if(!trip || !trip.stops.length) return;
 
-  const stop = trip.stops[activeStopIdx];
-  const nextStop = trip.stops[activeStopIdx + 1] || null;
-  const next2Stop = trip.stops[activeStopIdx + 2] || null;
+  // Si le prochain arrêt est en mode preview (départ détecté) → l'afficher comme courant
+  const nextIsPreviewing = trip.stops[activeStopIdx + 1]?._previewing;
+  const displayIdx = nextIsPreviewing ? activeStopIdx + 1 : activeStopIdx;
 
-  // Arrêt actuel
-  document.getElementById('live-current-name').textContent = stop.name;
+  const stop = trip.stops[displayIdx];
+  const nextStop = trip.stops[displayIdx + 1] || null;
+  const next2Stop = trip.stops[displayIdx + 2] || null;
+
+  // Arrêt actuel (avec indicateur visuel si en preview)
+  document.getElementById('live-current-name').textContent = stop.name + (nextIsPreviewing ? ' 🚌' : '');
   // Heure actuel avec secondes en direct
   if(stop.time) {
     const now = new Date();
@@ -1261,9 +1268,55 @@ function startGPS() {
         const trip = activeService.trips[activeTripIdx];
         if(trip) {
           const radius = db.options?.gpsRadius || 80;
+          const departRadius = db.options?.departRadius || 50;
+
+          // ── GARDE-FOU TEMPOREL : bloquer GPS auto si le trajet n'a pas encore commencé ──
+          // Évite qu'un arrêt du trajet suivant soit détecté alors qu'on est encore au terminus
+          const firstStopTime = trip.stops[0]?.time;
+          if(firstStopTime) {
+            const nowSec  = timeToSec(nowTimeStr());
+            const startSec = timeToSec(firstStopTime);
+            // Bloquer si on est plus de 2 minutes AVANT l'heure du 1er arrêt
+            if(nowSec < startSec - 120) return;
+          }
+
+          // ── DÉTECTION DÉPART : si on s'éloigne de l'arrêt actuel → afficher le prochain ──
+          if(activeStopIdx >= 0 && activeStopIdx < trip.stops.length - 1) {
+            const curStop = trip.stops[activeStopIdx];
+            let curCoord = null;
+            if(curStop.lat && curStop.lng) {
+              curCoord = { lat: curStop.lat, lng: curStop.lng };
+            } else {
+              const curKey = gpsKey(activeService.id, activeTripIdx, activeStopIdx);
+              curCoord = db.gpsCoords[curKey] || null;
+            }
+            if(curCoord) {
+              const distFromCurrent = haversine(lastGPSPos.lat, lastGPSPos.lng, curCoord.lat, curCoord.lng);
+              if(distFromCurrent > departRadius) {
+                // On s'est éloigné — prévisualiser le prochain arrêt sans valider
+                const nextPreview = trip.stops[activeStopIdx + 1];
+                if(nextPreview && !nextPreview._previewing) {
+                  // Marquer en preview pour éviter le toast répété
+                  trip.stops.forEach(s => delete s._previewing);
+                  nextPreview._previewing = true;
+                  updateLive();
+                  renderTrajetIfVisible();
+                }
+              }
+            }
+          }
+
           for(let i = activeStopIdx + 1; i < trip.stops.length; i++) {
-            const key = gpsKey(activeService.id, activeTripIdx, i);
-            const coord = db.gpsCoords[key];
+            // Priorité 1 : lat/lng dans le stop (PRELOADED_TRIPS)
+            // Priorité 2 : coords localStorage (db.gpsCoords)
+            const stop = trip.stops[i];
+            let coord = null;
+            if(stop.lat && stop.lng) {
+              coord = { lat: stop.lat, lng: stop.lng };
+            } else {
+              const key = gpsKey(activeService.id, activeTripIdx, i);
+              coord = db.gpsCoords[key] || null;
+            }
             if(!coord) continue;
             const d = haversine(lastGPSPos.lat, lastGPSPos.lng, coord.lat, coord.lng);
             if(d <= radius) {
@@ -3651,7 +3704,7 @@ function renderSvcList() {
             }).join(' → ')}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="startServiceDirect('${s.num}','${s.jour}');event.stopPropagation()" style="background:var(--green);color:#000;font-weight:700;flex:1">▶ Démarrer</button>
+            <button class="btn btn-sm" onclick="startServiceChooseTrip('${s.num}','${s.jour}');event.stopPropagation()" style="background:var(--green);color:#000;font-weight:700;flex:1">▶ Démarrer</button>
             <button class="btn btn-sm btn-ghost" onclick="openSvcEditor('${s.num}','${s.jour}');event.stopPropagation()">✏ Éditer</button>
             <button class="btn btn-sm btn-ghost" onclick="downloadSvc('${s.num}','${s.jour}');event.stopPropagation()">📥</button>
             <button class="btn btn-sm btn-danger" onclick="editorDeleteSvc('${s.num}','${s.jour}');event.stopPropagation()">✕</button>
@@ -3685,6 +3738,65 @@ function renderSvcList() {
 function toggleSvc(idx) {
   svcOpenIdx = (svcOpenIdx === idx) ? null : idx;
   renderSvcList();
+}
+
+function startServiceChooseTrip(num, jour) {
+  loadRoadmapServices();
+  jour = jour || svcFilter;
+  const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
+  if(!svc || !svc.trips.length) { toast('❌ Aucun trajet dans ce service'); return; }
+
+  // Si un seul trajet → démarrer directement
+  if(svc.trips.length === 1) { startServiceAt(num, jour, 0); return; }
+
+  // Sinon → modale de sélection du trajet de départ
+  const tripsHtml = svc.trips.map((t, idx) => {
+    const num2 = t.lineNum || '';
+    const color = t.lineColor || '#888';
+    const label = (t.label || 'Trajet ' + (idx+1)).replace(/^Ligne \S+ — /,'');
+    const firstTime = t.stops?.[0]?.time || '';
+    const lastTime  = t.stops?.[t.stops.length-1]?.time || '';
+    return `
+      <button class="btn btn-secondary" onclick="startServiceAt('${num}','${jour}',${idx});closeModal()" style="width:100%;margin-bottom:8px;padding:12px;text-align:left;border-color:${color}40">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;font-size:13px">${num2}</span>
+          <span style="font-size:13px;flex:1">${label}</span>
+          <span style="font-size:12px;color:var(--accent);font-family:monospace">${firstTime}→${lastTime}</span>
+        </div>
+      </button>`;
+  }).join('');
+
+  showModal('▶ Démarrer sur quel trajet ?', `
+    <div style="font-size:14px;color:var(--muted);margin-bottom:12px">Service ${num} — choisir le trajet de départ :</div>
+    ${tripsHtml}
+    <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:4px" onclick="closeModal()">Annuler</button>
+  `);
+}
+
+function startServiceAt(num, jour, tripIdx) {
+  loadRoadmapServices();
+  jour = jour || svcFilter;
+  const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
+  if(!svc || !svc.trips.length) { toast('❌ Aucun trajet dans ce service'); return; }
+
+  const chronoSvc = {
+    id: 'svc_editor_' + num + '_' + jour,
+    name: 'Service ' + num,
+    lineNum: svc.trips[tripIdx]?.lineNum || svc.trips[0]?.lineNum || '?',
+    day: jour === 'semaine' ? 'sem' : jour === 'samedi' ? 'sam' : 'dim',
+    trips: svc.trips.map(t => ({
+      label: t.label || 'Trajet',
+      stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
+    }))
+  };
+
+  activeService = chronoSvc;
+  activeTripIdx = tripIdx;
+  activeStopIdx = 0;
+  injectLibraryGPS(chronoSvc);
+  showView('view-live');
+  const tripLabel = chronoSvc.trips[tripIdx]?.label || ('Trajet ' + (tripIdx+1));
+  toast('▶ Service ' + num + ' — ' + tripLabel);
 }
 
 function startServiceDirect(num, jour) {
@@ -4226,6 +4338,7 @@ function initEditor() {
 // ══════════════════════════════════════════════
 function loadOptions() {
   document.getElementById('opt-gps-radius').value = db.options.gpsRadius || 80;
+  document.getElementById('opt-depart-radius').value = db.options.departRadius || 50;
   document.getElementById('opt-early').value = db.options.earlyTol || 30;
   document.getElementById('opt-late').value = db.options.lateTol || 120;
 
@@ -4249,6 +4362,7 @@ function loadOptions() {
 
 function saveOptions() {
   db.options.gpsRadius = parseInt(document.getElementById('opt-gps-radius').value) || 80;
+  db.options.departRadius = parseInt(document.getElementById('opt-depart-radius').value) || 50;
   db.options.earlyTol = parseInt(document.getElementById('opt-early').value) || 30;
   db.options.lateTol = parseInt(document.getElementById('opt-late').value) || 120;
   saveDB(); toast('✅ Options sauvegardées');
@@ -4298,7 +4412,8 @@ function importJSON(event) {
       if(!db.services) db.services = [];
       if(!db.gpsCoords) db.gpsCoords = {};
       if(!db.stopLibrary) db.stopLibrary = {};
-      if(!db.options) db.options = { gpsRadius: 80, earlyTol: 30, lateTol: 120 };
+      if(!db.options) db.options = { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 };
+  if(!db.options.departRadius) db.options.departRadius = 50;
       saveDB(); toast('✅ Données importées'); renderSvcList();
     } catch(e) { toast('❌ Fichier JSON invalide'); }
   };
@@ -4317,7 +4432,7 @@ function resetAll() {
 }
 function confirmResetAll() {
   const lib = db.stopLibrary || {};
-  db = { services: [], gpsCoords: {}, stopLibrary: lib, options: { gpsRadius: 80, earlyTol: 30, lateTol: 120 } };
+  db = { services: [], gpsCoords: {}, stopLibrary: lib, options: { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 } };
   activeService = null; activeTripIdx = null; activeStopIdx = 0;
   saveDB(); closeModal(); location.reload();
 }
