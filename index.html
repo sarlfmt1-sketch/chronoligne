@@ -108,6 +108,20 @@ nav {
 .next2-name { font-size: 16px; font-weight: 600; color: var(--muted); }
 .next2-min { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
+/* Bloc PAUSE entre trajets */
+.pause-bar {
+  background: rgba(155,89,182,.1); border: 1px solid rgba(155,89,182,.4);
+  border-radius: 14px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.pause-icon { font-size: 28px; flex-shrink: 0; }
+.pause-info { flex: 1; }
+.pause-label { font-size: 10px; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  letter-spacing: 1.5px; color: rgba(155,89,182,1); margin-bottom: 3px; }
+.pause-duration { font-family: 'Share Tech Mono', monospace; font-size: 32px; font-weight: 700; color: #c39bd3; line-height: 1; }
+.pause-detail { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.pause-next-label { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 6px; }
+
 /* Badge avance/retard */
 .delta-badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -306,6 +320,17 @@ select option { background: var(--bg2); }
           <div class="stop-label" style="margin:0 0 2px;font-size:10px">DANS 2 ARRÊTS</div>
           <div class="next2-name" id="live-next2-name">—</div>
           <div class="next2-min" id="live-next2-min"></div>
+        </div>
+      </div>
+
+      <!-- PAUSE entre trajets -->
+      <div class="pause-bar" id="live-pause-bar" style="display:none">
+        <div class="pause-icon">☕</div>
+        <div class="pause-info">
+          <div class="pause-label">PAUSE AVANT TRAJET SUIVANT</div>
+          <div class="pause-duration" id="pause-duration">--min</div>
+          <div class="pause-next-label" id="pause-next-label"></div>
+          <div class="pause-detail" id="pause-detail"></div>
         </div>
       </div>
 
@@ -1024,6 +1049,38 @@ function updateLive() {
   // Barre trajet suivant — masquée car passage automatique
   const nextTripBar = document.getElementById('next-trip-bar');
   if(nextTripBar) nextTripBar.style.display = 'none';
+
+  // ── Bloc PAUSE ──────────────────────────────────────────────
+  const pauseBar = document.getElementById('live-pause-bar');
+  if(pauseBar) {
+    const isLastStop = activeStopIdx >= trip.stops.length - 1;
+    const nextTrip = activeService.trips[activeTripIdx + 1] || null;
+    if(isLastStop && nextTrip) {
+      const lastStopTime  = stop.time;                          // fin du trajet actuel
+      const nextFirstTime = nextTrip.stops[0]?.time || null;   // début du trajet suivant
+      if(lastStopTime && nextFirstTime) {
+        const secEnd   = timeToSec(lastStopTime);
+        const secStart = timeToSec(nextFirstTime);
+        const pauseSec = secStart - secEnd;
+        if(pauseSec > 0) {
+          const pm = Math.floor(pauseSec / 60), ps = pauseSec % 60;
+          document.getElementById('pause-duration').textContent =
+            pm > 0 ? pm + 'min ' + (ps > 0 ? ps + 's' : '') : ps + 's';
+          document.getElementById('pause-next-label').textContent =
+            '→ ' + (nextTrip.label || ('Trajet ' + (activeTripIdx + 2)));
+          document.getElementById('pause-detail').textContent =
+            'Départ suivant : ' + nextFirstTime.substring(0,5) + ' — Terminus actuel : ' + lastStopTime.substring(0,5);
+          pauseBar.style.display = 'flex';
+        } else {
+          pauseBar.style.display = 'none';
+        }
+      } else {
+        pauseBar.style.display = 'none';
+      }
+    } else {
+      pauseBar.style.display = 'none';
+    }
+  }
 
   // Barre de progression entre arrêts
   if(stop.time && nextStop?.time) {
