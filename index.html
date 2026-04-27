@@ -304,15 +304,6 @@ select option { background: var(--bg2); }
     <!-- Trajet actif -->
     <div id="live-content" style="display:none;gap:10px;flex-direction:column">
 
-      <!-- Prochain service -->
-      <div id="next-service-bar" class="next-service-bar" style="display:none">
-        <div>
-          <div class="next-service-label">PROCHAIN SERVICE</div>
-          <div class="next-service-info" id="next-svc-label">—</div>
-        </div>
-        <div class="next-service-countdown" id="next-svc-countdown">--:--</div>
-      </div>
-
       <!-- Arrêt SUIVANT +2 -->
       <div class="next2-card" id="live-next2-card">
         <div class="next2-time" id="live-next2-time">--:--</div>
@@ -353,6 +344,15 @@ select option { background: var(--bg2); }
         <div class="progress-bar" style="margin-top:12px">
           <div class="progress-fill" id="live-progress"></div>
         </div>
+      </div>
+
+      <!-- Prochain service -->
+      <div id="next-service-bar" class="next-service-bar" style="display:none">
+        <div>
+          <div class="next-service-label">PROCHAIN SERVICE</div>
+          <div class="next-service-info" id="next-svc-label">—</div>
+        </div>
+        <div class="next-service-countdown" id="next-svc-countdown">--:--</div>
       </div>
 
       <!-- Trajet suivant -->
