@@ -946,8 +946,37 @@ function updateClock() {
   const now = new Date();
   const hms = now.toTimeString().substring(0,8);
   document.getElementById('clock-display').textContent = hms;
+  autoAdvanceByTime();
   updateLive();
   updateNextServiceCountdown();
+}
+
+// ── AUTO-AVANCEMENT PAR HEURE (si pas de GPS disponible) ──
+// Avance au prochain arrêt dès que son heure est dépassée
+function autoAdvanceByTime() {
+  if(!activeService || activeTripIdx === null) return;
+  const trip = activeService.trips[activeTripIdx];
+  if(!trip || !trip.stops.length) return;
+
+  // Ne pas utiliser si GPS actif et fonctionnel
+  if(lastGPSPos && gpsWatchId !== null) return;
+
+  const nowSec = timeToSec(nowTimeStr());
+  const nextIdx = activeStopIdx + 1;
+  if(nextIdx >= trip.stops.length) return;
+
+  const nextStop = trip.stops[nextIdx];
+  if(!nextStop?.time) return;
+
+  const nextSec = timeToSec(nextStop.time);
+
+  // Avancer si l'heure du prochain arrêt est dépassée (+ 30 sec de tolérance)
+  if(nowSec >= nextSec - 30) {
+    activeStopIdx = nextIdx;
+    // Nettoyer preview si présent
+    trip.stops.forEach(s => delete s._previewing);
+    renderTrajetIfVisible();
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -2557,6 +2586,7 @@ const PRELOADED_TRIPS = {
         {name:'Vignes Blanches', ineo:'832', lat:49.01115634908333, lng:2.050858334166697, intervalAfter:1},
         {name:'Croix Saint-Jacques', ineo:'158', lat:49.01179092551089, lng:2.053152089958081, intervalAfter:1},
         {name:'Le Pont', ineo:'445', lat:49.01505820459918, lng:2.0571246654531308, intervalAfter:1},
+        {name:'Le Stade', ineo:'450', lat:49.01872508602828, lng:2.052300772696165, intervalAfter:1},
         {name:'Île-De-Loisirs', ineo:'330', lat:49.02236827808445, lng:2.055399020361009, intervalAfter:1},
         {name:'Brûloir-Hautil', ineo:'80', lat:49.0302348325448, lng:2.0703772125197717, intervalAfter:1},
         {name:'Conseil Départemental / Conseil Général', ineo:'142', lat:49.03188702795798, lng:2.075072019069695, intervalAfter:1},
@@ -2680,6 +2710,7 @@ const PRELOADED_TRIPS = {
         {name:'Vignes Blanches', ineo:'832', lat:49.01115634908333, lng:2.050858334166697, intervalAfter:1},
         {name:'Croix Saint-Jacques', ineo:'158', lat:49.01179092551089, lng:2.053152089958081, intervalAfter:1},
         {name:'Le Pont', ineo:'445', lat:49.01505820459918, lng:2.0571246654531308, intervalAfter:1},
+        {name:'Le Stade', ineo:'450', lat:49.01872508602828, lng:2.052300772696165, intervalAfter:1},
         {name:'Île-De-Loisirs', ineo:'330', lat:49.02236827808445, lng:2.055399020361009, intervalAfter:1},
         {name:'Brûloir-Hautil', ineo:'80', lat:49.0302348325448, lng:2.0703772125197717, intervalAfter:1},
         {name:'Conseil Départemental / Conseil Général', ineo:'142', lat:49.03188702795798, lng:2.075072019069695, intervalAfter:1},
