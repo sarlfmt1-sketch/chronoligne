@@ -57,14 +57,24 @@ nav {
   flex-shrink: 0;
 }
 #clock-display {
-  font-family: 'Share Tech Mono', monospace; font-size: 32px; color: var(--text);
-  letter-spacing: 2px; line-height: 1;
+  font-family: 'Share Tech Mono', monospace; font-size: 48px; color: var(--text);
+  letter-spacing: 3px; line-height: 1;
 }
 .clock-badges { display: flex; gap: 8px; align-items: center; }
-#gps-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: background .3s; }
-#gps-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
-#gps-dot.lost { background: var(--red); }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+#gps-dot {
+  width: 36px; height: 20px; border-radius: 5px;
+  background: var(--muted); transition: background .3s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; font-family: 'Rajdhani', sans-serif;
+  color: #000; letter-spacing: 0.5px;
+}
+#gps-dot::after { content: 'GPS'; }
+#gps-dot.active {
+  background: var(--green); box-shadow: 0 0 10px var(--green);
+  animation: pulse 1.5s infinite; color: #000;
+}
+#gps-dot.lost { background: var(--red); color: #fff; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
 #terminus-btn {
   background: rgba(231,76,60,.15); border: 1.5px solid var(--red); color: var(--red);
