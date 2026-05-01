@@ -4558,6 +4558,11 @@ function boot() {
     updateWakeLockUI();
   });
 
+  // 6. GPS automatique au démarrage
+  setTimeout(() => {
+    startGPS();
+  }, 1000);
+
   initEditor();
   console.log('✅ ChronoLigne PRO v2 — prêt');
 }
