@@ -61,20 +61,10 @@ nav {
   letter-spacing: 3px; line-height: 1;
 }
 .clock-badges { display: flex; gap: 8px; align-items: center; }
-#gps-dot {
-  width: 36px; height: 20px; border-radius: 5px;
-  background: var(--muted); transition: background .3s;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 700; font-family: 'Rajdhani', sans-serif;
-  color: #000; letter-spacing: 0.5px;
-}
-#gps-dot::after { content: 'GPS'; }
-#gps-dot.active {
-  background: var(--green); box-shadow: 0 0 10px var(--green);
-  animation: pulse 1.5s infinite; color: #000;
-}
-#gps-dot.lost { background: var(--red); color: #fff; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+#gps-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: background .3s; }
+#gps-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
+#gps-dot.lost { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
 #terminus-btn {
   background: rgba(231,76,60,.15); border: 1.5px solid var(--red); color: var(--red);
@@ -165,6 +155,39 @@ nav {
 .next-service-label { font-size: 11px; color: var(--accent); font-family: 'Rajdhani', sans-serif; letter-spacing: 1.5px; font-weight: 700; }
 .next-service-info { font-size: 15px; font-weight: 700; }
 .next-service-countdown { font-family: 'Share Tech Mono', monospace; font-size: 22px; color: var(--accent); }
+
+/* ── PLANNING ── */
+.plan-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+.plan-nav { background:rgba(255,255,255,.07); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 14px; font-size:18px; cursor:pointer; }
+.plan-nav:hover { background:rgba(255,255,255,.15); }
+.plan-title { font-size:15px; font-weight:700; color:var(--accent); text-align:center; flex:1; }
+.plan-day {
+  background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px; position:relative;
+}
+.plan-day.today { border-color:var(--accent); box-shadow:0 0 8px rgba(0,212,255,.2); }
+.plan-day.repos { opacity:.5; }
+.plan-day.ferie { border-color:#ffc107; }
+.plan-day-date { min-width:52px; text-align:center; }
+.plan-day-dow { font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; }
+.plan-day-num { font-size:22px; font-weight:700; font-family:'Rajdhani',sans-serif; line-height:1; }
+.plan-day.today .plan-day-num { color:var(--accent); }
+.plan-day-body { flex:1; }
+.plan-day-svc { font-size:13px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.plan-day-svc .svc-label { font-size:15px; color:var(--accent); font-family:'Rajdhani',sans-serif; font-weight:700; }
+.plan-day-svc .svc-hours { font-size:12px; color:var(--muted); font-family:'Share Tech Mono',monospace; }
+.plan-day-lines { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.plan-line-badge { padding:1px 7px; border-radius:4px; font-size:11px; font-weight:700; color:#fff; }
+.plan-day-repos { font-size:13px; color:var(--muted); font-style:italic; }
+.plan-edit-btn { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:12px; cursor:pointer; flex-shrink:0; }
+.plan-edit-btn:hover { color:var(--text); border-color:var(--accent); }
+.plan-selector { position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--border); padding:14px; z-index:100; transform:translateY(100%); transition:transform .25s; border-radius:16px 16px 0 0; max-height:70vh; overflow-y:auto; }
+.plan-selector.open { transform:translateY(0); }
+.plan-selector-title { font-size:13px; font-weight:700; margin-bottom:10px; color:var(--accent); }
+.plan-svc-option { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; cursor:pointer; display:flex; align-items:center; gap:10px; }
+.plan-svc-option:hover { background:rgba(255,255,255,.1); }
+.plan-svc-option.selected { border-color:var(--accent); background:rgba(0,212,255,.08); }
+.plan-svc-cancel { background:rgba(231,76,60,.1); border:1px solid rgba(231,76,60,.3); color:var(--red); border-radius:8px; padding:10px; text-align:center; cursor:pointer; margin-top:6px; font-weight:700; }
 
 /* ── TRAJET ── */
 .trip-header {
@@ -298,7 +321,7 @@ select option { background: var(--bg2); }
     <div id="clock-display">--:--:--</div>
     <div class="clock-badges">
       <div id="gps-dot" title="GPS"></div>
-      <button id="terminus-btn" onclick="confirmTerminus()" style="display:none!important">🏁 TERMINUS</button>
+      <button id="terminus-btn" onclick="confirmTerminus()">🏁 TERMINUS</button>
     </div>
   </div>
 
@@ -397,13 +420,25 @@ select option { background: var(--bg2); }
 
   <!-- ══ TRAJET ══ -->
   <div class="view" id="view-trajet">
-    <div id="trajet-empty" class="empty">
-      <div class="ico">📋</div>
-      <p>Aucun trajet actif</p>
+    <!-- Sous-onglets : Trajet / Planning -->
+    <div style="display:flex;gap:4px;margin-bottom:10px">
+      <button id="tab-trajet-btn" class="btn btn-primary btn-sm" style="flex:1" onclick="switchTrajetTab('trajet')">📋 Trajet</button>
+      <button id="tab-planning-btn" class="btn btn-secondary btn-sm" style="flex:1" onclick="switchTrajetTab('planning')">📅 Planning</button>
     </div>
-    <div id="trajet-content" style="display:none">
-      <div class="trip-header" id="trajet-header"></div>
-      <div id="trajet-stop-list" style="background:var(--bg2);border-radius:12px;overflow:hidden"></div>
+    <!-- Panel Trajet -->
+    <div id="panel-trajet">
+      <div id="trajet-empty" class="empty">
+        <div class="ico">📋</div>
+        <p>Aucun trajet actif</p>
+      </div>
+      <div id="trajet-content" style="display:none">
+        <div class="trip-header" id="trajet-header"></div>
+        <div id="trajet-stop-list" style="background:var(--bg2);border-radius:12px;overflow:hidden"></div>
+      </div>
+    </div>
+    <!-- Panel Planning -->
+    <div id="panel-planning" style="display:none">
+      <div id="planning-container"></div>
     </div>
   </div>
 
@@ -1017,6 +1052,15 @@ function showView(id) {
   if(id === 'view-service') renderSvcList();
   if(id === 'view-gps') renderGPSView();
   if(id === 'view-options') loadOptions();
+}
+
+function switchTrajetTab(tab) {
+  const isPlan = tab === 'planning';
+  document.getElementById('panel-trajet').style.display = isPlan ? 'none' : '';
+  document.getElementById('panel-planning').style.display = isPlan ? '' : 'none';
+  document.getElementById('tab-trajet-btn').className = 'btn btn-sm ' + (isPlan ? 'btn-secondary' : 'btn-primary') + ' btn-sm';
+  document.getElementById('tab-planning-btn').className = 'btn btn-sm ' + (isPlan ? 'btn-primary' : 'btn-secondary') + ' btn-sm';
+  if(isPlan) renderPlanning();
 }
 
 // ══════════════════════════════════════════════
@@ -1939,6 +1983,203 @@ function renderTrajet() {
 }
 
 
+
+// ══════════════════════════════════════════════
+// ══ PLANNING ══════════════════════════════════
+// ══════════════════════════════════════════════
+const PLANNING_KEY = 'chronoligne_planning';
+const JOURS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MOIS_FR = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+const JOURS_LONG = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const FERIES_FIXES = ['01-01','05-01','05-08','07-14','08-15','11-01','11-11','12-25'];
+let planOffset = 0;
+let planEditDate = null;
+
+function isFerie(d) {
+  const mmdd = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  if(FERIES_FIXES.includes(mmdd)) return true;
+  // Pâques (calcul approx)
+  const y = d.getFullYear();
+  const a=y%19, b=Math.floor(y/100), c=y%100, d2=Math.floor(b/4), e=b%4;
+  const f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d2-g+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  const paques = new Date(y, month-1, day);
+  const lundiPaques = new Date(paques); lundiPaques.setDate(paques.getDate()+1);
+  const ascension = new Date(paques); ascension.setDate(paques.getDate()+39);
+  const pentecote = new Date(paques); pentecote.setDate(paques.getDate()+49);
+  const lundiPentecote = new Date(paques); lundiPentecote.setDate(paques.getDate()+50);
+  for(const f2 of [lundiPaques, ascension, pentecote, lundiPentecote]) {
+    if(f2.getFullYear()===y && f2.getMonth()===d.getMonth() && f2.getDate()===d.getDate()) return true;
+  }
+  return false;
+}
+
+function loadPlanning() {
+  try { return JSON.parse(localStorage.getItem(PLANNING_KEY)||'{}'); } catch(e) { return {}; }
+}
+function savePlanning(p) { try { localStorage.setItem(PLANNING_KEY, JSON.stringify(p)); } catch(e) {} }
+
+function planDateKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function getServicesForJour(jour) {
+  try {
+    const svcs = JSON.parse(localStorage.getItem('chronoligne_roadmaps')||'[]');
+    return svcs.filter(s => s.jour === jour || (!s.jour && jour === 'semaine'));
+  } catch(e) { return []; }
+}
+
+function renderPlanning() {
+  const container = document.getElementById('planning-container');
+  if(!container) return;
+  const planning = loadPlanning();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow===0?6:dow-1) + planOffset*7);
+
+  const end = new Date(monday); end.setDate(monday.getDate()+13);
+  const titre = `${monday.getDate()} ${MOIS_FR[monday.getMonth()]} – ${end.getDate()} ${MOIS_FR[end.getMonth()]} ${end.getFullYear()}`;
+
+  let html = `<div class="plan-header">
+    <button class="plan-nav" onclick="planNav(-1)">◀</button>
+    <div class="plan-title">📅 ${titre}</div>
+    <button class="plan-nav" onclick="planNav(1)">▶</button>
+  </div>`;
+
+  for(let i=0; i<15; i++) {
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const key = planDateKey(d);
+    const isToday = d.getTime() === today.getTime();
+    const ferie = isFerie(d);
+    const dowIdx = d.getDay();
+    const jourType = dowIdx===0?'dimanche':dowIdx===6?'samedi':'semaine';
+
+    let svc = null;
+    if(planning[key] === 'repos') {
+      // repos forcé
+    } else if(planning[key]) {
+      try {
+        const svcs = JSON.parse(localStorage.getItem('chronoligne_roadmaps')||'[]');
+        svc = svcs.find(s => s.num === planning[key]);
+      } catch(e) {}
+    } else {
+      const svcs = getServicesForJour(jourType);
+      if(svcs.length === 1) svc = svcs[0];
+    }
+
+    const repos = (!svc && planning[key] !== 'repos') ? false : !svc;
+    const classes = ['plan-day', isToday?'today':'', repos||planning[key]==='repos'?'repos':'', ferie?'ferie':''].filter(Boolean).join(' ');
+
+    html += `<div class="${classes}">
+      <div class="plan-day-date">
+        <div class="plan-day-dow">${JOURS_FR[dowIdx]}</div>
+        <div class="plan-day-num">${d.getDate()}</div>
+      </div>
+      <div class="plan-day-body">`;
+
+    if(planning[key] === 'repos') {
+      html += `<div class="plan-day-repos">🛌 Repos</div>`;
+    } else if(svc) {
+      const lines = (svc.trips||[]).map(t => {
+        const num = t.lineNum || '?';
+        const color = t.lineColor || '#555';
+        return `<span class="plan-line-badge" style="background:${color}">${num}</span>`;
+      }).join('');
+      const hours = svc.depotDepart ? `${svc.depotDepart}→${svc.depotRetour||'?'}` : '';
+      html += `<div class="plan-day-svc">
+        <span class="svc-label">Svc ${svc.num}</span>
+        ${hours ? `<span class="svc-hours">${hours}</span>` : ''}
+        ${ferie ? '<span style="font-size:11px;color:#ffc107">🎉 Férié</span>' : ''}
+      </div>
+      <div class="plan-day-lines">${lines}</div>`;
+    } else {
+      html += `<div class="plan-day-repos" style="color:${ferie?'#ffc107':''}">
+        ${ferie ? '🎉 Férié' : '— non planifié —'}
+      </div>`;
+    }
+
+    html += `</div>
+      <button class="plan-edit-btn" onclick="planEdit('${key}','${jourType}')">✏️</button>
+    </div>`;
+  }
+
+  html += `<div id="plan-selector" class="plan-selector">
+    <div class="plan-selector-title" id="plan-sel-title">Choisir un service</div>
+    <div id="plan-sel-options"></div>
+    <div class="plan-svc-cancel" onclick="planCloseSelector()">✕ Annuler</div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+function planNav(dir) { planOffset += dir; renderPlanning(); }
+
+function planEdit(dateKey, jourType) {
+  planEditDate = dateKey;
+  const planning = loadPlanning();
+  const current = planning[dateKey];
+
+  let svcs = [];
+  try { svcs = JSON.parse(localStorage.getItem('chronoligne_roadmaps')||'[]'); } catch(e) {}
+
+  const sel = document.getElementById('plan-selector');
+  const title = document.getElementById('plan-sel-title');
+  const opts = document.getElementById('plan-sel-options');
+  if(!sel||!opts) return;
+
+  const [y,m,dd] = dateKey.split('-').map(Number);
+  const d = new Date(y,m-1,dd);
+  title.textContent = `${JOURS_FR[d.getDay()]} ${dd} ${MOIS_FR[m-1]} — Choisir un service`;
+
+  let html = `<div class="plan-svc-option ${current==='repos'?'selected':''}" onclick="planAssign('${dateKey}','repos')">
+    🛌 <b>Repos</b>
+  </div>`;
+
+  svcs.forEach(s => {
+    const lines = (s.trips||[]).map(t => {
+      const color = t.lineColor||'#555';
+      return `<span class="plan-line-badge" style="background:${color};font-size:10px">${t.lineNum||'?'}</span>`;
+    }).join(' ');
+    const hours = s.depotDepart ? `${s.depotDepart}→${s.depotRetour||'?'}` : '';
+    const isSelected = current === s.num;
+    html += `<div class="plan-svc-option ${isSelected?'selected':''}" onclick="planAssign('${dateKey}','${s.num}')">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;color:var(--accent)">Svc ${s.num} <span style="font-size:11px;color:var(--muted)">${s.jour||'semaine'}</span></div>
+        <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${lines}</div>
+      </div>
+      ${hours ? `<div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted)">${hours}</div>` : ''}
+    </div>`;
+  });
+
+  if(!svcs.length) html += `<div style="padding:14px;color:var(--muted);font-size:13px;text-align:center">Aucun service enregistré</div>`;
+
+  opts.innerHTML = html;
+  sel.classList.add('open');
+}
+
+function planAssign(dateKey, val) {
+  const planning = loadPlanning();
+  if(val === 'repos') {
+    planning[dateKey] = 'repos';
+  } else {
+    if(planning[dateKey] === val) delete planning[dateKey];
+    else planning[dateKey] = val;
+  }
+  savePlanning(planning);
+  planCloseSelector();
+  renderPlanning();
+}
+
+function planCloseSelector() {
+  const sel = document.getElementById('plan-selector');
+  if(sel) sel.classList.remove('open');
+  planEditDate = null;
+}
 
 // ══════════════════════════════════════════════
 // ÉDITEUR DE SERVICES (from service_editor)
