@@ -1224,6 +1224,7 @@ function validateCurrentStop() {
     updateLive();
     renderTrajetIfVisible();
     toast('▶ ' + trip.stops[activeStopIdx].name);
+    saveSession();
   } else {
     // Dernier arrêt : passage automatique au trajet suivant
     const nextIdx = activeTripIdx + 1;
@@ -1234,6 +1235,7 @@ function validateCurrentStop() {
       updateLive();
       renderTrajetIfVisible();
       toast('🚌 AUTO → ' + nextLabel);
+      saveSession();
     } else {
       toast('🏁 Fin de service — dernier trajet terminé');
     }
@@ -1241,7 +1243,7 @@ function validateCurrentStop() {
 }
 
 function prevStop() {
-  if(activeStopIdx > 0) { activeStopIdx--; updateLive(); renderTrajetIfVisible(); }
+  if(activeStopIdx > 0) { activeStopIdx--; updateLive(); renderTrajetIfVisible(); saveSession(); }
 }
 
 function confirmTerminus() {
@@ -1297,6 +1299,7 @@ function goToNextTrip() {
 function stopService(force) {
   if(force) {
     activeService = null; activeTripIdx = null; activeStopIdx = 0;
+    clearSession();
     stopGPS(); updateLive(); renderTrajetIfVisible();
     toast('⏹ Service arrêté');
     return;
@@ -4130,6 +4133,7 @@ function startServiceAt(num, jour, tripIdx) {
   activeTripIdx = tripIdx;
   activeStopIdx = 0;
   injectLibraryGPS(chronoSvc);
+  saveSession();
   showView('view-live');
   const tripLabel = chronoSvc.trips[tripIdx]?.label || ('Trajet ' + (tripIdx+1));
   toast('▶ Service ' + num + ' — ' + tripLabel);
@@ -4845,7 +4849,70 @@ function boot() {
   }, 1000);
 
   initEditor();
+
+  // 7. Restauration session précédente (trajet en cours)
+  setTimeout(() => { restoreSession(); }, 1200);
+
   console.log('✅ ChronoLigne PRO v2 — prêt');
+}
+
+// ══════════════════════════════════════════════
+// PERSISTANCE SESSION — sauvegarde & restauration
+// ══════════════════════════════════════════════
+const SESSION_KEY = 'chronoligne_session';
+
+function saveSession() {
+  if(!activeService || activeTripIdx === null) return;
+  // Extraire num + jour depuis l'id "svc_editor_{num}_{jour}"
+  const parts = activeService.id.replace('svc_editor_', '').split('_');
+  const jour = parts[parts.length - 1];
+  const num  = parts.slice(0, parts.length - 1).join('_');
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      num, jour,
+      tripIdx:  activeTripIdx,
+      stopIdx:  activeStopIdx,
+      savedAt:  Date.now()
+    }));
+  } catch(e) {}
+}
+
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+}
+
+function restoreSession() {
+  let sess;
+  try { sess = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e) { return; }
+  if(!sess) return;
+
+  // Ignorer si la session a plus de 16h (journée terminée)
+  if(Date.now() - sess.savedAt > 11 * 3600 * 1000) { clearSession(); return; }
+
+  loadRoadmapServices();
+  const svc = roadmapServices.find(s => s.num === sess.num && s.jour === sess.jour);
+  if(!svc || !svc.trips.length) { clearSession(); return; }
+
+  const chronoSvc = {
+    id: 'svc_editor_' + sess.num + '_' + sess.jour,
+    name: 'Service ' + sess.num,
+    lineNum: svc.trips[sess.tripIdx]?.lineNum || svc.trips[0]?.lineNum || '?',
+    day: sess.jour === 'semaine' ? 'sem' : sess.jour === 'samedi' ? 'sam' : 'dim',
+    trips: svc.trips.map(t => ({
+      label: t.label || 'Trajet',
+      stops: (t.stops || []).map(s => ({
+        name: s.name, time: s.time || '', isRef: s.isRef || false,
+        ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null
+      }))
+    }))
+  };
+
+  activeService = chronoSvc;
+  activeTripIdx = Math.min(sess.tripIdx, chronoSvc.trips.length - 1);
+  activeStopIdx = Math.min(sess.stopIdx, (chronoSvc.trips[activeTripIdx]?.stops.length || 1) - 1);
+  injectLibraryGPS(chronoSvc);
+  showView('view-live');
+  toast('🔄 Session restaurée — ' + chronoSvc.name);
 }
 
 // ══════════════════════════════════════════════
