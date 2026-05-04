@@ -61,10 +61,19 @@ nav {
   letter-spacing: 3px; line-height: 1;
 }
 .clock-badges { display: flex; gap: 8px; align-items: center; }
-#gps-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: background .3s; }
-#gps-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
-#gps-dot.lost { background: var(--red); }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+#gps-dot {
+  padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700;
+  font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px;
+  background: var(--muted); color: #000; transition: background .3s;
+  display: flex; align-items: center; justify-content: center; min-width: 36px;
+}
+#gps-dot::after { content: 'GPS'; }
+#gps-dot.active {
+  background: var(--green); color: #000;
+  box-shadow: 0 0 10px var(--green); animation: pulse 1.5s infinite;
+}
+#gps-dot.lost { background: var(--red); color: #fff; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
 #terminus-btn {
   background: rgba(231,76,60,.15); border: 1.5px solid var(--red); color: var(--red);
@@ -181,6 +190,13 @@ nav {
 .plan-day-repos { font-size:13px; color:var(--muted); font-style:italic; }
 .plan-edit-btn { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:3px 8px; font-size:12px; cursor:pointer; flex-shrink:0; }
 .plan-edit-btn:hover { color:var(--text); border-color:var(--accent); }
+.plan-play-btn {
+  background: rgba(39,174,96,.15); border: 1.5px solid rgba(39,174,96,.5); color: var(--green);
+  border-radius:6px; padding:4px 10px; font-size:14px; font-weight:700; cursor:pointer; flex-shrink:0;
+  transition: background .15s;
+}
+.plan-play-btn:hover { background: rgba(39,174,96,.3); }
+.plan-play-btn:active { transform: scale(.95); }
 .plan-selector { position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--border); padding:14px; z-index:100; transform:translateY(100%); transition:transform .25s; border-radius:16px 16px 0 0; max-height:70vh; overflow-y:auto; }
 .plan-selector.open { transform:translateY(0); }
 .plan-selector-title { font-size:13px; font-weight:700; margin-bottom:10px; color:var(--accent); }
@@ -1355,7 +1371,7 @@ function startGPS() {
       if(dot) { dot.classList.remove('lost'); dot.classList.add('active'); }
       if(dot2) dot2.style.background = 'var(--green)';
       const btn = document.getElementById('gps-toggle-btn');
-      if(btn) btn.textContent = '📍 GPS ON';
+      if(btn) { btn.textContent = '📍 GPS ON'; btn.style.background = 'rgba(39,174,96,.2)'; btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; }
       const st = document.getElementById('gps-status-text');
       if(st) st.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)}`;
       // Mise à jour coords enregistrement en cours
@@ -1465,7 +1481,7 @@ function stopGPS() {
   if(dot) { dot.classList.remove('active','lost'); }
   if(dot2) dot2.style.background = 'var(--muted)';
   const btn = document.getElementById('gps-toggle-btn');
-  if(btn) btn.textContent = '📍 GPS OFF';
+  if(btn) { btn.textContent = '📍 GPS OFF'; btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
   const st = document.getElementById('gps-status-text');
   if(st) st.textContent = 'GPS non actif';
 }
@@ -2103,8 +2119,20 @@ function renderPlanning() {
       </div>`;
     }
 
+    // Boutons : ▶ démarrer (si service dispo) + ✏️ éditer
+    // ▶ démarre directement au 1er trajet ; appui long → sélection du trajet (reprise après bug)
+    const playBtn = svc
+      ? `<button class="plan-play-btn"
+           onclick="planStartService('${svc.num}','${svc.jour||jourType}');event.stopPropagation()"
+           oncontextmenu="startServiceChooseTrip('${svc.num}','${svc.jour||jourType}');event.preventDefault();event.stopPropagation()"
+           title="▶ Démarrer | Maintenir appuyé → choisir le trajet">▶</button>`
+      : '';
+
     html += `</div>
-      <button class="plan-edit-btn" onclick="planEdit('${key}','${jourType}')">✏️</button>
+      <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
+        ${playBtn}
+        <button class="plan-edit-btn" onclick="planEdit('${key}','${jourType}')">✏️</button>
+      </div>
     </div>`;
   }
 
@@ -4037,34 +4065,62 @@ function toggleSvc(idx) {
   renderSvcList();
 }
 
+// Démarrage depuis le planning :
+// - Clic simple → démarre au 1er trajet immédiatement
+// - Si le service est DÉJÀ actif (reprise après bug) → ouvre la modale de sélection du trajet
+function planStartService(num, jour) {
+  jour = jour || svcFilter;
+  // Service déjà actif ? → proposer de reprendre à un trajet précis
+  if(activeService && activeService.id === 'svc_editor_' + num + '_' + jour) {
+    startServiceChooseTrip(num, jour);
+    return;
+  }
+  // Sinon → démarrage direct au 1er trajet
+  startServiceDirect(num, jour);
+}
+
 function startServiceChooseTrip(num, jour) {
   loadRoadmapServices();
   jour = jour || svcFilter;
   const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
   if(!svc || !svc.trips.length) { toast('❌ Aucun trajet dans ce service'); return; }
 
-  // Si un seul trajet → démarrer directement
-  if(svc.trips.length === 1) { startServiceAt(num, jour, 0); return; }
-
-  // Sinon → modale de sélection du trajet de départ
+  // Modale de sélection du trajet — toujours affichée (reprise ou premier démarrage manuel)
   const tripsHtml = svc.trips.map((t, idx) => {
     const num2 = t.lineNum || '';
     const color = t.lineColor || '#888';
     const label = (t.label || 'Trajet ' + (idx+1)).replace(/^Ligne \S+ — /,'');
     const firstTime = t.stops?.[0]?.time || '';
     const lastTime  = t.stops?.[t.stops.length-1]?.time || '';
+    // Mettre en évidence le trajet actuellement actif
+    const isCurrentTrip = activeService &&
+      activeService.id === 'svc_editor_' + num + '_' + jour &&
+      activeTripIdx === idx;
+    const activeStyle = isCurrentTrip
+      ? `border-color:var(--accent);background:rgba(0,212,255,.1);`
+      : `border-color:${color}40;`;
+    const activeTag = isCurrentTrip
+      ? `<span style="font-size:10px;background:var(--accent);color:#000;border-radius:4px;padding:1px 5px;font-weight:700">EN COURS</span>`
+      : '';
     return `
-      <button class="btn btn-secondary" onclick="startServiceAt('${num}','${jour}',${idx});closeModal()" style="width:100%;margin-bottom:8px;padding:12px;text-align:left;border-color:${color}40">
-        <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-secondary" onclick="startServiceAt('${num}','${jour}',${idx});closeModal()" style="width:100%;margin-bottom:8px;padding:12px;text-align:left;${activeStyle}">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;font-size:13px">${num2}</span>
           <span style="font-size:13px;flex:1">${label}</span>
+          ${activeTag}
           <span style="font-size:12px;color:var(--accent);font-family:monospace">${firstTime}→${lastTime}</span>
         </div>
       </button>`;
   }).join('');
 
-  showModal('▶ Démarrer sur quel trajet ?', `
-    <div style="font-size:14px;color:var(--muted);margin-bottom:12px">Service ${num} — choisir le trajet de départ :</div>
+  const isReprise = activeService && activeService.id === 'svc_editor_' + num + '_' + jour;
+  const modalTitle = isReprise ? '🔄 Reprendre sur quel trajet ?' : '▶ Démarrer sur quel trajet ?';
+  const modalSub = isReprise
+    ? `Service ${num} en cours — reprendre à :`
+    : `Service ${num} — choisir le trajet de départ :`;
+
+  showModal(modalTitle, `
+    <div style="font-size:14px;color:var(--muted);margin-bottom:12px">${modalSub}</div>
     ${tripsHtml}
     <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:4px" onclick="closeModal()">Annuler</button>
   `);
@@ -4802,6 +4858,7 @@ function boot() {
   // 6. GPS automatique au démarrage
   setTimeout(() => {
     startGPS();
+    toast('📍 GPS activé automatiquement');
   }, 1000);
 
   initEditor();
