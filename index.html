@@ -434,26 +434,9 @@ select option { background: var(--bg2); }
     </div>
   </div>
 
-  <!-- ══ TRAJET ══ -->
+  <!-- ══ TRAJET / PLANNING ══ -->
   <div class="view" id="view-trajet">
-    <!-- Sous-onglets : Trajet / Planning -->
-    <div style="display:flex;gap:4px;margin-bottom:10px">
-      <button id="tab-trajet-btn" class="btn btn-primary btn-sm" style="flex:1" onclick="switchTrajetTab('trajet')">📋 Trajet</button>
-      <button id="tab-planning-btn" class="btn btn-secondary btn-sm" style="flex:1" onclick="switchTrajetTab('planning')">📅 Planning</button>
-    </div>
-    <!-- Panel Trajet -->
-    <div id="panel-trajet">
-      <div id="trajet-empty" class="empty">
-        <div class="ico">📋</div>
-        <p>Aucun trajet actif</p>
-      </div>
-      <div id="trajet-content" style="display:none">
-        <div class="trip-header" id="trajet-header"></div>
-        <div id="trajet-stop-list" style="background:var(--bg2);border-radius:12px;overflow:hidden"></div>
-      </div>
-    </div>
-    <!-- Panel Planning -->
-    <div id="panel-planning" style="display:none">
+    <div id="panel-planning">
       <div id="planning-container"></div>
     </div>
   </div>
@@ -760,7 +743,7 @@ select option { background: var(--bg2); }
       <span class="ico">⏱</span>EN DIRECT
     </button>
     <button class="nav-btn" data-view="view-trajet" onclick="showView('view-trajet')">
-      <span class="ico">📋</span>TRAJET
+      <span class="ico">📅</span>PLANNING
     </button>
     <button class="nav-btn" data-view="view-service" onclick="showView('view-service')">
       <span class="ico">🗺</span>SERVICE
@@ -1064,7 +1047,7 @@ function showView(id) {
     b.classList.toggle('active', b.dataset.view === id);
   });
   document.getElementById(id).classList.add('active');
-  if(id === 'view-trajet') renderTrajet();
+  if(id === 'view-trajet') renderPlanning();
   if(id === 'view-service') renderSvcList();
   if(id === 'view-gps') renderGPSView();
   if(id === 'view-options') loadOptions();
