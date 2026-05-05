@@ -3091,44 +3091,31 @@ renderSvcList();
 // RÉCEPTION IMPORT BOOKMARKLET
 // ══════════════════════════════════════════════════════
 (function fsoCheckImport() {
-  // Ecoute postMessage depuis bookmarklet via iframe
+  var fsoReceived = false;
   window.addEventListener('message', function(event) {
     if (!event.data || event.data.type !== 'fso_import') return;
+    if (fsoReceived) {
+      // Confirmer mais ignorer
+      if (event.source) try { event.source.postMessage({type:'fso_ack'},'*'); } catch(e){}
+      return;
+    }
+    fsoReceived = true;
     try {
       var data = JSON.parse(event.data.data);
       if (!data.trajets || !data.trajets.length) return;
       if (Date.now() - data.ts > 5 * 60 * 1000) return;
-
-      // Stocker pour usage apres reload
-      localStorage.setItem('fso_pending', event.data.data);
-
+      // Vider les anciens trajets
+      _fcTrips = [];
       var imported = fsoInjectTrajets(data.trajets);
       if (imported > 0) {
         fcRenderTripsList();
         switchTab('francilite');
-        setTimeout(function() { toast(imported + ' trajet(s) importes !'); }, 300);
+        setTimeout(function() { toast(imported + ' trajet(s) importes depuis FSO !'); }, 300);
       }
+      // Confirmer reception au bookmarklet
+      if (event.source) try { event.source.postMessage({type:'fso_ack'},'*'); } catch(e){}
     } catch(e) { console.error('postMessage error:', e); }
   });
-
-  // Verifier si donnees en attente dans localStorage
-  var pending = localStorage.getItem('fso_pending');
-  if (pending) {
-    try {
-      var data = JSON.parse(pending);
-      localStorage.removeItem('fso_pending');
-      if (data.trajets && Date.now() - data.ts < 5 * 60 * 1000) {
-        setTimeout(function() {
-          var imported = fsoInjectTrajets(data.trajets);
-          if (imported > 0) {
-            fcRenderTripsList();
-            switchTab('francilite');
-            toast(imported + ' trajet(s) importes depuis FSO !');
-          }
-        }, 500);
-      }
-    } catch(e) { console.error('pending error:', e); }
-  }
 })();
 
 function fsoInjectTrajets(trajets) {
