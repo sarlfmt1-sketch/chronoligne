@@ -3091,62 +3091,70 @@ renderSvcList();
 // RÉCEPTION IMPORT BOOKMARKLET
 // ══════════════════════════════════════════════════════
 (function fsoCheckImport() {
-  try {
-    var bc = new BroadcastChannel('chronoligne_fso');
-    bc.onmessage = function(event) {
-      var data = event.data;
-      if (!data || !data.trajets || !data.trajets.length) return;
-
-      // Verifier recence (5 min)
+  // Ecoute postMessage depuis bookmarklet via iframe
+  window.addEventListener('message', function(event) {
+    if (!event.data || event.data.type !== 'fso_import') return;
+    try {
+      var data = JSON.parse(event.data.data);
+      if (!data.trajets || !data.trajets.length) return;
       if (Date.now() - data.ts > 5 * 60 * 1000) return;
 
-      var imported = 0;
-      for (var i = 0; i < data.trajets.length; i++) {
-        var t = data.trajets[i];
-        if (!t.arrets || t.arrets.length < 2) continue;
+      // Stocker pour usage apres reload
+      localStorage.setItem('fso_pending', event.data.data);
 
-        var lineNum = t.ligne || fsoDetectLine(t.arrets);
-        var lineInfo = REAL_LINES.find(function(l) { return l.num === lineNum; });
-
-        var stops = t.arrets.map(function(a, idx) {
-          return {
-            name: a.nom,
-            ineo: a.code || '0',
-            time: a.heure,
-            intervalAfter: idx < t.arrets.length - 1 ? fsoCalcInterval(a.heure, t.arrets[idx+1].heure) : 0,
-            isRef: true,
-            refTime: a.heure
-          };
-        });
-
-        var dep = stops[0];
-        var arr = stops[stops.length - 1];
-
-        _fcTrips.push({
-          lineNum: lineNum || '?',
-          lineColor: lineInfo ? lineInfo.color : '#6b7280',
-          label: (lineNum || '?') + ' - ' + dep.name + ' > ' + arr.name,
-          depart: dep.time,
-          arrivee: arr.time,
-          stops: stops
-        });
-        imported++;
-      }
-
+      var imported = fsoInjectTrajets(data.trajets);
       if (imported > 0) {
         fcRenderTripsList();
         switchTab('francilite');
-        setTimeout(function() {
-          toast(imported + ' trajet(s) importes depuis FSO !');
-        }, 300);
+        setTimeout(function() { toast(imported + ' trajet(s) importes !'); }, 300);
       }
-      bc.close();
-    };
-    console.log('ChronoLigne: en ecoute BroadcastChannel...');
-  } catch(e) {
-    console.error('BroadcastChannel non supporte:', e);
+    } catch(e) { console.error('postMessage error:', e); }
+  });
+
+  // Verifier si donnees en attente dans localStorage
+  var pending = localStorage.getItem('fso_pending');
+  if (pending) {
+    try {
+      var data = JSON.parse(pending);
+      localStorage.removeItem('fso_pending');
+      if (data.trajets && Date.now() - data.ts < 5 * 60 * 1000) {
+        setTimeout(function() {
+          var imported = fsoInjectTrajets(data.trajets);
+          if (imported > 0) {
+            fcRenderTripsList();
+            switchTab('francilite');
+            toast(imported + ' trajet(s) importes depuis FSO !');
+          }
+        }, 500);
+      }
+    } catch(e) { console.error('pending error:', e); }
   }
 })();
+
+function fsoInjectTrajets(trajets) {
+  var imported = 0;
+  for (var i = 0; i < trajets.length; i++) {
+    var t = trajets[i];
+    if (!t.arrets || t.arrets.length < 2) continue;
+    var lineNum = t.ligne || fsoDetectLine(t.arrets);
+    var lineInfo = REAL_LINES.find(function(l) { return l.num === lineNum; });
+    var stops = t.arrets.map(function(a, idx) {
+      return {
+        name: a.nom, ineo: a.code || '0', time: a.heure,
+        intervalAfter: idx < t.arrets.length - 1 ? fsoCalcInterval(a.heure, t.arrets[idx+1].heure) : 0,
+        isRef: true, refTime: a.heure
+      };
+    });
+    var dep = stops[0]; var arr = stops[stops.length - 1];
+    _fcTrips.push({
+      lineNum: lineNum || '?', lineColor: lineInfo ? lineInfo.color : '#6b7280',
+      label: (lineNum || '?') + ' - ' + dep.name + ' > ' + arr.name,
+      depart: dep.time, arrivee: arr.time, stops: stops
+    });
+    imported++;
+  }
+  return imported;
+}
 
 
 // ══════════════════════════════════════════════════════
