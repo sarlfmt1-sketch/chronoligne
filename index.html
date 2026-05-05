@@ -3091,69 +3091,60 @@ renderSvcList();
 // RÉCEPTION IMPORT BOOKMARKLET
 // ══════════════════════════════════════════════════════
 (function fsoCheckImport() {
-  const params = new URLSearchParams(window.location.search);
-  if (!params.has('fso_import')) return;
-
-  const raw = localStorage.getItem('fso_import_data');
-  const ts  = localStorage.getItem('fso_import_ts');
-  if (!raw || !ts) return;
-
-  // Vérifier que c'est récent (moins de 5 min)
-  if (Date.now() - parseInt(ts) > 5 * 60 * 1000) {
-    localStorage.removeItem('fso_import_data');
-    localStorage.removeItem('fso_import_ts');
-    return;
-  }
-
   try {
-    const data = JSON.parse(raw);
-    localStorage.removeItem('fso_import_data');
-    localStorage.removeItem('fso_import_ts');
+    var bc = new BroadcastChannel('chronoligne_fso');
+    bc.onmessage = function(event) {
+      var data = event.data;
+      if (!data || !data.trajets || !data.trajets.length) return;
 
-    if (!data.trajets || !data.trajets.length) return;
+      // Verifier recence (5 min)
+      if (Date.now() - data.ts > 5 * 60 * 1000) return;
 
-    let imported = 0;
-    for (const t of data.trajets) {
-      if (!t.arrets || t.arrets.length < 2) continue;
+      var imported = 0;
+      for (var i = 0; i < data.trajets.length; i++) {
+        var t = data.trajets[i];
+        if (!t.arrets || t.arrets.length < 2) continue;
 
-      const lineNum = t.ligne || fsoDetectLine(t.arrets);
-      const lineInfo = REAL_LINES.find(l => l.num === lineNum);
+        var lineNum = t.ligne || fsoDetectLine(t.arrets);
+        var lineInfo = REAL_LINES.find(function(l) { return l.num === lineNum; });
 
-      const stops = t.arrets.map(function(a, i) {
-        return {
-          name: a.nom,
-          ineo: a.code || '0',
-          time: a.heure,
-          intervalAfter: i < t.arrets.length - 1 ? fsoCalcInterval(a.heure, t.arrets[i+1].heure) : 0,
-          isRef: true,
-          refTime: a.heure
-        };
-      });
+        var stops = t.arrets.map(function(a, idx) {
+          return {
+            name: a.nom,
+            ineo: a.code || '0',
+            time: a.heure,
+            intervalAfter: idx < t.arrets.length - 1 ? fsoCalcInterval(a.heure, t.arrets[idx+1].heure) : 0,
+            isRef: true,
+            refTime: a.heure
+          };
+        });
 
-      const dep = stops[0];
-      const arr = stops[stops.length - 1];
+        var dep = stops[0];
+        var arr = stops[stops.length - 1];
 
-      _fcTrips.push({
-        lineNum: lineNum || '?',
-        lineColor: lineInfo ? lineInfo.color : '#6b7280',
-        label: (lineNum || '?') + ' - ' + dep.name + ' > ' + arr.name,
-        depart: dep.time,
-        arrivee: arr.time,
-        stops: stops
-      });
-      imported++;
-    }
+        _fcTrips.push({
+          lineNum: lineNum || '?',
+          lineColor: lineInfo ? lineInfo.color : '#6b7280',
+          label: (lineNum || '?') + ' - ' + dep.name + ' > ' + arr.name,
+          depart: dep.time,
+          arrivee: arr.time,
+          stops: stops
+        });
+        imported++;
+      }
 
-    if (imported > 0) {
-      fcRenderTripsList();
-      switchTab('francilite');
-      setTimeout(function() {
-        toast(imported + ' trajet(s) importes depuis FSO !');
-      }, 500);
-    }
-
+      if (imported > 0) {
+        fcRenderTripsList();
+        switchTab('francilite');
+        setTimeout(function() {
+          toast(imported + ' trajet(s) importes depuis FSO !');
+        }, 300);
+      }
+      bc.close();
+    };
+    console.log('ChronoLigne: en ecoute BroadcastChannel...');
   } catch(e) {
-    console.error('Erreur import bookmarklet:', e);
+    console.error('BroadcastChannel non supporte:', e);
   }
 })();
 
