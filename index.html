@@ -246,6 +246,35 @@ nav {
 .svc-time { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'Share Tech Mono', monospace; }
 .svc-status { font-size: 11px; font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 1px; }
 
+/* ── ALERTE TRAJET COURT ── */
+#alerte-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(10,14,23,.97);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+  animation: alertPop .3s ease;
+}
+@keyframes alertPop { from{transform:scale(.92);opacity:0} to{transform:scale(1);opacity:1} }
+#alerte-overlay .alerte-icon { font-size: 64px; margin-bottom: 16px; animation: alertShake 0.5s ease 0.3s; }
+@keyframes alertShake {
+  0%,100%{transform:rotate(0)} 20%{transform:rotate(-10deg)} 40%{transform:rotate(10deg)}
+  60%{transform:rotate(-8deg)} 80%{transform:rotate(8deg)}
+}
+#alerte-overlay .alerte-titre {
+  font-size: 22px; font-weight: 900; color: var(--red);
+  font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; margin-bottom: 8px;
+}
+#alerte-overlay .alerte-corps {
+  font-size: 15px; color: var(--text); line-height: 1.7; margin-bottom: 24px;
+  background: rgba(231,76,60,.1); border: 1px solid rgba(231,76,60,.3);
+  border-radius: 12px; padding: 16px; width: 100%;
+}
+#alerte-overlay .alerte-btn {
+  background: var(--red); color: #fff; border: none; border-radius: 12px;
+  padding: 14px 32px; font-size: 16px; font-weight: 700; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; width: 100%;
+}
+
 /* ── OPTIONS ── */
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
 .card-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; }
@@ -671,6 +700,21 @@ select option { background: var(--bg2); }
         <label class="btn btn-secondary btn-sm" style="flex:1;cursor:pointer;text-align:center">⬆ Import JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
       </div>
       <div id="save-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(231,76,60,.3)">
+      <div class="card-title">⚠️ ALERTES TRAJETS COURTS</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        Importe le fichier <b>alertes.json</b> généré par le parseur.<br>
+        L'app alertera au démarrage des trajets concernés.
+      </div>
+      <label class="btn btn-secondary" style="width:100%;cursor:pointer;text-align:center;margin-bottom:8px">
+        📂 Importer alertes.json
+        <input type="file" accept=".json" style="display:none" onchange="importAlertes(event)">
+      </label>
+      <div id="alertes-status" style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6"></div>
+      <div id="alertes-list" style="margin-top:8px"></div>
+      <button id="alertes-clear-btn" class="btn btn-danger btn-sm" style="width:100%;margin-top:8px;display:none" onclick="clearAlertes()">🗑 Effacer les alertes</button>
     </div>
 
     <div class="card">
@@ -1227,16 +1271,19 @@ function validateCurrentStop() {
     toast('▶ ' + trip.stops[activeStopIdx].name);
     saveSession();
   } else {
-    // Dernier arrêt : passage automatique au trajet suivant
+    // Dernier arrêt : passage au trajet suivant
     const nextIdx = activeTripIdx + 1;
     if(nextIdx < activeService.trips.length) {
-      const nextLabel = activeService.trips[nextIdx].label || ('Trajet ' + (nextIdx+1));
+      const nextTrip = activeService.trips[nextIdx];
+      const nextLabel = nextTrip.label || ('Trajet ' + (nextIdx+1));
       activeTripIdx = nextIdx;
       activeStopIdx = 0;
       updateLive();
       renderTrajetIfVisible();
       toast('🚌 AUTO → ' + nextLabel);
       saveSession();
+      // Vérifier alerte durée sur le nouveau trajet
+      setTimeout(() => checkTripDureeAlerte(nextTrip), 400);
     } else {
       toast('🏁 Fin de service — dernier trajet terminé');
     }
@@ -1278,6 +1325,8 @@ function nextTrip() {
     updateLive();
     renderTrajetIfVisible();
     toast('🚌 Trajet ' + (nextIdx+1) + '/' + activeService.trips.length + ' démarré');
+    // Vérifier alerte durée sur le nouveau trajet
+    setTimeout(() => checkTripDureeAlerte(activeService.trips[nextIdx]), 400);
   } else {
     activeTripIdx = null;
     activeStopIdx = 0;
@@ -4257,6 +4306,11 @@ function startServiceAt(num, jour, tripIdx) {
   showView('view-live');
   const tripLabel = chronoSvc.trips[tripIdx]?.label || ('Trajet ' + (tripIdx+1));
   toast('▶ Service ' + num + ' — ' + tripLabel);
+  // Vérifier alerte durée + alerte importée
+  setTimeout(() => {
+    checkTripDureeAlerte(chronoSvc.trips[tripIdx]);
+    checkAlerteForTrip(num, jour, tripIdx);
+  }, 500);
 }
 
 function startServiceDirect(num, jour) {
@@ -4818,6 +4872,7 @@ function loadOptions() {
     statusEl.textContent = '⚠️ Appuie sur 💾 après chaque session !';
     statusEl.style.color = '#ffc107';
   }
+  renderAlertesStatus();
 }
 
 function saveOptions() {
@@ -4923,6 +4978,40 @@ function toast(msg) {
 // ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// BROADCASTCHANNEL — réception sync depuis Parseur
+// ══════════════════════════════════════════════
+const _clChannel = new BroadcastChannel('chronoligne_sync');
+_clChannel.onmessage = (event) => {
+  const { type, svcs } = event.data || {};
+  if(type !== 'SYNC_SERVICES' || !Array.isArray(svcs)) return;
+
+  // Fusionner avec les services existants
+  let existing = [];
+  try { existing = JSON.parse(localStorage.getItem(ROADMAP_KEY) || '[]'); } catch(e) {}
+
+  let added = 0, updated = 0;
+  svcs.forEach(s => {
+    const idx = existing.findIndex(r => r.num === s.num && r.jour === s.jour);
+    if(idx === -1) { existing.push(s); added++; }
+    else { existing[idx] = s; updated++; }
+  });
+
+  localStorage.setItem(ROADMAP_KEY, JSON.stringify(existing));
+
+  // Rafraîchir la liste si l'onglet SERVICE est visible
+  if(document.getElementById('view-service')?.classList.contains('active')) {
+    renderSvcList();
+  }
+
+  // Notification visuelle
+  const msg = [
+    added   ? `${added} ajouté(s)`   : '',
+    updated ? `${updated} mis à jour` : ''
+  ].filter(Boolean).join(', ');
+  toast(`📡 Sync parseur — ${msg}`);
+};
+
 function boot() {
   // 1. Charger localStorage
   loadDB();
@@ -4974,6 +5063,209 @@ function boot() {
   setTimeout(() => { restoreSession(); }, 1200);
 
   console.log('✅ ChronoLigne PRO v2 — prêt');
+}
+
+// ══════════════════════════════════════════════
+// ALERTES TRAJETS COURTS
+// ══════════════════════════════════════════════
+const ALERTES_KEY = 'chronoligne_alertes';
+
+function loadAlertes() {
+  try { return JSON.parse(localStorage.getItem(ALERTES_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveAlertesData(data) {
+  try { localStorage.setItem(ALERTES_KEY, JSON.stringify(data)); } catch(e) {} 
+}
+
+function importAlertes(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const json = JSON.parse(e.target.result);
+      // Accepte { alertes: [...] } ou directement [...]
+      const list = Array.isArray(json) ? json : (json.alertes || []);
+      if(!list.length) { toast('⚠️ Aucune alerte dans ce fichier'); return; }
+      saveAlertesData(list);
+      toast(`✅ ${list.length} alerte(s) importée(s)`);
+      renderAlertesStatus();
+    } catch(err) {
+      toast('❌ Fichier invalide — format JSON requis');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAlertes() {
+  if(!confirm('Effacer toutes les alertes ?')) return;
+  localStorage.removeItem(ALERTES_KEY);
+  renderAlertesStatus();
+  toast('🗑 Alertes effacées');
+}
+
+function renderAlertesStatus() {
+  const list = loadAlertes();
+  const statusEl = document.getElementById('alertes-status');
+  const listEl = document.getElementById('alertes-list');
+  const clearBtn = document.getElementById('alertes-clear-btn');
+  if(!statusEl) return;
+  if(!list.length) {
+    statusEl.textContent = 'Aucune alerte chargée';
+    if(listEl) listEl.innerHTML = '';
+    if(clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  statusEl.innerHTML = `<span style="color:var(--orange)">⚠️ ${list.length} alerte(s) active(s)</span>`;
+  if(clearBtn) clearBtn.style.display = '';
+  if(listEl) {
+    listEl.innerHTML = list.map(a => `
+      <div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px;line-height:1.6">
+        <div style="font-weight:700;color:var(--red)">Ligne ${a.ligne || '?'} — ${a.heure_depart || ''}</div>
+        <div style="color:var(--text)">${a.trajet || ''}</div>
+        <div style="color:var(--orange)">${a.message || ''}</div>
+      </div>`).join('');
+  }
+}
+
+function checkAlerteForTrip(num, jour, tripIdx) {
+  const alertes = loadAlertes();
+  if(!alertes.length) return;
+  loadRoadmapServices();
+  const svc = roadmapServices.find(s => s.num === num && s.jour === jour);
+  if(!svc) return;
+  const trip = svc.trips[tripIdx];
+  if(!trip) return;
+
+  const firstStop = trip.stops?.[0];
+  const lastStop  = trip.stops?.[trip.stops.length - 1];
+  const departTime = firstStop?.time || '';
+  const lineNum = trip.lineNum || '';
+
+  // Cherche une alerte correspondante : même ligne + même heure départ (±1min) + même direction
+  const match = alertes.find(a => {
+    const sameLigne = String(a.ligne) === String(lineNum) || String(a.ligne) === String(num);
+    if(!sameLigne) return false;
+    // Comparaison heure départ souple (HH:MM)
+    const aHeure = (a.heure_depart || '').substring(0, 5);
+    const tHeure = departTime.substring(0, 5);
+    if(aHeure && tHeure && aHeure !== tHeure) return false;
+    return true;
+  });
+
+  if(match) showAlerteOverlay(match);
+}
+
+function showAlerteOverlay(alerte) {
+  // Vibration
+  if(navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
+
+  // Son d'alerte
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [440, 550, 440, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'square';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.15);
+      osc.start(ctx.currentTime + i * 0.18);
+      osc.stop(ctx.currentTime + i * 0.18 + 0.15);
+    });
+  } catch(e) {}
+
+  // Overlay plein écran
+  const overlay = document.createElement('div');
+  overlay.id = 'alerte-overlay';
+  const dureeNorm = alerte.duree_normale_minutes ? `${alerte.duree_normale_minutes}min` : '—';
+  const dureeReel = alerte.duree_minutes ? `${alerte.duree_minutes}min` : '—';
+  overlay.innerHTML = `
+    <div class="alerte-icon">⚠️</div>
+    <div class="alerte-titre">TRAJET COURT !</div>
+    <div class="alerte-corps">
+      <div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">
+        Ligne ${alerte.ligne || '?'} — ${alerte.trajet || ''}
+      </div>
+      <div style="margin-bottom:6px">
+        Départ : <b style="color:var(--text)">${alerte.heure_depart || '—'}</b>
+      </div>
+      <div style="display:flex;justify-content:center;gap:24px;margin:10px 0">
+        <div>
+          <div style="font-size:11px;color:var(--muted)">DURÉE NORMALE</div>
+          <div style="font-size:28px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--green)">${dureeNorm}</div>
+        </div>
+        <div style="font-size:24px;color:var(--muted);align-self:center">→</div>
+        <div>
+          <div style="font-size:11px;color:var(--muted)">CE TRAJET</div>
+          <div style="font-size:28px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--red)">${dureeReel}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--orange)">${alerte.message || ''}</div>
+    </div>
+    <button class="alerte-btn" onclick="document.getElementById('alerte-overlay').remove()">
+      ✅ J'ai compris — Continuer
+    </button>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════════
+// ALERTE TRAJET COURT — comparaison dans le service actif
+// ══════════════════════════════════════════════
+
+// Durée théorique d'un trajet en minutes (depuis les horaires)
+function tripTheoDuree(trip) {
+  const first = trip.stops?.[0];
+  const last  = trip.stops?.[trip.stops.length - 1];
+  if(!first?.time || !last?.time) return null;
+  const [h1,m1] = first.time.split(':').map(Number);
+  const [h2,m2] = last.time.split(':').map(Number);
+  let d = (h2*60+m2) - (h1*60+m1);
+  if(d < 0) d += 1440;
+  return d;
+}
+
+// Vérifier si un trajet à venir est anormalement court
+// en comparant avec tous les autres trajets de même ligne dans le service actif
+function checkTripDureeAlerte(trip) {
+  if(!activeService || !trip) return;
+  const duree = tripTheoDuree(trip);
+  if(!duree || duree < 5) return;
+
+  const lineNum = trip.lineNum || trip.label?.match(/\d{4}/)?.[0] || '';
+
+  // Tous les trajets de même ligne dans le service (sauf lui-même)
+  const similaires = activeService.trips.filter(other => {
+    if(other === trip) return false;
+    const otherLine = other.lineNum || other.label?.match(/\d{4}/)?.[0] || '';
+    return lineNum ? otherLine === lineNum : true;
+  });
+
+  if(!similaires.length) return;
+
+  const dureesSim = similaires.map(tripTheoDuree).filter(d => d && d > 0);
+  if(!dureesSim.length) return;
+
+  const max   = Math.max(...dureesSim);
+  const ecart = max - duree;
+  if(ecart < 3) return; // Seuil : alerte dès 3min de différence
+
+  const label = (trip.label || '').replace(/^Ligne \S+ — /,'');
+  const first = trip.stops?.[0];
+  const last  = trip.stops?.[trip.stops.length - 1];
+
+  showAlerteOverlay({
+    ligne:                 lineNum || '?',
+    trajet:                label,
+    heure_depart:          first?.time?.substring(0,5) || '',
+    heure_arrivee:         last?.time?.substring(0,5)  || '',
+    duree_minutes:         duree,
+    duree_normale_minutes: max,
+    message:               `Ce trajet dure ${duree}min — le plus long du même service fait ${max}min (-${ecart}min)`
+  });
 }
 
 // ══════════════════════════════════════════════
