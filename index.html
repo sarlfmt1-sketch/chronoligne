@@ -5148,7 +5148,23 @@ async function driveDownload() {
 // ══════════════════════════════════════════════
 const _clChannel = new BroadcastChannel('chronoligne_sync');
 _clChannel.onmessage = (event) => {
-  const { type, svcs } = event.data || {};
+  const { type, svcs, num, jour } = event.data || {};
+
+  // Suppression d'un service
+  if(type === 'DELETE_SERVICE') {
+    let existing = [];
+    try { existing = JSON.parse(localStorage.getItem(ROADMAP_KEY) || '[]'); } catch(e) {}
+    const before = existing.length;
+    existing = existing.filter(r => !(r.num === num && (r.jour||'semaine') === (jour||'semaine')));
+    if(existing.length < before) {
+      localStorage.setItem(ROADMAP_KEY, JSON.stringify(existing));
+      loadRoadmapServices();
+      if(document.getElementById('view-service')?.classList.contains('active')) renderSvcList();
+      toast(`🗑 Service ${num} supprimé (sync)`);
+    }
+    return;
+  }
+
   if(type !== 'SYNC_SERVICES' || !Array.isArray(svcs)) return;
 
   // Fusionner avec les services existants
