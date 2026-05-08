@@ -726,6 +726,23 @@ select option { background: var(--bg2); }
       <button id="alertes-clear-btn" class="btn btn-danger btn-sm" style="width:100%;margin-top:8px;display:none" onclick="clearAlertes()">🗑 Effacer les alertes</button>
     </div>
 
+    <div class="card" style="border-color:rgba(66,133,244,.3)">
+      <div class="card-title">☁️ GOOGLE DRIVE — SYNC</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        Synchronise les services et le planning entre le PC et le téléphone via Google Drive.
+      </div>
+      <div id="drive-status" style="font-size:12px;text-align:center;margin-bottom:10px;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)">
+        <span id="drive-status-text" style="color:var(--muted)">Non connecté</span>
+      </div>
+      <button id="drive-signin-btn" class="btn btn-primary" style="width:100%;margin-bottom:6px;background:#4285f4;border-color:#4285f4" onclick="driveSignIn()">
+        <img src="https://www.google.com/favicon.ico" style="width:14px;height:14px;vertical-align:middle;margin-right:6px">Se connecter à Google
+      </button>
+      <div id="drive-actions" style="display:none">
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="driveUpload()">⬆️ Sauvegarder sur Drive</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="driveDownload()">⬇️ Charger depuis Drive</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">🗑 GESTION</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -5020,6 +5037,131 @@ function toast(msg) {
 // ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ══════════════════════════════════════════════
+const DRIVE_CLIENT_ID  = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.googleusercontent.com';
+const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME  = 'chronoligne_sync.json';
+let _driveToken = null;
+
+function driveLoadGAPI() {
+  return new Promise((resolve, reject) => {
+    if(window.google?.accounts) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function driveSignIn() {
+  try {
+    await driveLoadGAPI();
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: (resp) => {
+        if(resp.error) { toast('❌ Connexion Google échouée'); return; }
+        _driveToken = resp.access_token;
+        document.getElementById('drive-status-text').textContent = '✅ Connecté à Google Drive';
+        document.getElementById('drive-status-text').style.color = 'var(--green)';
+        document.getElementById('drive-signin-btn').style.display = 'none';
+        document.getElementById('drive-actions').style.display = '';
+        toast('✅ Connecté à Google Drive');
+      }
+    });
+    client.requestAccessToken();
+  } catch(e) {
+    toast('❌ Erreur connexion Google');
+  }
+}
+
+async function driveGetFileId() {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id)`,
+    { headers: { Authorization: 'Bearer ' + _driveToken } }
+  );
+  const data = await res.json();
+  return data.files?.[0]?.id || null;
+}
+
+async function driveUpload() {
+  if(!_driveToken) { toast('❌ Connecte-toi d\'abord'); return; }
+  try {
+    const payload = {
+      services:  JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]'),
+      planning:  JSON.parse(localStorage.getItem('chronoligne_planning')  || '{}'),
+      updatedAt: new Date().toISOString()
+    };
+    const json = JSON.stringify(payload);
+    const fileId = await driveGetFileId();
+
+    let url, method;
+    if(fileId) {
+      url    = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`;
+      method = 'PATCH';
+    } else {
+      url    = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      method = 'POST';
+    }
+
+    const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: fileId ? undefined : ['appDataFolder'] });
+    const body = new FormData();
+    body.append('metadata', new Blob([meta], { type: 'application/json' }));
+    body.append('file',     new Blob([json], { type: 'application/json' }));
+
+    const res = await fetch(url, { method, headers: { Authorization: 'Bearer ' + _driveToken }, body });
+    if(res.ok) toast('☁️ Sauvegardé sur Drive — ' + payload.services.length + ' service(s)');
+    else toast('❌ Erreur sauvegarde Drive');
+  } catch(e) {
+    toast('❌ Erreur : ' + e.message);
+  }
+}
+
+async function driveDownload() {
+  if(!_driveToken) { toast('❌ Connecte-toi d\'abord'); return; }
+  try {
+    const fileId = await driveGetFileId();
+    if(!fileId) { toast('⚠️ Aucun fichier trouvé sur Drive'); return; }
+
+    const res  = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + _driveToken } }
+    );
+    const data = await res.json();
+
+    if(data.services?.length) {
+      // Fusionner avec les services existants
+      let existing = JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]');
+      let added = 0, updated = 0;
+      data.services.forEach(s => {
+        const idx = existing.findIndex(r => r.num === s.num && r.jour === s.jour);
+        if(idx === -1) { existing.push(s); added++; }
+        else { existing[idx] = s; updated++; }
+      });
+      localStorage.setItem('chronoligne_roadmaps', JSON.stringify(existing));
+      loadRoadmapServices();
+      const msg = [added ? added + ' ajouté(s)' : '', updated ? updated + ' mis à jour' : ''].filter(Boolean).join(', ');
+      toast('☁️ Drive chargé — ' + msg);
+    }
+
+    if(data.planning && Object.keys(data.planning).length) {
+      // Fusionner planning
+      let existingPlan = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
+      Object.assign(existingPlan, data.planning);
+      localStorage.setItem('chronoligne_planning', JSON.stringify(existingPlan));
+    }
+
+    if(document.getElementById('view-service')?.classList.contains('active')) renderSvcList();
+    const ts = data.updatedAt ? ' (maj: ' + new Date(data.updatedAt).toLocaleString('fr-FR') + ')' : '';
+    toast('☁️ Chargé depuis Drive' + ts);
+  } catch(e) {
+    toast('❌ Erreur chargement : ' + e.message);
+  }
+}
+
 // ══════════════════════════════════════════════
 // BROADCASTCHANNEL — réception sync depuis Parseur
 // ══════════════════════════════════════════════
