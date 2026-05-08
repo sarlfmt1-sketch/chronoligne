@@ -704,26 +704,7 @@ select option { background: var(--bg2); }
         ⚠️ Sauvegarde après chaque session pour ne rien perdre. Le fichier téléchargé contient toutes tes données.
       </div>
       <button class="btn btn-green" style="width:100%;margin-bottom:8px" onclick="saveAll()">💾 Sauvegarder le fichier</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="exportJSON()">⬇ Export JSON</button>
-        <label class="btn btn-secondary btn-sm" style="flex:1;cursor:pointer;text-align:center">⬆ Import JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
-      </div>
       <div id="save-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px"></div>
-    </div>
-
-    <div class="card" style="border-color:rgba(231,76,60,.3)">
-      <div class="card-title">⚠️ ALERTES TRAJETS COURTS</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-        Importe le fichier <b>alertes.json</b> généré par le parseur.<br>
-        L'app alertera au démarrage des trajets concernés.
-      </div>
-      <label class="btn btn-secondary" style="width:100%;cursor:pointer;text-align:center;margin-bottom:8px">
-        📂 Importer alertes.json
-        <input type="file" accept=".json" style="display:none" onchange="importAlertes(event)">
-      </label>
-      <div id="alertes-status" style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6"></div>
-      <div id="alertes-list" style="margin-top:8px"></div>
-      <button id="alertes-clear-btn" class="btn btn-danger btn-sm" style="width:100%;margin-top:8px;display:none" onclick="clearAlertes()">🗑 Effacer les alertes</button>
     </div>
 
     <div class="card" style="border-color:rgba(66,133,244,.3)">
