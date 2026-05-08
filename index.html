@@ -427,11 +427,14 @@ select option { background: var(--bg2); }
       <!-- Prochain service -->
       <div id="next-service-bar" class="next-service-bar" style="display:none">
         <div style="flex:1">
-          <div class="next-service-label">PROCHAIN SERVICE</div>
+          <div class="next-service-label">PROCHAIN SERVICE <span id="next-svc-tripnum" style="color:var(--accent);font-size:10px;margin-left:4px"></span></div>
           <div class="next-service-info" id="next-svc-label">—</div>
-          <div id="next-svc-pause" style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Share Tech Mono',monospace"></div>
+          <div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap;align-items:center">
+            <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace"></div>
+          </div>
         </div>
-        <div class="next-service-countdown" id="next-svc-countdown">--:--</div>
+        <!-- Pause à droite, grande -->
+        <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right;flex-shrink:0;min-width:80px"></div>
       </div>
 
       <!-- Trajet suivant -->
@@ -1367,6 +1370,8 @@ function renderTrajetIfVisible() {
   if(document.getElementById('view-trajet').classList.contains('active')) renderTrajet();
 }
 
+let _pauseAlertFired = false; // Pour ne sonner qu'une fois par pause courte
+
 function updateNextServiceCountdown() {
   if(!activeService || activeTripIdx === null) {
     document.getElementById('next-service-bar').style.display = 'none';
@@ -1380,47 +1385,79 @@ function updateNextServiceCountdown() {
     return;
   }
   const nextTrip = activeService.trips[nextIdx];
-  const firstStop = nextTrip.stops[0];
+  const firstStop = nextTrip.stops?.[0];
   if(!firstStop?.time) return;
   const sec = timeToSec(firstStop.time) - timeToSec(nowTimeStr());
   if(sec < 0 || sec > 7200) {
     document.getElementById('next-service-bar').style.display = 'none';
+    _pauseAlertFired = false;
     return;
   }
-  document.getElementById('next-service-bar').style.display = 'flex';
-  document.getElementById('next-svc-label').textContent = nextTrip.label || 'Prochain trajet';
 
-  // Durée de pause entre la fin du trajet actuel et le début du suivant
-  const lastStop = trip.stops[trip.stops.length - 1];
-  const pauseEl = document.getElementById('next-svc-pause');
-  const countdownEl = document.getElementById('next-svc-countdown');
+  const bar        = document.getElementById('next-service-bar');
+  const labelEl    = document.getElementById('next-svc-label');
+  const tripNumEl  = document.getElementById('next-svc-tripnum');
+  const pauseEl    = document.getElementById('next-svc-pause');
+  const departEl   = document.getElementById('next-svc-depart');
+  const countdownEl= document.getElementById('next-svc-countdown');
 
-  if(lastStop?.time && firstStop?.time) {
-    const pauseSec = timeToSec(firstStop.time) - timeToSec(lastStop.time);
-    const pm = pauseSec > 0 ? Math.floor(pauseSec / 60) : 0;
-    const ps = pauseSec > 0 ? pauseSec % 60 : 0;
-    const pauseStr = pm > 0 ? pm + 'min' + (ps > 0 ? ps + 's' : '') : (ps > 0 ? ps + 's' : '—');
+  bar.style.display = 'flex';
 
-    // Départ dans X minutes
-    const departMin = Math.floor(sec / 60);
-    const departSec = sec % 60;
-    const departStr = departMin > 0
-      ? 'dans ' + departMin + 'min' + (departSec > 0 ? departSec + 's' : '')
-      : 'dans ' + departSec + 's';
+  // Numéro du trajet suivant (ex: "Trajet 6/8")
+  const total = activeService.trips.length;
+  if(tripNumEl) tripNumEl.textContent = `Trajet ${nextIdx+1}/${total}`;
 
-    if(pauseEl) pauseEl.textContent = `☕ Pause ${pauseStr} — départ ${departStr}`;
+  // Label trajet
+  if(labelEl) labelEl.textContent = (nextTrip.label || 'Prochain trajet').replace(/^Ligne \S+ — /,'');
 
-    // Countdown : afficher seulement les minutes de pause restantes
-    if(countdownEl) {
-      countdownEl.textContent = pauseSec > 0 ? '☕ ' + pm + 'min' : departStr;
-      countdownEl.style.fontSize = '16px';
-      countdownEl.style.lineHeight = '1.2';
-      countdownEl.style.textAlign = 'center';
+  const lastStop = trip.stops?.[trip.stops.length - 1];
+  const pauseSec = (lastStop?.time && firstStop?.time)
+    ? timeToSec(firstStop.time) - timeToSec(lastStop.time)
+    : 0;
+  const pauseMin = pauseSec > 0 ? Math.floor(pauseSec / 60) : 0;
+  const pauseRemSec = pauseSec > 0 ? pauseSec % 60 : 0;
+
+  // ── Durée de pause (fixe, basée sur les horaires) ──
+  if(pauseEl && pauseSec > 0) {
+    const pauseStr = pauseMin > 0
+      ? pauseMin + 'min' + (pauseRemSec > 0 ? pauseRemSec + 's' : '')
+      : pauseRemSec + 's';
+    pauseEl.textContent = `☕ ${pauseStr} de pause`;
+
+    // Couleur selon durée de pause
+    if(pauseMin < 3)       pauseEl.style.color = 'var(--red)';
+    else if(pauseMin < 6)  pauseEl.style.color = 'var(--orange)';
+    else                   pauseEl.style.color = 'var(--muted)';
+
+    // Alerte pause très courte (<3min) — une seule fois
+    if(pauseMin < 3 && !_pauseAlertFired) {
+      _pauseAlertFired = true;
+      toast('⚡ Pause très courte — ' + (pauseMin > 0 ? pauseMin + 'min' : pauseRemSec + 's') + ' seulement !');
+      if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
-  } else {
-    const m = Math.floor(sec/60), s = sec%60;
-    if(countdownEl) countdownEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
-    if(pauseEl) pauseEl.textContent = '';
+  } else if(pauseEl) {
+    pauseEl.textContent = '';
+  }
+
+  // ── Compte à rebours départ (dynamique) ──
+  const departMin = Math.floor(sec / 60);
+  const departSec2 = sec % 60;
+  const departStr = departMin > 0
+    ? 'dans ' + departMin + 'min' + (departSec2 > 0 ? departSec2 + 's' : '')
+    : 'dans ' + departSec2 + 's';
+
+  if(departEl) {
+    departEl.textContent = '🕐 Départ ' + departStr;
+    departEl.style.color = sec < 120 ? 'var(--red)' : sec < 300 ? 'var(--orange)' : 'var(--green)';
+  }
+
+  // ── Countdown à droite ──
+  if(countdownEl) {
+    countdownEl.textContent = departStr;
+    countdownEl.style.color = sec < 120 ? 'var(--red)' : sec < 300 ? 'var(--orange)' : 'var(--accent)';
+    countdownEl.style.fontSize = '13px';
+    countdownEl.style.lineHeight = '1.3';
+    countdownEl.style.textAlign = 'right';
   }
 }
 
