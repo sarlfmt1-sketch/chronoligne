@@ -1056,7 +1056,6 @@ function autoAdvanceByTime() {
   // Ne pas utiliser si GPS actif et fonctionnel
   if(lastGPSPos && gpsWatchId !== null) return;
 
-  const nowSec = timeToSec(nowTimeStr());
   const nextIdx = activeStopIdx + 1;
 
   // ── CAS 1 : avancer dans le trip courant ──
@@ -1064,7 +1063,7 @@ function autoAdvanceByTime() {
     const nextStop = trip.stops[nextIdx];
     if(!nextStop?.time) return;
     const nextSec = timeToSec(nextStop.time);
-    if(nowSec >= nextSec - 30) {
+    if(nowSecAdj(nextSec) >= nextSec - 30) {
       activeStopIdx = nextIdx;
       trip.stops.forEach(s => delete s._previewing);
       renderTrajetIfVisible();
@@ -1081,7 +1080,7 @@ function autoAdvanceByTime() {
   if(!firstStop?.time) return;
   const firstSec = timeToSec(firstStop.time);
   // Passer au trip suivant 30 sec avant son premier arrêt
-  if(nowSec >= firstSec - 30) {
+  if(nowSecAdj(firstSec) >= firstSec - 30) {
     activeTripIdx = nextTripIdx;
     activeStopIdx = 0;
     trip.stops.forEach(s => delete s._previewing);
@@ -1105,14 +1104,6 @@ function showView(id) {
   if(id === 'view-options') loadOptions();
 }
 
-function switchTrajetTab(tab) {
-  const isPlan = tab === 'planning';
-  document.getElementById('panel-trajet').style.display = isPlan ? 'none' : '';
-  document.getElementById('panel-planning').style.display = isPlan ? '' : 'none';
-  document.getElementById('tab-trajet-btn').className = 'btn btn-sm ' + (isPlan ? 'btn-secondary' : 'btn-primary') + ' btn-sm';
-  document.getElementById('tab-planning-btn').className = 'btn btn-sm ' + (isPlan ? 'btn-primary' : 'btn-secondary') + ' btn-sm';
-  if(isPlan) renderPlanning();
-}
 
 // ══════════════════════════════════════════════
 // EN DIRECT
@@ -1240,18 +1231,18 @@ function updateLive() {
 
   // Barre de progression entre arrêts
   if(stop.time && nextStop?.time) {
-    const now = timeToSec(nowTimeStr());
     const from = timeToSec(stop.time);
-    const to = timeToSec(nextStop.time);
-    const pct = to > from ? Math.min(100, Math.max(0, (now-from)/(to-from)*100)) : 0;
+    const to   = timeToSec(nextStop.time);
+    const now  = nowSecAdj(from);
+    const pct  = to > from ? Math.min(100, Math.max(0, (now-from)/(to-from)*100)) : 0;
     document.getElementById('live-progress').style.width = pct + '%';
   }
 }
 
 function calcDelta(targetTime) {
   // delta positif = en retard, négatif = en avance
-  const now = timeToSec(nowTimeStr());
   const target = timeToSec(targetTime);
+  const now    = nowSecAdj(target);
   if(isNaN(now) || isNaN(target)) return null;
   return now - target;
 }
@@ -1265,6 +1256,17 @@ function timeToSec(t) {
   if(!t) return NaN;
   const p = t.split(':').map(Number);
   return p[0]*3600 + p[1]*60 + (p[2]||0);
+}
+
+// Compare now vs stop time en tenant compte du passage à minuit
+// Si l'heure actuelle est < 5h et l'heure du stop est > 20h → on est le lendemain
+function nowSecAdj(stopTimeSec) {
+  let nowSec = timeToSec(nowTimeStr());
+  // Après minuit (nowSec < 5h) et stop avant minuit (stopSec > 20h) → ajouter 24h à nowSec
+  if(nowSec < 5*3600 && stopTimeSec > 20*3600) nowSec += 86400;
+  // Stop après minuit (stopSec < 5h) et now avant minuit (nowSec > 20h) → ajouter 24h à stopSec
+  if(stopTimeSec < 5*3600 && nowSec > 20*3600) nowSec -= 86400;
+  return nowSec;
 }
 
 function validateCurrentStop() {
@@ -1391,7 +1393,8 @@ function updateNextServiceCountdown() {
   const nextTrip = activeService.trips[nextIdx];
   const firstStop = nextTrip.stops?.[0];
   if(!firstStop?.time) return;
-  const sec = timeToSec(firstStop.time) - timeToSec(nowTimeStr());
+  const firstSec = timeToSec(firstStop.time);
+  const sec = firstSec - nowSecAdj(firstSec);
   if(sec < 0 || sec > 7200) {
     document.getElementById('next-service-bar').style.display = 'none';
     _pauseAlertFired = false;
@@ -4147,19 +4150,6 @@ function saveStopIntervals(lineNum, tripLabel, stops) {
   localStorage.setItem(INTERVALS_KEY, JSON.stringify(db_int));
 }
 
-function applyStoredIntervals(lineNum, tripLabel, stops) {
-  const db_int = loadSavedIntervals();
-  let applied = 0;
-  stops.forEach(s => {
-    const key = intervalsKey(lineNum, tripLabel, s.name);
-    if(db_int[key] !== undefined) {
-      s.intervalAfter = db_int[key];
-      applied++;
-    }
-  });
-  return applied;
-}
-
 function loadRoadmapServices() {
   try {
     const s = localStorage.getItem(ROADMAP_KEY);
@@ -4675,128 +4665,6 @@ function svcMoveTrip(ti,dir) {
   renderSvcTrips();
 }
 
-function parseIneoFeuille() {
-  const text = document.getElementById('ineo-text').value.trim();
-  if(!text) { toast('Collez le texte INEO d\'abord'); return; }
-
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-  let depotDepart = '', depotRetour = '';
-  let trips = [];
-  let currentLineNum = null, currentRefStops = [], currentDirection = 'aller';
-  let i = 0;
-
-  // Fonction pour normaliser un nom d'arrêt (pour matching)
-  function normalize(s) {
-    return s.toUpperCase()
-      .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄÃ]/g,'A').replace(/[ÙÛÜ]/g,'U')
-      .replace(/[ÎÏÍÌ]/g,'I').replace(/[ÔÖÓÒ]/g,'O').replace(/[Ç]/g,'C')
-      .replace(/['\-\.]/g,' ').replace(/\s+/g,' ').trim();
-  }
-
-  // Fonction pour convertir HH:MM en minutes
-  function toMin(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
-  function fromMin(m) { m=((m%1440)+1440)%1440; return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
-
-  // Parser une ligne d'arrêt INEO : "HH:MM --> NOM ARRET - NUMERO" ou "HH:MM --> NOM ARRET"
-  // Le numéro de poteau est UNIQUEMENT des chiffres en toute fin, précédé de " - "
-  function parseArretLine(l) {
-    // Format : HH:MM --> NOM - NUMERO_POTEAU_CHIFFRES_SEULEMENT
-    const m = l.match(/^(\d{2}:\d{2})\s*-->\s*(.+?)\s*(?:-\s*(\d+)\s*)?$/);
-    if(!m) return null;
-    let name = m[2].trim();
-    const ineo = m[3] || null;
-    return { time: m[1], name, ineo };
-  }
-
-  while(i < lines.length) {
-    const line = lines[i];
-
-    // Prise de service
-    const psMatch = line.match(/(\d{2}:\d{2})\s+PRISE DE SERVICE/i);
-    if(psMatch) { depotDepart = psMatch[1]; i++; continue; }
-
-    // Fin de service
-    const fsMatch = line.match(/FS\s+(\d{2}:\d{2})\s+FIN DE SERVICE/i) ||
-                    line.match(/(\d{2}:\d{2})\s+FIN DE SERVICE/i);
-    if(fsMatch) { depotRetour = fsMatch[1]; i++; continue; }
-
-    // HLP / P/L → ignorer
-    if(line.startsWith('HLP') || line.startsWith('P/L')) { i++; continue; }
-
-    // Ligne de service : "1206 - GARE DE CERG >> GARE DE PONT"
-    const ligneMatch = line.match(/^(\d{4})\s*-\s*(.+?)\s*>>\s*(.+)$/);
-    if(ligneMatch) {
-      // Sauvegarder trajet précédent
-      if(currentLineNum && currentRefStops.length > 0) {
-        const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
-        if(trip) trips.push(trip);
-      }
-      currentLineNum = ligneMatch[1];
-      currentRefStops = [];
-      currentDirection = 'aller';
-      i++; continue;
-    }
-
-    // Ligne header résumé trajet : "12:35   NOM...   12:51   NOM"  (2 heures, sans -->) → ignorer
-    if(line.match(/^\d{2}:\d{2}\s+\S/) && !line.includes('-->') && currentLineNum) { i++; continue; }
-
-    // ITINERAIRE → collecter TOUS les arrêts (lignes contenant -->)
-    if(line.startsWith('ITINERAIRE') || (line.includes('-->') && currentLineNum)) {
-      const tempStops = [];
-      // La ligne ITINERAIRE peut contenir le 1er arrêt après "ITINERAIRE"
-      const firstP = parseArretLine(line);
-      if(firstP) tempStops.push(firstP);
-      i++;
-      while(i < lines.length) {
-        const cur = lines[i];
-        // Stopper sur marqueur de bloc
-        if(cur.match(/^(\d{4})\s*-\s*.+>>.+$/) ||
-           cur.match(/^HLP\b/i) ||
-           cur.match(/PRISE DE SERVICE/i) ||
-           cur.match(/FIN DE SERVICE/i) ||
-           cur.startsWith('En correspondance')) break;
-        // Ligne header à 2 heures sans --> → stopper aussi
-        if(cur.match(/^\d{2}:\d{2}\s+\S/) && !cur.includes('-->')) break;
-        const p = parseArretLine(cur);
-        if(p) { tempStops.push(p); i++; }
-        else { i++; } // ligne non-arrêt → sauter
-      }
-      // Inverser si horaires décroissants
-      if(tempStops.length >= 2) {
-        const tFirst = toMin(tempStops[0].time);
-        const tLast  = toMin(tempStops[tempStops.length-1].time);
-        if(tFirst > tLast) tempStops.reverse();
-      }
-      if(tempStops.length > 0) currentRefStops.push(...tempStops);
-      continue;
-    }
-
-    // En correspondance → ignorer
-    if(line.startsWith('En correspondance')) { i++; continue; }
-    i++;
-  }
-
-  // Dernier trajet
-  if(currentLineNum && currentRefStops.length > 0) {
-    const trip = buildTripFromRef(currentLineNum, currentRefStops, currentDirection);
-    if(trip) trips.push(trip);
-  }
-
-  if(!trips.length) { toast('❌ Aucun trajet détecté — vérifiez le format INEO'); return; }
-
-  if(depotDepart) document.getElementById('svc-depot-depart').value = depotDepart;
-  if(depotRetour) document.getElementById('svc-depot-retour').value = depotRetour;
-
-  svcTrips = trips;
-  renderSvcTrips();
-
-  document.getElementById('ineo-import-panel').style.display = 'none';
-  document.getElementById('ineo-text').value = '';
-
-  const nbRef = trips.reduce((acc,t) => acc + t.stops.filter(s=>s.isRef).length, 0);
-  toast(`✅ ${trips.length} trajet(s) importé(s) — ${nbRef} arrêts de régulation 🔴`);
-}
-
 function buildTripFromRef(lineNum, refStops) {
   function toMin(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
   const dbLine = editorDb.lines.find(l => l.num === lineNum);
@@ -4813,10 +4681,6 @@ function buildTripFromRef(lineNum, refStops) {
   };
 }
 
-function cleanStopName(name) {
-  return name.replace(/\s*-\s*\d+\s*$/, '').trim()
-    .split(' ').map(w => w.length > 2 ? w.charAt(0).toUpperCase()+w.slice(1).toLowerCase() : w).join(' ');
-}
 
 function saveServiceEditor() {
   const num = document.getElementById('svc-num').value.trim();
@@ -4947,34 +4811,6 @@ function saveAll() {
   loadOptions();
 }
 
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'chronoligne_backup.json';
-  a.click();
-}
-
-function importJSON(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      // auto-confirmed on mobile
-      db = imported;
-      if(!db.services) db.services = [];
-      if(!db.gpsCoords) db.gpsCoords = {};
-      if(!db.stopLibrary) db.stopLibrary = {};
-      if(!db.options) db.options = { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 };
-  if(!db.options.departRadius) db.options.departRadius = 50;
-      saveDB(); toast('✅ Données importées'); renderSvcList();
-    } catch(e) { toast('❌ Fichier JSON invalide'); }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
 
 function resetAll() {
   showModal('⚠️ Tout réinitialiser ?', `
@@ -5258,34 +5094,6 @@ function saveAlertesData(data) {
   try { localStorage.setItem(ALERTES_KEY, JSON.stringify(data)); } catch(e) {} 
 }
 
-function importAlertes(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const json = JSON.parse(e.target.result);
-      // Accepte { alertes: [...] } ou directement [...]
-      const list = Array.isArray(json) ? json : (json.alertes || []);
-      if(!list.length) { toast('⚠️ Aucune alerte dans ce fichier'); return; }
-      saveAlertesData(list);
-      toast(`✅ ${list.length} alerte(s) importée(s)`);
-      renderAlertesStatus();
-    } catch(err) {
-      toast('❌ Fichier invalide — format JSON requis');
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
-function clearAlertes() {
-  if(!confirm('Effacer toutes les alertes ?')) return;
-  localStorage.removeItem(ALERTES_KEY);
-  renderAlertesStatus();
-  toast('🗑 Alertes effacées');
-}
-
 function renderAlertesStatus() {
   const list = loadAlertes();
   const statusEl = document.getElementById('alertes-status');
@@ -5511,25 +5319,7 @@ function restoreSession() {
 // ══════════════════════════════════════════════
 // PWA — MANIFEST DYNAMIQUE
 // ══════════════════════════════════════════════
-(function injectManifest() {
-  const manifest = {
-    name: 'ChronoLigne PRO',
-    short_name: 'ChronoLigne',
-    start_url: '.',
-    display: 'standalone',
-    background_color: '#0a0e17',
-    theme_color: '#00d4ff',
-    orientation: 'portrait',
-    icons: [{
-      src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='18' fill='%230a0e17'/><circle cx='48' cy='48' r='30' fill='none' stroke='%2300d4ff' stroke-width='5'/><line x1='48' y1='48' x2='48' y2='24' stroke='%2300d4ff' stroke-width='4' stroke-linecap='round'/><line x1='48' y1='48' x2='64' y2='56' stroke='%23e74c3c' stroke-width='3' stroke-linecap='round'/></svg>",
-      sizes: '96x96', type: 'image/svg+xml'
-    }]
-  };
-  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const el = document.getElementById('pwa-manifest');
-  if(el) el.href = url;
-})();
+
 
 // ══════════════════════════════════════════════
 // PWA — INSTALLATION ANDROID
