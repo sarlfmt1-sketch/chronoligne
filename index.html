@@ -1559,7 +1559,14 @@ function startGPS() {
   if(!navigator.geolocation) { toast('GPS non supporté'); return; }
   gpsWatchId = navigator.geolocation.watchPosition(
     pos => {
-      lastGPSPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      // Ignorer les positions avec précision > 50m (trop imprécises)
+      if(pos.coords.accuracy > 50) {
+        const st = document.getElementById('gps-status-text');
+        if(st) st.textContent = `⚠️ Précision faible (${Math.round(pos.coords.accuracy)}m)`;
+        return;
+      }
+
+      lastGPSPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
       gpsActive = true;
       const dot = document.getElementById('gps-dot');
       
@@ -1570,7 +1577,7 @@ function startGPS() {
       if(btn) { btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; btn.style.background = 'rgba(39,174,96,.1)'; }
       if(lbl) lbl.textContent = 'GPS ON';
       const st = document.getElementById('gps-status-text');
-      if(st) st.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)}`;
+      if(st) st.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)} ±${Math.round(pos.coords.accuracy)}m`;
       // Mise à jour coords enregistrement en cours
       const rc = document.getElementById('gps-record-coords');
       if(rc) rc.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)}`;
@@ -1578,7 +1585,7 @@ function startGPS() {
       if(activeService && activeTripIdx !== null) {
         const trip = activeService.trips[activeTripIdx];
         if(trip) {
-          const radius = db.options?.gpsRadius || 80;
+          const radius = Math.max(db.options?.gpsRadius || 80, (lastGPSPos.accuracy || 0) + 20);
           const departRadius = db.options?.departRadius || 50;
 
           // ── GARDE-FOU TEMPOREL : bloquer GPS auto si le trajet n'a pas encore commencé ──
@@ -1617,47 +1624,65 @@ function startGPS() {
             }
           }
 
-          // ── DÉTECTION ARRÊT : vérifier uniquement le prochain arrêt immédiat ──
-          // (évite de sauter des arrêts quand deux arrêts sont proches géographiquement)
-          const nextIdx2 = activeStopIdx + 1;
-          if(nextIdx2 < trip.stops.length) {
-            const stop = trip.stops[nextIdx2];
+          // ── DÉTECTION ARRÊT : système hybride ──
+          // 1. Vérifie d'abord le prochain arrêt immédiat (+1)
+          // 2. Si on est éloigné de l'arrêt actuel depuis >2min → cherche parmi +1,+2,+3
+          // 3. Le terminus ne peut être détecté que si ≥80% des arrêts sont validés
+
+          const totalStops = trip.stops.length;
+          const minStopsForTerminus = Math.floor(totalStops * 0.8);
+          const isNearTerminus = (idx) => idx === totalStops - 1;
+
+          // Timestamp du dernier match GPS
+          if(!trip._lastGPSMatch) trip._lastGPSMatch = Date.now();
+          const secSinceLastMatch = (Date.now() - trip._lastGPSMatch) / 1000;
+
+          // Combien d'arrêts à vérifier ?
+          // Normalement 1 seul, mais si bloqué depuis >90s → jusqu'à 3
+          const lookAhead = secSinceLastMatch > 90 ? 3 : 1;
+
+          let matched = false;
+          for(let li = 1; li <= lookAhead && !matched; li++) {
+            const checkIdx = activeStopIdx + li;
+            if(checkIdx >= totalStops) break;
+
+            // Garde-fou terminus : ne pas détecter le dernier arrêt trop tôt
+            if(isNearTerminus(checkIdx) && activeStopIdx < minStopsForTerminus) break;
+
+            const stop = trip.stops[checkIdx];
             let coord = null;
             if(stop.lat && stop.lng) {
               coord = { lat: stop.lat, lng: stop.lng };
             } else {
-              const key = gpsKey(activeService.id, activeTripIdx, nextIdx2);
+              const key = gpsKey(activeService.id, activeTripIdx, checkIdx);
               coord = db.gpsCoords[key] || null;
             }
-            if(coord) {
-              const d = haversine(lastGPSPos.lat, lastGPSPos.lng, coord.lat, coord.lng);
-              if(d <= radius) {
-                activeStopIdx = nextIdx2;
-                trip.stops.forEach(s => delete s._previewing);
-                // Si c'est le dernier arrêt → passage au trajet suivant
-                if(activeStopIdx >= trip.stops.length - 1) {
-                  const nextTripIdx2 = activeTripIdx + 1;
-                  if(nextTripIdx2 < activeService.trips.length) {
-                    const nextLabel = activeService.trips[nextTripIdx2].label || ('Trajet ' + (nextTripIdx2+1));
-                    activeTripIdx = nextTripIdx2;
-                    activeStopIdx = 0;
-                    updateLive();
-                    renderTrajetIfVisible();
-                    saveSession();
-                    toast('🚌 AUTO GPS → ' + nextLabel);
-                  } else {
-                    updateLive();
-                    renderTrajetIfVisible();
-                    saveSession();
-                    toast('📍 GPS → ' + cleanStopDisplay(stop.name));
-                  }
-                } else {
-                  updateLive();
-                  renderTrajetIfVisible();
-                  saveSession();
-                  toast('📍 GPS → ' + cleanStopDisplay(stop.name));
+            if(!coord) continue;
+
+            const d = haversine(lastGPSPos.lat, lastGPSPos.lng, coord.lat, coord.lng);
+            if(d <= radius) {
+              matched = true;
+              activeStopIdx = checkIdx;
+              trip._lastGPSMatch = Date.now();
+              trip.stops.forEach(s => delete s._previewing);
+
+              if(li > 1) toast(`📍 GPS +${li} → ${cleanStopDisplay(stop.name)}`);
+              else toast(`📍 GPS → ${cleanStopDisplay(stop.name)}`);
+
+              // Dernier arrêt → trajet suivant
+              if(activeStopIdx >= totalStops - 1) {
+                const nextTripIdx2 = activeTripIdx + 1;
+                if(nextTripIdx2 < activeService.trips.length) {
+                  const nextLabel = activeService.trips[nextTripIdx2].label || ('Trajet ' + (nextTripIdx2+1));
+                  activeTripIdx = nextTripIdx2;
+                  activeStopIdx = 0;
+                  if(activeService.trips[activeTripIdx]) activeService.trips[activeTripIdx]._lastGPSMatch = Date.now();
+                  toast('🚌 AUTO GPS → ' + nextLabel);
                 }
               }
+              updateLive();
+              renderTrajetIfVisible();
+              saveSession();
             }
           }
         }
@@ -3464,27 +3489,27 @@ const PRELOADED_TRIPS = {
     {
       direction: 'retour', label: 'Équerre → Gare Cergy-Préfecture',
       stops: [
-        {name:'Équerre', intervalAfter:2},
-        {name:'Les Béthunes', intervalAfter:1},
-        {name:'Languedoc', intervalAfter:1},
-        {name:'Bourgogne', intervalAfter:1},
-        {name:'Bretagne', intervalAfter:1},
-        {name:'Artois', intervalAfter:2},
-        {name:'Bois du Fief', intervalAfter:2},
-        {name:'Hautes Bornes', intervalAfter:2},
-        {name:'Aurore', intervalAfter:2},
-        {name:'Béthunes Sud', intervalAfter:2},
-        {name:'Palmer', intervalAfter:2},
-        {name:'Compas', intervalAfter:2},
-        {name:'Avenue de la Mare', intervalAfter:2},
-        {name:'Marcel Dassault', intervalAfter:2},
-        {name:'Gare de Liesse - Quai B', intervalAfter:2},
-        {name:'Louis Delage', intervalAfter:2},
-        {name:'La Danne', intervalAfter:2},
-        {name:'Ecluse', intervalAfter:1},
-        {name:'Avenue de L\'Est', intervalAfter:1},
-        {name:'Oise Hautil', intervalAfter:2},
-        {name:'Gare de Cergy Préfecture - Quai L', intervalAfter:0},
+        {name:'Équerre',                          ineo:'184', lat:49.04363696905102,  lng:2.1343222085147993, intervalAfter:2},
+        {name:'Les Béthunes',                     ineo:'468', lat:49.04600518911587,  lng:2.136090498570714,  intervalAfter:1},
+        {name:'Languedoc',                        ineo:'418', lat:49.04549748430999,  lng:2.139586311252447,  intervalAfter:1},
+        {name:'Bourgogne',                        ineo:'73',  lat:49.04753848030771,  lng:2.1412042123093165, intervalAfter:1},
+        {name:'Bretagne',                         ineo:'77',  lat:49.04743461070744,  lng:2.1436618279211337, intervalAfter:1},
+        {name:'Artois',                           ineo:'22',  lat:49.04550556446573,  lng:2.144542242940811,  intervalAfter:2},
+        {name:'Bois du Fief',                     ineo:'63',  lat:49.046100534367746, lng:2.148169123817523,  intervalAfter:2},
+        {name:'Hautes Bornes',                    ineo:'310', lat:49.04240536751846,  lng:2.155084325306777,  intervalAfter:2},
+        {name:'Aurore',                           ineo:'27',  lat:49.039610416622835, lng:2.151856975435047,  intervalAfter:2},
+        {name:'Béthunes Sud',                     ineo:'56',  lat:49.03763819155316,  lng:2.1483655010434397, intervalAfter:2},
+        {name:'Palmer',                           ineo:'677', lat:49.03952547657144,  lng:2.1431046941582026, intervalAfter:2},
+        {name:'Compas',                           ineo:'139', lat:49.04076417395011,  lng:2.1401771342480123, intervalAfter:2},
+        {name:'Avenue de la Mare',                ineo:'29',  lat:49.04133965300106,  lng:2.13690199040089,   intervalAfter:2},
+        {name:'Marcel Dassault',                  ineo:'613', lat:49.040299238622964, lng:2.1347573696438635, intervalAfter:2},
+        {name:'Gare de Liesse (Quai B)',          ineo:'262', lat:49.033651630647235, lng:2.1282217802377636, intervalAfter:2},
+        {name:'Louis Delage',                     ineo:'567', lat:49.035688913740515, lng:2.122673926232497,  intervalAfter:2},
+        {name:'La Danne',                         ineo:'385', lat:49.024761537773934, lng:2.102823982720658,  intervalAfter:2},
+        {name:'Ecluse',                           ineo:'174', lat:49.02733523032747,  lng:2.096984554501794,  intervalAfter:1},
+        {name:"Avenue de l'Est",                  ineo:'34',  lat:49.03163871043059,  lng:2.0886866176963967, intervalAfter:1},
+        {name:'Oise-Hautil',                      ineo:'665', lat:49.03439933151409,  lng:2.0837154331325265, intervalAfter:2},
+        {name:'Gare de Cergy Préfecture (Quai L)',ineo:'247', lat:49.03527626397413,  lng:2.081982867234579,  intervalAfter:0},
       ]
     },
   ],
@@ -3895,26 +3920,26 @@ const PRELOADED_TRIPS = {
     {
       direction: 'aller', label: 'La Taillette → Gare Cergy-Préfecture',
       stops: [
-        {name:'La Taillette', intervalAfter:1},
-        {name:'Grande Pièce', intervalAfter:1},
-        {name:'Pasteur', intervalAfter:1},
-        {name:'Les Gros Saules', intervalAfter:1},
-        {name:'La Jachère', intervalAfter:2},
-        {name:'Saint Martin', intervalAfter:3},
-        {name:'Montrouge', intervalAfter:2},
-        {name:'Grande Rue', intervalAfter:2},
-        {name:'Colucci Gandhi', intervalAfter:1},
-        {name:'La Croix Lieu', intervalAfter:3},
-        {name:'Maison Vallerand', intervalAfter:3},
-        {name:'Gency', intervalAfter:3},
-        {name:'Menandon', intervalAfter:4},
-        {name:'Place de la Libération', intervalAfter:2},
-        {name:'Le Port', intervalAfter:1},
-        {name:'Paradis', intervalAfter:2},
-        {name:'Les Grouettes', intervalAfter:3},
-        {name:'Conseil Départemental', intervalAfter:2},
-        {name:'Les Plants - Préfecture RER', intervalAfter:2},
-        {name:'Gare de Cergy Préfecture - Quai L', intervalAfter:0},
+        {name:'La Taillette',                      ineo:'411', lat:49.0294124340038,     lng:1.9782188055366405, intervalAfter:1},
+        {name:'Grande Pièce',                      ineo:'300', lat:49.027303082561396,   lng:1.9793571396312075, intervalAfter:1},
+        {name:'Pasteur',                           ineo:'689', lat:49.02604558001441,    lng:1.9829244775451522, intervalAfter:1},
+        {name:'Les Gros Saules',                   ineo:'508', lat:49.02789803085142,    lng:1.987748668013848,  intervalAfter:1},
+        {name:'La Jachère',                        ineo:'389', lat:49.029322892106656,   lng:1.9917851380655784, intervalAfter:2},
+        {name:'Saint Martin',                      ineo:'790', lat:49.0316132155056,     lng:1.9983285885013486, intervalAfter:3},
+        {name:'Montrouge',                         ineo:'648', lat:49.023699683082945,   lng:2.0002396237770728, intervalAfter:2},
+        {name:'Grande Rue',                        ineo:'301', lat:49.026434042729505,   lng:2.0070870114967385, intervalAfter:2},
+        {name:'Colucci Gandhi',                    ineo:'137', lat:49.02894859025069,    lng:2.0174721827132345, intervalAfter:1},
+        {name:'La Croix Lieu',                     ineo:'381', lat:49.03006006538746,    lng:2.0226432671268424, intervalAfter:3},
+        {name:'Maison Vallerand',                  ineo:'611', lat:49.03474993858744,    lng:2.0327814094140098, intervalAfter:3},
+        {name:'Gency',                             ineo:'292', lat:49.04234685624678,    lng:2.044855791258435,  intervalAfter:3},
+        {name:'Menandon',                          ineo:'631', lat:49.041900139644255,   lng:2.057674887054948,  intervalAfter:4},
+        {name:'Place de la Libération',            ineo:'707', lat:49.036081248996595,   lng:2.0623104105645815, intervalAfter:2},
+        {name:'Le Port',                           ineo:'448', lat:49.03217928834491,    lng:2.0625203013592635, intervalAfter:1},
+        {name:'Paradis',                           ineo:'678', lat:49.03274383512195,    lng:2.0651664724164527, intervalAfter:2},
+        {name:'Les Grouettes',                     ineo:'511', lat:49.03167811874613,    lng:2.069031186176894,  intervalAfter:3},
+        {name:'Conseil Départemental',             ineo:'142', lat:49.03188595733403,    lng:2.07507219025248,   intervalAfter:2},
+        {name:'Les Plants',                        ineo:'533', lat:49.033549576027454,   lng:2.081174163462492,  intervalAfter:2},
+        {name:'Gare de Cergy Préfecture (Quai L)', ineo:'247', lat:49.03528317228564,    lng:2.081983392958299,  intervalAfter:0},
       ]
     },
     {
