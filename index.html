@@ -1555,6 +1555,31 @@ function updateNextServiceCountdown() {
 // ══════════════════════════════════════════════
 // GPS — DÉMARRAGE / ARRÊT
 // ══════════════════════════════════════════════
+
+// Détection de départ : vitesse > 5 km/h pendant > 5 secondes
+let _departureSpeed    = 0;      // vitesse actuelle en km/h
+let _departureTimer    = null;   // timer de confirmation départ
+let _departureStarted  = false;  // départ confirmé
+
+function _checkDeparture(speedMs) {
+  const speedKmh = (speedMs || 0) * 3.6;
+  _departureSpeed = speedKmh;
+
+  if(speedKmh > 15) {
+    // En mouvement — démarrer le timer si pas encore lancé
+    if(!_departureTimer && !_departureStarted) {
+      _departureTimer = setTimeout(() => {
+        _departureStarted = true;
+        _departureTimer = null;
+      }, 5000); // 5 secondes de confirmation
+    }
+  } else {
+    // Arrêté — annuler le timer
+    if(_departureTimer) { clearTimeout(_departureTimer); _departureTimer = null; }
+    _departureStarted = false;
+  }
+}
+
 function startGPS() {
   if(!navigator.geolocation) { toast('GPS non supporté'); return; }
   gpsWatchId = navigator.geolocation.watchPosition(
@@ -1568,17 +1593,18 @@ function startGPS() {
 
       lastGPSPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
       gpsActive = true;
+
+      // Détection départ (vitesse + temps)
+      _checkDeparture(pos.coords.speed);
+
       const dot = document.getElementById('gps-dot');
-      
       if(dot) { dot.style.background = 'var(--green)'; dot.style.boxShadow = '0 0 8px var(--green)'; }
-      
       const btn = document.getElementById('gps-toggle-btn');
       const lbl = document.getElementById('gps-btn-label');
       if(btn) { btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; btn.style.background = 'rgba(39,174,96,.1)'; }
       if(lbl) lbl.textContent = 'GPS ON';
       const st = document.getElementById('gps-status-text');
       if(st) st.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)} ±${Math.round(pos.coords.accuracy)}m`;
-      // Mise à jour coords enregistrement en cours
       const rc = document.getElementById('gps-record-coords');
       if(rc) rc.textContent = `${lastGPSPos.lat.toFixed(5)}, ${lastGPSPos.lng.toFixed(5)}`;
       // Auto-avancement GPS
@@ -1624,6 +1650,9 @@ function startGPS() {
             }
           }
 
+          // ── DÉTECTION ARRÊT : uniquement si départ confirmé (vitesse > 5km/h pendant 5s) ──
+          if(!_departureStarted) return;
+
           // ── DÉTECTION ARRÊT : système hybride ──
           // 1. Vérifie d'abord le prochain arrêt immédiat (+1)
           // 2. Si on est éloigné de l'arrêt actuel depuis >2min → cherche parmi +1,+2,+3
@@ -1665,6 +1694,10 @@ function startGPS() {
               activeStopIdx = checkIdx;
               trip._lastGPSMatch = Date.now();
               trip.stops.forEach(s => delete s._previewing);
+
+              // Réinitialiser la détection de départ
+              _departureStarted = false;
+              if(_departureTimer) { clearTimeout(_departureTimer); _departureTimer = null; }
 
               if(li > 1) toast(`📍 GPS +${li} → ${cleanStopDisplay(stop.name)}`);
               else toast(`📍 GPS → ${cleanStopDisplay(stop.name)}`);
@@ -1708,6 +1741,9 @@ function startGPS() {
 function stopGPS() {
   if(gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
   gpsActive = false; lastGPSPos = null;
+  // Nettoyer la détection de départ
+  _departureStarted = false;
+  if(_departureTimer) { clearTimeout(_departureTimer); _departureTimer = null; }
   const dot = document.getElementById('gps-dot');
   
   if(dot) { dot.style.background = 'var(--muted)'; dot.style.boxShadow = 'none'; }
