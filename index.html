@@ -1650,10 +1650,24 @@ function startGPS() {
             }
           }
 
-          // ── DÉTECTION ARRÊT : uniquement si départ confirmé (vitesse > 5km/h pendant 5s) ──
-          if(!_departureStarted) return;
-
           // ── DÉTECTION ARRÊT : système hybride ──
+          // Le garde-fou vitesse s'applique seulement si on est encore proche de l'arrêt actuel
+          // Si on s'est éloigné (>rayon) on cherche quand même même sans confirmation départ
+          const currentStop = trip.stops[activeStopIdx];
+          let currentCoord = null;
+          if(currentStop?.lat && currentStop?.lng) {
+            currentCoord = { lat: currentStop.lat, lng: currentStop.lng };
+          } else {
+            const ck = gpsKey(activeService.id, activeTripIdx, activeStopIdx);
+            currentCoord = db.gpsCoords[ck] || null;
+          }
+          const distFromCurrent = currentCoord
+            ? haversine(lastGPSPos.lat, lastGPSPos.lng, currentCoord.lat, currentCoord.lng)
+            : 999;
+
+          // Bloquer la détection seulement si on est encore proche de l'arrêt actuel
+          // ET que le départ n'est pas confirmé (évite de détecter en étant à l'arrêt)
+          if(distFromCurrent < radius && !_departureStarted) return;
           // 1. Vérifie d'abord le prochain arrêt immédiat (+1)
           // 2. Si on est éloigné de l'arrêt actuel depuis >2min → cherche parmi +1,+2,+3
           // 3. Le terminus ne peut être détecté que si ≥80% des arrêts sont validés
