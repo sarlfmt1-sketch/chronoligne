@@ -648,115 +648,6 @@ select option { background: var(--bg2); }
   </div>
 
   <!-- ══ GPS ══ -->
-  <div class="view" id="view-gps">
-    <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:1px;color:var(--accent);margin-bottom:8px">📍 POINTS GPS</div>
-
-    <!-- Stats -->
-    <div id="gps-stats" style="display:flex;gap:8px;margin-bottom:8px"></div>
-
-    <!-- Enregistrement en direct -->
-    <div class="card" id="gps-record-card" style="display:none">
-      <div class="card-title">🔴 ENREGISTREMENT EN COURS</div>
-      <div id="gps-record-stop" style="font-size:16px;font-weight:700;margin-bottom:8px">—</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="gps-record-coords">Attente GPS...</div>
-      <div class="action-row">
-        <button class="btn btn-green" onclick="recordGPSStop()">📍 Enregistrer cet arrêt</button>
-        <button class="btn btn-secondary btn-sm" onclick="skipGPSRecord()">Passer ▶</button>
-      </div>
-    </div>
-
-    <!-- Onglets -->
-    <div style="display:flex;gap:4px;margin-bottom:8px">
-      <button id="gps-tab-lib" class="btn btn-primary btn-sm" style="flex:1" onclick="switchGPSTab('lib')">📚 Bibliothèque</button>
-      <button id="gps-tab-trip" class="btn btn-secondary btn-sm" style="flex:1" onclick="switchGPSTab('trip')">🗺 Par trajet</button>
-    </div>
-
-    <!-- TAB : BIBLIOTHÈQUE D'ARRÊTS -->
-    <div id="gps-panel-lib">
-      <!-- Recherche + ajout rapide -->
-      <div class="card">
-        <div class="card-title">🔍 RECHERCHER / AJOUTER UN ARRÊT</div>
-        <input type="text" id="gps-lib-search" placeholder="Nom ou n° INEO…" oninput="renderLibraryList()" style="margin-bottom:8px">
-        <div id="gps-lib-list" style="max-height:300px;overflow-y:auto"></div>
-      </div>
-
-      <!-- Ajout manuel d'un point -->
-      <div class="card">
-        <div class="card-title">➕ AJOUTER / MODIFIER UN POINT</div>
-        <div class="form-label">N° INEO (poteau)</div>
-        <input type="text" id="gps-new-ineo" placeholder="ex: 227">
-        <div class="form-label">NOM ARRÊT</div>
-        <input type="text" id="gps-new-name" placeholder="ex: GARE DE CERGY LE HAUT RER">
-        <div class="form-label">COORDONNÉES (lat,lng)</div>
-        <input type="text" id="gps-new-coords" placeholder="ex: 49.0408,2.0640">
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-green" style="flex:1" onclick="addLibraryPoint()">💾 Enregistrer</button>
-          <button class="btn btn-secondary btn-sm" onclick="captureGPSToLib()">📍 Position actuelle</button>
-        </div>
-      </div>
-
-      <!-- Import en masse -->
-      <div class="card">
-        <div class="card-title">⚡ IMPORT EN MASSE</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-          Format par ligne :<br>
-          <code style="color:var(--accent)">INEO NOM_ARRÊT lat,lng</code><br>
-          ex: <code style="color:var(--green)">227 GARE DE CERGY LE HAUT RER 49.0408,2.0640</code><br>
-          Sans INEO : <code style="color:var(--accent)">NOM_ARRÊT lat,lng</code>
-        </div>
-        <textarea id="gps-lib-bulk" placeholder="227 GARE DE CERGY LE HAUT RER 49.0408,2.0640&#10;323 HÉRONS 49.0412,2.0766&#10;360 LA BELLE HEAUMIÈRE 49.0450,2.0800" style="height:120px"></textarea>
-        <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="bulkImportLibrary()">⚡ Importer dans la bibliothèque</button>
-        <div id="gps-lib-import-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px"></div>
-      </div>
-
-      <!-- Export/Import bibliothèque -->
-      <div class="card">
-        <div class="card-title">💾 SAUVEGARDE BIBLIOTHÈQUE</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="exportLibrary()">⬇ Exporter</button>
-          <label class="btn btn-secondary btn-sm" style="flex:1;cursor:pointer;text-align:center">⬆ Importer<input type="file" accept=".json,.csv,.txt" style="display:none" onchange="importLibraryFile(event)"></label>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB : PAR TRAJET (ancien mode) -->
-    <div id="gps-panel-trip" style="display:none">
-      <div class="card">
-        <div class="card-title">🗺 VOIR / ÉDITER PAR TRAJET</div>
-        <div class="form-label">TRAJET</div>
-        <select id="gps-trip-sel" onchange="renderGPSStopList()">
-          <option value="">— Sélectionner —</option>
-        </select>
-        <div id="gps-stop-list" style="margin-top:8px"></div>
-      </div>
-
-      <!-- Assignation INEO sur le trajet -->
-      <div class="card" style="border-color:rgba(0,212,255,.25)">
-        <div class="card-title">🔢 ASSIGNER NUMÉROS INEO</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-          Colle une liste <code style="color:var(--accent)">INEO NOM_ARRÊT</code> pour lier les poteaux aux arrêts du trajet sélectionné :<br>
-          <code style="color:var(--green)">227 GARE DE CERGY LE HAUT RER<br>323 HÉRONS<br>360 LA BELLE HEAUMIÈRE</code>
-        </div>
-        <textarea id="gps-ineo-assign-input" placeholder="227 GARE DE CERGY LE HAUT RER&#10;323 HÉRONS&#10;360 LA BELLE HEAUMIÈRE&#10;655 MUSARAIGNE&#10;250 GARE DE CERGY SAINT-CHRISTOPHE RER" style="height:100px"></textarea>
-        <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="assignIneoToTrip()">🔢 Assigner les INEO</button>
-        <div id="gps-ineo-assign-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">⚡ IMPORT RAPIDE (lié au trajet)</div>
-        <div class="form-label">COLLER UNE LISTE (nom lat,lng)</div>
-        <textarea id="gps-bulk-input" placeholder="Gare de Pontoise 49.0536,2.0987&#10;Pasteur 49.0412,2.0766"></textarea>
-        <button class="btn btn-primary" style="width:100%" onclick="bulkImportGPS()">⚡ Importer</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">🔄 ACTIONS GLOBALES</div>
-        <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" onclick="syncIneoFromPreloaded()">🔢 Sync INEO depuis trajets préchargés</button>
-        <button class="btn btn-secondary btn-sm" style="width:100%" onclick="reinjectAllGPS()">📍 Ré-injecter GPS sur le trajet actif</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ══ OPTIONS ══ -->
   <div class="view" id="view-options">
     <div class="card">
@@ -873,9 +764,6 @@ select option { background: var(--bg2); }
     </button>
     <button class="nav-btn" data-view="view-service" onclick="showView('view-service')">
       <span class="ico">🗺</span>SERVICE
-    </button>
-    <button class="nav-btn" data-view="view-gps" onclick="showView('view-gps')">
-      <span class="ico">📍</span>GPS
     </button>
     <button class="nav-btn" data-view="view-options" onclick="showView('view-options')">
       <span class="ico">⚙</span>OPTIONS
@@ -1181,7 +1069,6 @@ function showView(id) {
   document.getElementById(id).classList.add('active');
   if(id === 'view-trajet') renderPlanning();
   if(id === 'view-service') renderSvcList();
-  if(id === 'view-gps') renderGPSView();
   if(id === 'view-options') loadOptions();
 }
 
