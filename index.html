@@ -730,6 +730,17 @@ select option { background: var(--bg2); }
       <div id="install-hint" style="display:none"></div>
     </div>
 
+    <div class="card" style="border-color:rgba(39,174,96,.2)">
+      <div class="card-title">📊 RÉGULARITÉ — APPRENTISSAGE</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        L'app enregistre silencieusement les temps réels entre arrêts pour chaque service. Les données seront exploitables après plusieurs semaines.
+      </div>
+      <div id="reg-stats" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+      <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" onclick="showRegStats()">📈 Voir les statistiques</button>
+      <button class="btn btn-danger btn-sm" style="width:100%" onclick="clearRegData()">🗑 Effacer les données</button>
+      <div id="reg-detail" style="margin-top:10px;display:none;max-height:300px;overflow-y:auto"></div>
+    </div>
+
     <div class="card" style="border-color:rgba(255,193,7,.3)">
       <div class="card-title">💡 ÉCRAN TOUJOURS ALLUMÉ</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -1250,6 +1261,10 @@ function validateCurrentStop() {
   if(!trip) return;
   if(activeStopIdx < trip.stops.length - 1) {
     activeStopIdx++;
+    // Enregistrement régularité silencieux
+    const parts = activeService.id.replace('svc_editor_','').split('_');
+    const svcNum = parts.slice(0, parts.length-1).join('_');
+    regRecordPassage(svcNum, activeTripIdx, activeStopIdx);
     updateLive();
     renderTrajetIfVisible();
     toast('▶ ' + trip.stops[activeStopIdx].name);
@@ -1306,6 +1321,7 @@ function nextTrip() {
   if(nextIdx < activeService.trips.length) {
     activeTripIdx = nextIdx;
     activeStopIdx = 0;
+    regResetTracking(); // Nouveau trajet = nouveau suivi
     updateLive();
     renderTrajetIfVisible();
     toast('🚌 Trajet ' + (nextIdx+1) + '/' + activeService.trips.length + ' démarré');
@@ -4419,6 +4435,7 @@ function startServiceAt(num, jour, tripIdx) {
   activeTripIdx = tripIdx;
   activeStopIdx = 0;
   injectLibraryGPS(chronoSvc);
+  regResetTracking(); // Réinitialiser le suivi régularité
   saveSession();
   showView('view-live');
   const tripLabel = chronoSvc.trips[tripIdx]?.label || ('Trajet ' + (tripIdx+1));
@@ -4864,6 +4881,7 @@ function loadOptions() {
     statusEl.style.color = '#ffc107';
   }
   renderAlertesStatus();
+  renderRegSummary();
 }
 
 function saveOptions() {
@@ -5160,6 +5178,142 @@ function updateFocusMode() {
   // Progression arrêt X/Y
   const focusProgress = document.getElementById('focus-progress');
   if(focusProgress) focusProgress.textContent = (activeStopIdx+1) + ' / ' + trip.stops.length;
+}
+
+// ══════════════════════════════════════════════
+// RÉGULARITÉ — APPRENTISSAGE SILENCIEUX
+// ══════════════════════════════════════════════
+const REG_KEY = 'chronoligne_regularite';
+const REG_MAX_PASSAGES = 10; // garder les 10 derniers par paire
+const REG_MIN_PASSAGES = 5;  // minimum avant d'utiliser les données
+
+function regGetTranche(date) {
+  const h = (date || new Date()).getHours();
+  return Math.floor(h / 2) * 2; // 0,2,4,6,8,10,12,14,16,18,20,22
+}
+
+function regKey(svcNum, tripIdx, stopIdx, tranche) {
+  return `${svcNum}_t${tripIdx}_s${stopIdx}_h${tranche}`;
+}
+
+function loadReg() {
+  try { return JSON.parse(localStorage.getItem(REG_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveReg(data) {
+  try { localStorage.setItem(REG_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+// Appelé quand on valide ou passe un arrêt — enregistre le temps réel depuis le précédent
+let _regLastStopTime = null;  // timestamp réel du dernier arrêt validé
+let _regLastStopIdx  = null;
+
+function regRecordPassage(svcNum, tripIdx, stopIdx) {
+  const now = Date.now();
+
+  // Si on a un arrêt précédent enregistré
+  if(_regLastStopTime !== null && _regLastStopIdx !== null && stopIdx > _regLastStopIdx) {
+    const dureeMs  = now - _regLastStopTime;
+    const dureeSec = Math.round(dureeMs / 1000);
+
+    // Ignorer les valeurs aberrantes (< 5s ou > 20min)
+    if(dureeSec >= 5 && dureeSec <= 1200) {
+      const tranche = regGetTranche(new Date());
+      const key = regKey(svcNum, tripIdx, _regLastStopIdx, tranche);
+      const reg = loadReg();
+      if(!reg[key]) reg[key] = { passages: [], stopFrom: _regLastStopIdx, stopTo: stopIdx, tripIdx, svcNum };
+      reg[key].passages.push(dureeSec);
+      // Garder seulement les REG_MAX_PASSAGES derniers
+      if(reg[key].passages.length > REG_MAX_PASSAGES) {
+        reg[key].passages = reg[key].passages.slice(-REG_MAX_PASSAGES);
+      }
+      reg[key].lastUpdate = new Date().toISOString();
+      saveReg(reg);
+    }
+  }
+
+  // Mettre à jour l'arrêt courant
+  _regLastStopTime = now;
+  _regLastStopIdx  = stopIdx;
+}
+
+// Réinitialiser quand on change de trajet ou de service
+function regResetTracking() {
+  _regLastStopTime = null;
+  _regLastStopIdx  = null;
+}
+
+// Obtenir la durée moyenne apprise pour une paire d'arrêts
+function regGetMoyenne(svcNum, tripIdx, stopIdx, tranche) {
+  const reg = loadReg();
+  const key = regKey(svcNum, tripIdx, stopIdx, tranche);
+  const entry = reg[key];
+  if(!entry || entry.passages.length < REG_MIN_PASSAGES) return null;
+  const sum = entry.passages.reduce((a, b) => a + b, 0);
+  return Math.round(sum / entry.passages.length);
+}
+
+// Afficher les stats dans OPTIONS
+function showRegStats() {
+  const reg    = loadReg();
+  const detail = document.getElementById('reg-detail');
+  if(!detail) return;
+
+  const keys = Object.keys(reg);
+  if(!keys.length) {
+    detail.style.display = '';
+    detail.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px">Aucune donnée encore enregistrée.</div>';
+    return;
+  }
+
+  // Grouper par service
+  const bySvc = {};
+  keys.forEach(k => {
+    const e = reg[k];
+    const s = e.svcNum || '?';
+    if(!bySvc[s]) bySvc[s] = [];
+    bySvc[s].push({ key: k, ...e });
+  });
+
+  let html = '';
+  Object.entries(bySvc).sort().forEach(([svc, entries]) => {
+    const totalPassages = entries.reduce((a, e) => a + (e.passages?.length || 0), 0);
+    const pairesReady   = entries.filter(e => (e.passages?.length || 0) >= REG_MIN_PASSAGES).length;
+    html += `<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px">Service ${svc}</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.8">
+        Paires d'arrêts : <b style="color:var(--text)">${entries.length}</b><br>
+        Passages enregistrés : <b style="color:var(--text)">${totalPassages}</b><br>
+        Paires utilisables (≥${REG_MIN_PASSAGES} passages) : <b style="color:${pairesReady>0?'var(--green)':'var(--muted)'}">${pairesReady}</b>
+      </div>
+    </div>`;
+  });
+
+  detail.style.display = '';
+  detail.innerHTML = html;
+}
+
+function clearRegData() {
+  if(!confirm('Effacer toutes les données d\'apprentissage régularité ?')) return;
+  localStorage.removeItem(REG_KEY);
+  regResetTracking();
+  renderRegSummary();
+  const d = document.getElementById('reg-detail');
+  if(d) d.style.display = 'none';
+  toast('🗑 Données régularité effacées');
+}
+
+function renderRegSummary() {
+  const el = document.getElementById('reg-stats');
+  if(!el) return;
+  const reg    = loadReg();
+  const keys   = Object.keys(reg);
+  const total  = keys.reduce((a, k) => a + (reg[k].passages?.length || 0), 0);
+  const pretes = keys.filter(k => (reg[k].passages?.length || 0) >= REG_MIN_PASSAGES).length;
+  if(!keys.length) {
+    el.textContent = 'Aucune donnée — commence à conduire !';
+    return;
+  }
+  el.innerHTML = `<span style="color:var(--text)">${keys.length}</span> paires d'arrêts · <span style="color:var(--text)">${total}</span> passages · <span style="color:${pretes>0?'var(--green)':'var(--orange)'}">${pretes} utilisables</span>`;
 }
 
 // ══════════════════════════════════════════════
