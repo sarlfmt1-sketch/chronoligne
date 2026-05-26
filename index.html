@@ -4253,23 +4253,22 @@ function saveStopIntervals(lineNum, tripLabel, stops) {
   localStorage.setItem(INTERVALS_KEY, JSON.stringify(db_int));
 }
 
+function dedupServices(list) {
+  const seen = {};
+  const result = [];
+  // Parcourir à l'envers pour garder le dernier
+  [...list].reverse().forEach(svc => {
+    const key = `${svc.num}_${svc.jour||'semaine'}`;
+    if(!seen[key]) { seen[key] = true; result.unshift(svc); }
+  });
+  return result;
+}
+
 function loadRoadmapServices() {
   try {
     const s = localStorage.getItem(ROADMAP_KEY);
     const raw = s ? JSON.parse(s) : [];
-    // Dédoublonner : garder le dernier en cas de doublon num+jour
-    const seen = {};
-    roadmapServices = [];
-    raw.forEach(svc => {
-      const key = `${svc.num}_${svc.jour||'semaine'}`;
-      if(seen[key] !== undefined) {
-        roadmapServices[seen[key]] = svc; // remplace par le plus récent
-      } else {
-        seen[key] = roadmapServices.length;
-        roadmapServices.push(svc);
-      }
-    });
-    // Si des doublons ont été trouvés → sauvegarder la version nettoyée
+    roadmapServices = dedupServices(raw);
     if(roadmapServices.length < raw.length) {
       localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapServices));
       console.log(`🧹 ${raw.length - roadmapServices.length} doublon(s) supprimé(s)`);
@@ -5080,6 +5079,7 @@ async function driveDownload() {
         if(idx === -1) { existing.push(s); added++; }
         else { existing[idx] = s; updated++; }
       });
+      existing = dedupServices(existing);
       localStorage.setItem('chronoligne_roadmaps', JSON.stringify(existing));
       loadRoadmapServices();
       const msg = [added ? added + ' ajouté(s)' : '', updated ? updated + ' mis à jour' : ''].filter(Boolean).join(', ');
@@ -5368,6 +5368,7 @@ _clChannel.onmessage = (event) => {
     else { existing[idx] = s; updated++; }
   });
 
+  existing = dedupServices(existing);
   localStorage.setItem(ROADMAP_KEY, JSON.stringify(existing));
 
   // Rafraîchir la liste si l'onglet SERVICE est visible
