@@ -4297,7 +4297,7 @@ function renderSvcList() {
     return;
   }
 
-  el.innerHTML = `<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">` +
+  el.innerHTML = `<div style="border:1px solid var(--border);border-radius:12px;overflow-y:auto;max-height:560px">` +
     filtered.map((s, fi) => {
       const isOpen = svcOpenIdx === s._idx;
       const depotInfo = (s.depotDepart && s.depotRetour)
