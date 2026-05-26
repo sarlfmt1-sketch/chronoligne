@@ -4256,7 +4256,24 @@ function saveStopIntervals(lineNum, tripLabel, stops) {
 function loadRoadmapServices() {
   try {
     const s = localStorage.getItem(ROADMAP_KEY);
-    roadmapServices = s ? JSON.parse(s) : [];
+    const raw = s ? JSON.parse(s) : [];
+    // Dédoublonner : garder le dernier en cas de doublon num+jour
+    const seen = {};
+    roadmapServices = [];
+    raw.forEach(svc => {
+      const key = `${svc.num}_${svc.jour||'semaine'}`;
+      if(seen[key] !== undefined) {
+        roadmapServices[seen[key]] = svc; // remplace par le plus récent
+      } else {
+        seen[key] = roadmapServices.length;
+        roadmapServices.push(svc);
+      }
+    });
+    // Si des doublons ont été trouvés → sauvegarder la version nettoyée
+    if(roadmapServices.length < raw.length) {
+      localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapServices));
+      console.log(`🧹 ${raw.length - roadmapServices.length} doublon(s) supprimé(s)`);
+    }
   } catch(e) { roadmapServices = []; }
 }
 
