@@ -4979,7 +4979,7 @@ function toast(msg) {
 // GOOGLE DRIVE SYNC
 // ══════════════════════════════════════════════
 const DRIVE_CLIENT_ID  = '824903623349-bpd4r6r85g0md1neab4oh5bd6h775ell.apps.googleusercontent.com';
-const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.appdata';
 const DRIVE_FILE_NAME  = 'chronoligne_sync.json';
 let _driveToken = null;
 
@@ -5018,7 +5018,7 @@ async function driveSignIn() {
 
 async function driveGetFileId() {
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}'+and+trashed=false&fields=files(id)`,
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id)`,
     { headers: { Authorization: 'Bearer ' + _driveToken } }
   );
   const data = await res.json();
@@ -5028,9 +5028,26 @@ async function driveGetFileId() {
 async function driveUpload() {
   if(!_driveToken) { toast('❌ Connecte-toi d\'abord'); return; }
   try {
+    const services = JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]');
+    const rawPlanning = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
+
+    // Enrichit chaque entrée du planning avec l'heure de début du service
+    const enrichedPlanning = {};
+    for (const [date, val] of Object.entries(rawPlanning)) {
+      if (!val || val === 'repos') {
+        enrichedPlanning[date] = { num: val || 'repos', time: null };
+      } else {
+        const svc = services.find(s => s.num === val);
+        const time = svc?.depotDepart
+          || svc?.trips?.[0]?.stops?.[0]?.time?.substring(0, 5)
+          || null;
+        enrichedPlanning[date] = { num: val, time };
+      }
+    }
+
     const payload = {
-      services:  JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]'),
-      planning:  JSON.parse(localStorage.getItem('chronoligne_planning')  || '{}'),
+      services:  services,
+      planning:  enrichedPlanning,
       updatedAt: new Date().toISOString()
     };
     const json = JSON.stringify(payload);
@@ -5045,7 +5062,7 @@ async function driveUpload() {
       method = 'POST';
     }
 
-    const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: fileId ? undefined : ['root'] });
+    const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: fileId ? undefined : ['appDataFolder'] });
     const body = new FormData();
     body.append('metadata', new Blob([meta], { type: 'application/json' }));
     body.append('file',     new Blob([json], { type: 'application/json' }));
@@ -5087,9 +5104,11 @@ async function driveDownload() {
     }
 
     if(data.planning && Object.keys(data.planning).length) {
-      // Fusionner planning
+      // Fusionner planning — normalise le format enrichi {num, time} -> string simple
       let existingPlan = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
-      Object.assign(existingPlan, data.planning);
+      for (const [date, val] of Object.entries(data.planning)) {
+        existingPlan[date] = (val && typeof val === 'object') ? (val.num ?? 'repos') : val;
+      }
       localStorage.setItem('chronoligne_planning', JSON.stringify(existingPlan));
     }
 
