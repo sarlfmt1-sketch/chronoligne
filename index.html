@@ -413,9 +413,15 @@ select option { background: var(--bg2); }
   <div class="view active" id="view-live">
 
     <!-- Pas de trajet actif -->
-    <div id="live-empty" class="empty">
-      <div class="ico">🚌</div>
-      <p>Aucun trajet actif<br><span style="font-size:12px">Va dans SERVICE et démarre un trajet</span></p>
+    <div id="live-empty" class="empty" style="flex-direction:column;gap:12px;padding:20px">
+      <div id="live-today-svc" style="width:100%;display:none">
+        <!-- Rempli dynamiquement par updateLiveTodaySvc() -->
+      </div>
+      <div style="text-align:center;color:var(--muted);font-size:13px">
+        <div style="font-size:40px;margin-bottom:8px">🚌</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">Aucun trajet actif</div>
+        <div style="font-size:12px">Démarre un service ci-dessus ou va dans SERVICE</div>
+      </div>
     </div>
 
     <!-- Trajet actif -->
@@ -1081,6 +1087,7 @@ function showView(id) {
   if(id === 'view-trajet') renderPlanning();
   if(id === 'view-service') renderSvcList();
   if(id === 'view-options') loadOptions();
+  if(id === 'view-live' && !activeService) updateLiveTodaySvc();
 }
 
 
@@ -1090,6 +1097,7 @@ function showView(id) {
 function updateLive() {
   const hasActive = activeService && activeTripIdx !== null;
   document.getElementById('live-empty').style.display = hasActive ? 'none' : 'flex';
+  if(!hasActive) updateLiveTodaySvc();
   document.getElementById('live-content').style.display = hasActive ? 'flex' : 'none';
   document.getElementById('terminus-btn').classList.toggle('visible', hasActive);
   if(!hasActive) return;
@@ -5028,26 +5036,9 @@ async function driveGetFileId() {
 async function driveUpload() {
   if(!_driveToken) { toast('❌ Connecte-toi d\'abord'); return; }
   try {
-    const services = JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]');
-    const rawPlanning = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
-
-    // Enrichit chaque entrée du planning avec l'heure de début du service
-    const enrichedPlanning = {};
-    for (const [date, val] of Object.entries(rawPlanning)) {
-      if (!val || val === 'repos') {
-        enrichedPlanning[date] = { num: val || 'repos', time: null };
-      } else {
-        const svc = services.find(s => s.num === val);
-        const time = svc?.depotDepart
-          || svc?.trips?.[0]?.stops?.[0]?.time?.substring(0, 5)
-          || null;
-        enrichedPlanning[date] = { num: val, time };
-      }
-    }
-
     const payload = {
-      services:  services,
-      planning:  enrichedPlanning,
+      services:  JSON.parse(localStorage.getItem('chronoligne_roadmaps') || '[]'),
+      planning:  JSON.parse(localStorage.getItem('chronoligne_planning')  || '{}'),
       updatedAt: new Date().toISOString()
     };
     const json = JSON.stringify(payload);
@@ -5104,11 +5095,9 @@ async function driveDownload() {
     }
 
     if(data.planning && Object.keys(data.planning).length) {
-      // Fusionner planning — normalise le format enrichi {num, time} -> string simple
+      // Fusionner planning
       let existingPlan = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
-      for (const [date, val] of Object.entries(data.planning)) {
-        existingPlan[date] = (val && typeof val === 'object') ? (val.num ?? 'repos') : val;
-      }
+      Object.assign(existingPlan, data.planning);
       localStorage.setItem('chronoligne_planning', JSON.stringify(existingPlan));
     }
 
@@ -5350,6 +5339,72 @@ function renderRegSummary() {
     return;
   }
   el.innerHTML = `<span style="color:var(--text)">${keys.length}</span> paires d'arrêts · <span style="color:var(--text)">${total}</span> passages · <span style="color:${pretes>0?'var(--green)':'var(--orange)'}">${pretes} utilisables</span>`;
+}
+
+// ── Service du jour dans EN DIRECT (état vide) ───────────────────
+function updateLiveTodaySvc() {
+  const container = document.getElementById('live-today-svc');
+  if(!container) return;
+
+  // Trouver le service du jour
+  const planning = JSON.parse(localStorage.getItem('chronoligne_planning')||'{}');
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const key      = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const dowIdx   = today.getDay();
+  const jourType = dowIdx===0?'dimanche':dowIdx===6?'samedi':'semaine';
+
+  loadRoadmapServices();
+  let svc = null;
+  const val = planning[key];
+  if(val === 'repos') { container.style.display = 'none'; return; }
+  if(val) svc = roadmapServices.find(s => s.num === val);
+  else {
+    const filtered = roadmapServices.filter(s => (s.jour||'semaine') === jourType);
+    if(filtered.length === 1) svc = filtered[0];
+  }
+
+  if(!svc) { container.style.display = 'none'; return; }
+
+  const firstTrip = svc.trips?.[0];
+  const lastTrip  = svc.trips?.[svc.trips.length-1];
+  const dep  = firstTrip?.stops?.[0]?.time?.substring(0,5) || svc.depotDepart || '—';
+  const ret  = lastTrip?.stops?.[lastTrip.stops.length-1]?.time?.substring(0,5) || svc.depotRetour || '—';
+  const lines = (svc.trips||[]).map(t =>
+    `<span style="background:${t.lineColor||'#555'};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700">${t.lineNum||'?'}</span>`
+  ).join(' ');
+
+  // Compte à rebours avant le départ
+  const now = new Date();
+  const [fh,fm] = dep.split(':').map(Number);
+  const diffMin = (fh*60+fm) - (now.getHours()*60+now.getMinutes());
+  let countdownHtml = '';
+  if(diffMin > 0) {
+    const h = Math.floor(diffMin/60), m = diffMin%60;
+    const txt = h > 0 ? h+'h'+(m>0?String(m).padStart(2,'0'):'') : m+'min';
+    countdownHtml = `<span style="background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.3);padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700">dans ${txt}</span>`;
+  } else if(diffMin > -30) {
+    countdownHtml = `<span style="background:rgba(255,193,7,.1);color:#ffc107;border:1px solid rgba(255,193,7,.3);padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700">en cours</span>`;
+  }
+
+  container.style.display = '';
+  container.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;width:100%">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">SERVICE DU JOUR</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent);font-family:'Rajdhani',sans-serif">Service ${svc.num}</div>
+          <div style="font-size:13px;color:var(--muted);font-family:'Share Tech Mono',monospace">${dep} → ${ret}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          ${countdownHtml}
+          <button onclick="planStartService('${svc.num}','${svc.jour||jourType}')"
+            style="background:var(--green);color:#000;border:none;border-radius:10px;padding:10px 20px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.5px">
+            ▶ Démarrer
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${lines}</div>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════
