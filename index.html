@@ -5095,10 +5095,13 @@ async function driveDownload() {
     }
 
     if(data.planning && Object.keys(data.planning).length) {
-      // Fusionner planning
+      // Fusionner planning — aplatir les objets {num, time} envoyés par le parseur
       let existingPlan = JSON.parse(localStorage.getItem('chronoligne_planning') || '{}');
-      Object.assign(existingPlan, data.planning);
+      for (const [date, val] of Object.entries(data.planning)) {
+        existingPlan[date] = (val && typeof val === 'object') ? (val.num ?? 'repos') : val;
+      }
       localStorage.setItem('chronoligne_planning', JSON.stringify(existingPlan));
+      renderPlanning();
     }
 
     if(document.getElementById('view-service')?.classList.contains('active')) renderSvcList();
