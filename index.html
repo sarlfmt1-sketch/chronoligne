@@ -275,46 +275,6 @@ nav {
   font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; width: 100%;
 }
 
-/* ── MODE FOCUS ── */
-#focus-mode {
-  display:none; position:fixed; inset:0; z-index:200;
-  background:radial-gradient(ellipse at 50% 30%,#0d2040 0%,#050a12 70%);
-  flex-direction:column; padding:16px; gap:0;
-}
-#focus-mode.active { display:flex; }
-#focus-mode::before {
-  content:''; position:fixed; top:-80px; left:50%; transform:translateX(-50%);
-  width:350px; height:350px; background:rgba(0,212,255,.06);
-  border-radius:50%; filter:blur(50px); pointer-events:none;
-}
-.focus-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; position:relative; z-index:1; }
-.focus-clock { font-family:'Share Tech Mono',monospace; font-size:22px; color:rgba(255,255,255,.5); }
-.focus-line { background:rgba(0,212,255,.15); border:1px solid rgba(0,212,255,.4); color:var(--accent); font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; padding:3px 14px; border-radius:20px; letter-spacing:2px; }
-.focus-exit { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.5); border-radius:8px; padding:4px 10px; font-size:12px; cursor:pointer; }
-.focus-main { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:8px; position:relative; z-index:1; }
-.focus-label { font-size:10px; color:rgba(255,255,255,.35); text-transform:uppercase; letter-spacing:3px; }
-.focus-time { font-family:'Bebas Neue',sans-serif; font-size:90px; color:#fff; line-height:1; text-shadow:0 0 60px rgba(0,212,255,.25); }
-.focus-name { font-family:'Rajdhani',sans-serif; font-size:30px; font-weight:700; color:var(--accent); line-height:1.1; max-width:90%; }
-.focus-delta { margin-top:6px; }
-.focus-dots { display:flex; gap:6px; justify-content:center; margin-top:14px; }
-.focus-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.2); transition:all .3s; }
-.focus-dot.active { background:var(--accent); width:22px; border-radius:3px; }
-.focus-bottom { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; position:relative; z-index:1; }
-.focus-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; text-align:center; }
-.focus-stat .lbl { font-size:9px; color:rgba(255,255,255,.3); text-transform:uppercase; letter-spacing:1px; }
-.focus-stat .val { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:rgba(255,255,255,.8); margin-top:3px; line-height:1.2; }
-.focus-actions { display:flex; gap:8px; margin-top:10px; position:relative; z-index:1; }
-.focus-actions .btn-next { flex:1; background:var(--accent); color:#000; border:none; border-radius:14px; padding:14px; font-size:16px; font-weight:700; cursor:pointer; font-family:'Rajdhani',sans-serif; letter-spacing:1px; }
-.focus-actions .btn-prev { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); border-radius:14px; padding:14px 18px; font-size:16px; cursor:pointer; }
-#focus-switch-btn {
-  position:fixed; bottom:80px; right:12px; z-index:300;
-  background:rgba(0,212,255,.15); border:1.5px solid rgba(0,212,255,.4);
-  color:var(--accent); border-radius:50%; width:42px; height:42px;
-  font-size:18px; cursor:pointer; display:none; align-items:center; justify-content:center;
-  box-shadow:0 4px 20px rgba(0,212,255,.2);
-}
-#focus-switch-btn.visible { display:flex; }
-
 /* ── OPTIONS ── */
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
 .card-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; }
@@ -516,42 +476,6 @@ select option { background: var(--bg2); }
     </div>
   </div>
 
-  <!-- ══ MODE FOCUS ══ -->
-  <div id="focus-mode">
-    <div class="focus-topbar">
-      <div class="focus-clock" id="focus-clock">--:--:--</div>
-      <div class="focus-line" id="focus-line">—</div>
-      <button class="focus-exit" onclick="toggleFocusMode()">✕ Normal</button>
-    </div>
-    <div class="focus-main">
-      <div class="focus-label">ARRÊT ACTUEL</div>
-      <div class="focus-time" id="focus-time">--:--</div>
-      <div class="focus-name" id="focus-name">—</div>
-      <div class="focus-delta" id="focus-delta"></div>
-      <div class="focus-dots" id="focus-dots"></div>
-    </div>
-    <div class="focus-bottom">
-      <div class="focus-stat">
-        <div class="lbl">PROCHAIN</div>
-        <div class="val" id="focus-next">—</div>
-      </div>
-      <div class="focus-stat">
-        <div class="lbl">PAUSE / DÉPART</div>
-        <div class="val" id="focus-pause" style="color:var(--accent)">—</div>
-      </div>
-      <div class="focus-stat">
-        <div class="lbl">ARRÊT</div>
-        <div class="val" id="focus-progress">—</div>
-      </div>
-    </div>
-    <div class="focus-actions">
-      <button class="btn-prev" onclick="prevStop()">◀</button>
-      <button class="btn-next" onclick="validateCurrentStop()">✅ Arrêt suivant</button>
-    </div>
-  </div>
-
-  <!-- Bouton switch mode Focus -->
-  <button id="focus-switch-btn" onclick="toggleFocusMode()" title="Mode Focus">🎯</button>
 
   <!-- ══ TRAJET / PLANNING ══ -->
   <div class="view" id="view-trajet">
@@ -831,7 +755,7 @@ let gpsRecordStopIdx = 0;
 const STORE_KEY = 'cl_v2_db';
 
 function saveDB() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) { toast('❌ Échec de sauvegarde : ' + e.message); }
 }
 // ══════════════════════════════════════════════
 // BIBLIOTHÈQUE GPS PAR DÉFAUT
@@ -1023,13 +947,6 @@ function updateClock() {
   document.getElementById('clock-display').textContent = hms;
   autoAdvanceByTime();
   updateLive();
-  // Afficher le bouton Focus si service actif
-  const focusBtn = document.getElementById('focus-switch-btn');
-  if(focusBtn) focusBtn.classList.toggle('visible', !!(activeService && activeTripIdx !== null));
-
-  // Mettre à jour le mode Focus si actif
-  if(_focusActive) updateFocusMode();
-
   updateNextServiceCountdown();
 }
 
@@ -1430,9 +1347,9 @@ function updateNextServiceCountdown() {
   // ── Durée de pause (fixe, basée sur les horaires) ──
   if(pauseEl && pauseSec > 0) {
     const pauseStr = pauseMin > 0
-      ? '☕ ' + pauseMin + 'min' + (pauseRemSec > 0 ? pauseRemSec + 's' : '')
-      : '☕ ' + pauseRemSec + 's';
-    pauseEl.textContent = pauseStr;
+      ? pauseMin + 'min' + (pauseRemSec > 0 ? pauseRemSec + 's' : '')
+      : pauseRemSec + 's';
+    pauseEl.innerHTML = '<span style="font-size:30px">' + pauseStr + '</span>';
 
     // Couleur selon durée de pause
     if(pauseMin < 3)       pauseEl.style.color = 'var(--red)';
@@ -2230,7 +2147,7 @@ function isFerie(d) {
 function loadPlanning() {
   try { return JSON.parse(localStorage.getItem(PLANNING_KEY)||'{}'); } catch(e) { return {}; }
 }
-function savePlanning(p) { try { localStorage.setItem(PLANNING_KEY, JSON.stringify(p)); } catch(e) {} }
+function savePlanning(p) { try { localStorage.setItem(PLANNING_KEY, JSON.stringify(p)); } catch(e) { toast('❌ Échec de sauvegarde du planning : ' + e.message); } }
 
 function planDateKey(d) {
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -5113,102 +5030,6 @@ async function driveDownload() {
 }
 
 // ══════════════════════════════════════════════
-// MODE FOCUS
-// ══════════════════════════════════════════════
-let _focusActive = false;
-
-function toggleFocusMode() {
-  _focusActive = !_focusActive;
-  const fm = document.getElementById('focus-mode');
-  const btn = document.getElementById('focus-switch-btn');
-  fm.classList.toggle('active', _focusActive);
-  if(_focusActive) updateFocusMode();
-}
-
-function updateFocusMode() {
-  if(!_focusActive || !activeService || activeTripIdx === null) return;
-  const trip = activeService.trips[activeTripIdx];
-  if(!trip) return;
-  const stop = trip.stops[activeStopIdx];
-  if(!stop) return;
-  const nextStop = trip.stops[activeStopIdx + 1];
-
-  // Horloge
-  const focusClock = document.getElementById('focus-clock');
-  if(focusClock) focusClock.textContent = nowTimeStr().substring(0,5);
-
-  // Ligne
-  const focusLine = document.getElementById('focus-line');
-  if(focusLine) focusLine.textContent = trip.lineNum || activeService.name || '—';
-
-  // Heure + Nom arrêt
-  const focusTime = document.getElementById('focus-time');
-  const focusName = document.getElementById('focus-name');
-  if(focusTime) focusTime.textContent = stop.time?.substring(0,5) || '--:--';
-  if(focusName) focusName.textContent = cleanStopDisplay(stop.name);
-
-  // Delta
-  const focusDelta = document.getElementById('focus-delta');
-  if(focusDelta) {
-    const delta = calcDelta(stop.time);
-    if(delta !== null) {
-      const abs = Math.abs(delta), m = Math.floor(abs/60), s = abs%60;
-      const txt = m > 0 ? m+'min'+(s>0?s+'s':'') : s+'s';
-      if(Math.abs(delta) < 30) {
-        focusDelta.innerHTML = `<span style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.4);color:#27ae60;border-radius:20px;padding:5px 18px;font-size:14px;font-weight:700">✅ À L'HEURE</span>`;
-      } else if(delta > 0) {
-        focusDelta.innerHTML = `<span style="background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:#e74c3c;border-radius:20px;padding:5px 18px;font-size:14px;font-weight:700">🔴 +${txt} RETARD</span>`;
-      } else {
-        focusDelta.innerHTML = `<span style="background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.4);color:#ffc107;border-radius:20px;padding:5px 18px;font-size:14px;font-weight:700">🟡 -${txt} AVANCE</span>`;
-      }
-    }
-  }
-
-  // Dots progression
-  const focusDots = document.getElementById('focus-dots');
-  if(focusDots) {
-    const total = trip.stops.length;
-    const dots = Math.min(total, 12);
-    const start = Math.max(0, activeStopIdx - Math.floor(dots/2));
-    let html = '';
-    for(let i = start; i < Math.min(start+dots, total); i++) {
-      html += `<div class="focus-dot${i===activeStopIdx?' active':''}"></div>`;
-    }
-    focusDots.innerHTML = html;
-  }
-
-  // Prochain
-  const focusNext = document.getElementById('focus-next');
-  if(focusNext && nextStop) {
-    focusNext.textContent = (nextStop.time?.substring(0,5)||'') + ' ' + cleanStopDisplay(nextStop.name);
-  } else if(focusNext) {
-    focusNext.textContent = '—';
-  }
-
-  // Pause / départ prochain service
-  const focusPause = document.getElementById('focus-pause');
-  if(focusPause) {
-    const nextTripIdx = activeTripIdx + 1;
-    if(nextTripIdx < activeService.trips.length) {
-      const nextTrip = activeService.trips[nextTripIdx];
-      const firstStop2 = nextTrip.stops?.[0];
-      const lastStop2  = trip.stops[trip.stops.length-1];
-      if(firstStop2?.time && lastStop2?.time) {
-        const pauseSec = timeToSec(firstStop2.time) - timeToSec(lastStop2.time);
-        const pm = Math.max(0, Math.floor(pauseSec/60));
-        focusPause.innerHTML = `☕ ${pm}min<br><span style="font-size:11px">${firstStop2.time.substring(0,5)}</span>`;
-      }
-    } else {
-      focusPause.textContent = '—';
-    }
-  }
-
-  // Progression arrêt X/Y
-  const focusProgress = document.getElementById('focus-progress');
-  if(focusProgress) focusProgress.textContent = (activeStopIdx+1) + ' / ' + trip.stops.length;
-}
-
-// ══════════════════════════════════════════════
 // RÉGULARITÉ — APPRENTISSAGE SILENCIEUX
 // ══════════════════════════════════════════════
 const REG_KEY = 'chronoligne_regularite';
@@ -5228,7 +5049,7 @@ function loadReg() {
   try { return JSON.parse(localStorage.getItem(REG_KEY) || '{}'); } catch(e) { return {}; }
 }
 function saveReg(data) {
-  try { localStorage.setItem(REG_KEY, JSON.stringify(data)); } catch(e) {}
+  try { localStorage.setItem(REG_KEY, JSON.stringify(data)); } catch(e) { toast('❌ Échec d\'enregistrement du trajet : ' + e.message); }
 }
 
 // Appelé quand on valide ou passe un arrêt — enregistre le temps réel depuis le précédent
@@ -5523,7 +5344,7 @@ function loadAlertes() {
   try { return JSON.parse(localStorage.getItem(ALERTES_KEY) || '[]'); } catch(e) { return []; }
 }
 function saveAlertesData(data) {
-  try { localStorage.setItem(ALERTES_KEY, JSON.stringify(data)); } catch(e) {} 
+  try { localStorage.setItem(ALERTES_KEY, JSON.stringify(data)); } catch(e) { toast('❌ Échec de sauvegarde des alertes : ' + e.message); }
 }
 
 function renderAlertesStatus() {
@@ -5707,7 +5528,7 @@ function saveSession() {
       stopIdx:  activeStopIdx,
       savedAt:  Date.now()
     }));
-  } catch(e) {}
+  } catch(e) { toast('❌ Échec de sauvegarde de la session : ' + e.message); }
 }
 
 function clearSession() {
