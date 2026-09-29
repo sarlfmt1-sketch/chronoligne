@@ -1184,7 +1184,8 @@ function validateCurrentStop() {
   if(!activeService || activeTripIdx === null) return;
   const trip = activeService.trips[activeTripIdx];
   if(!trip) return;
-  if(activeStopIdx < trip.stops.length - 1) {
+  const lastIdx = effectiveLastStopIdx(trip, activeTripIdx);
+  if(activeStopIdx < lastIdx) {
     activeStopIdx++;
     // Enregistrement régularité silencieux
     const parts = activeService.id.replace('svc_editor_','').split('_');
@@ -1194,6 +1195,10 @@ function validateCurrentStop() {
     renderTrajetIfVisible();
     toast('▶ ' + trip.stops[activeStopIdx].name);
     saveSession();
+    // Avant-dernier arrêt du dernier trajet atteint → proposer la fin de service
+    if(activeStopIdx === lastIdx && activeTripIdx === activeService.trips.length - 1) {
+      setTimeout(() => confirmTerminus(), 300);
+    }
   } else {
     // Dernier arrêt : passage au trajet suivant
     const nextIdx = activeTripIdx + 1;
@@ -1501,8 +1506,9 @@ function startGPS() {
           // 3. Le terminus ne peut être détecté que si ≥80% des arrêts sont validés
 
           const totalStops = trip.stops.length;
+          const lastIdxGPS = effectiveLastStopIdx(trip, activeTripIdx);
           const minStopsForTerminus = Math.floor(totalStops * 0.8);
-          const isNearTerminus = (idx) => idx === totalStops - 1;
+          const isNearTerminus = (idx) => idx >= lastIdxGPS;
 
           // Timestamp du dernier match GPS
           if(!trip._lastGPSMatch) trip._lastGPSMatch = Date.now();
@@ -1545,7 +1551,7 @@ function startGPS() {
               else toast(`📍 GPS → ${cleanStopDisplay(stop.name)}`);
 
               // Dernier arrêt → trajet suivant
-              if(activeStopIdx >= totalStops - 1) {
+              if(activeStopIdx >= lastIdxGPS) {
                 const nextTripIdx2 = activeTripIdx + 1;
                 if(nextTripIdx2 < activeService.trips.length) {
                   const nextLabel = activeService.trips[nextTripIdx2].label || ('Trajet ' + (nextTripIdx2+1));
@@ -1553,6 +1559,9 @@ function startGPS() {
                   activeStopIdx = 0;
                   if(activeService.trips[activeTripIdx]) activeService.trips[activeTripIdx]._lastGPSMatch = Date.now();
                   toast('🚌 AUTO GPS → ' + nextLabel);
+                } else {
+                  // Avant-dernier arrêt du dernier trajet atteint → proposer la fin de service
+                  setTimeout(() => confirmTerminus(), 300);
                 }
               }
               updateLive();
@@ -1601,6 +1610,14 @@ function stopGPS() {
 function toggleGPS() {
   if(gpsActive || gpsWatchId !== null) { stopGPS(); toast('📍 GPS arrêté'); }
   else { startGPS(); toast('📍 GPS démarré'); }
+}
+
+// Sur le DERNIER trajet du service, l'avant-dernier arrêt est traité comme le
+// point de fin de service (le tout dernier arrêt — souvent un dépôt/garage
+// difficile à détecter au GPS — n'est plus requis pour clôturer le service).
+function effectiveLastStopIdx(trip, tripIdx) {
+  const isLastTrip = activeService && tripIdx === activeService.trips.length - 1;
+  return (isLastTrip && trip.stops.length >= 2) ? trip.stops.length - 2 : trip.stops.length - 1;
 }
 
 function haversine(lat1, lng1, lat2, lng2) {
