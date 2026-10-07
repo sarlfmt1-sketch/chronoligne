@@ -579,6 +579,40 @@ select option { background: var(--bg2); }
 
   <!-- ══ GPS ══ -->
   <!-- ══ OPTIONS ══ -->
+  <div class="view" id="view-caisse">
+    <div class="card">
+      <div class="card-title">💰 ARGENT QUE JE DOIS</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div id="caisse-solde" style="font-size:34px;font-weight:800;color:var(--accent)">0.00€</div>
+        <button class="btn btn-secondary btn-sm" onclick="editCaisseSolde()">✏️ Corriger</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📝 ENTRÉE DU JOUR</div>
+      <div class="form-label">DATE</div>
+      <input type="date" id="caisse-date">
+      <div class="form-label">SOMME DES TICKETS VENDUS (€)</div>
+      <input type="number" id="caisse-ventes" min="0" step="0.1" placeholder="Ex : 15" oninput="updateCaissePreview()">
+      <div class="form-label">ARGENT QUE JE DÉPOSE (€)</div>
+      <input type="number" id="caisse-depot" min="0" step="0.1" placeholder="Ex : 5" oninput="updateCaissePreview()">
+      <div id="caisse-preview" style="margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="addCaisseEntry()">➕ Ajouter</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 CUMUL DU MOIS — TICKETS VENDUS</div>
+      <div id="caisse-summary" style="text-align:center;padding:6px 0">
+        <div style="font-size:26px;font-weight:800" id="caisse-total-mois">0.00€</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 HISTORIQUE</div>
+      <div id="caisse-list"></div>
+    </div>
+  </div>
+
   <div class="view" id="view-options">
     <div class="card">
       <div class="card-title">⚙ PARAMÈTRES</div>
@@ -708,6 +742,9 @@ select option { background: var(--bg2); }
     </button>
     <button class="nav-btn" data-view="view-options" onclick="showView('view-options')">
       <span class="ico">⚙</span>OPTIONS
+    </button>
+    <button class="nav-btn" data-view="view-caisse" onclick="showView('view-caisse')">
+      <span class="ico">💰</span>CAISSE
     </button>
   </nav>
 
@@ -1005,6 +1042,7 @@ function showView(id) {
   if(id === 'view-service') renderSvcList();
   if(id === 'view-options') loadOptions();
   if(id === 'view-live' && !activeService) updateLiveTodaySvc();
+  if(id === 'view-caisse') { initCaisseView(); renderCaisse(); }
 }
 
 
@@ -5044,6 +5082,127 @@ async function driveDownload() {
   } catch(e) {
     toast('❌ Erreur chargement : ' + e.message);
   }
+}
+
+// ══════════════════════════════════════════════
+// CAISSE — SOLDE DÛ / VENTES / DÉPÔTS
+// ══════════════════════════════════════════════
+const CAISSE_KEY = 'chronoligne_caisse';
+const CAISSE_SOLDE_KEY = 'chronoligne_caisse_solde';
+let _caisseInit = false;
+
+function loadCaisse() {
+  try { return JSON.parse(localStorage.getItem(CAISSE_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveCaisseData(data) {
+  try { localStorage.setItem(CAISSE_KEY, JSON.stringify(data)); }
+  catch(e) { toast('❌ Échec de sauvegarde de la caisse : ' + e.message); }
+}
+function loadCaisseSolde() {
+  const v = parseFloat(localStorage.getItem(CAISSE_SOLDE_KEY));
+  return isNaN(v) ? 0 : v;
+}
+function saveCaisseSolde(v) {
+  try { localStorage.setItem(CAISSE_SOLDE_KEY, String(v)); }
+  catch(e) { toast('❌ Échec de sauvegarde du solde : ' + e.message); }
+}
+
+function initCaisseView() {
+  if(_caisseInit) return;
+  _caisseInit = true;
+  const dateEl = document.getElementById('caisse-date');
+  if(dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+  updateCaissePreview();
+}
+
+function editCaisseSolde() {
+  const current = loadCaisseSolde();
+  const val = prompt('Corriger le montant que tu dois (€) :', current.toFixed(2));
+  if(val === null) return;
+  const n = parseFloat(val.replace(',', '.'));
+  if(isNaN(n)) { toast('⚠️ Montant invalide'); return; }
+  saveCaisseSolde(n);
+  renderCaisse();
+  toast('✅ Solde corrigé');
+}
+
+function updateCaissePreview() {
+  const solde  = loadCaisseSolde();
+  const ventes = parseFloat(document.getElementById('caisse-ventes').value) || 0;
+  const depot  = parseFloat(document.getElementById('caisse-depot').value) || 0;
+  const nouveauSolde = solde + ventes - depot;
+  const el = document.getElementById('caisse-preview');
+  if(el) {
+    el.innerHTML = 'Nouveau solde après cette entrée : <b style="color:var(--accent)">' + nouveauSolde.toFixed(2) + '€</b>';
+  }
+}
+
+function addCaisseEntry() {
+  const date   = document.getElementById('caisse-date').value || new Date().toISOString().slice(0,10);
+  const ventes = parseFloat(document.getElementById('caisse-ventes').value) || 0;
+  const depot  = parseFloat(document.getElementById('caisse-depot').value) || 0;
+
+  if(ventes <= 0 && depot <= 0) { toast('⚠️ Indique les ventes ou le dépôt du jour'); return; }
+
+  const soldeAvant = loadCaisseSolde();
+  const soldeApres = +(soldeAvant + ventes - depot).toFixed(2);
+  saveCaisseSolde(soldeApres);
+
+  const data = loadCaisse();
+  data.push({ id: 'c_' + Date.now(), date, ventes, depot, soldeApres });
+  saveCaisseData(data);
+
+  document.getElementById('caisse-ventes').value = '';
+  document.getElementById('caisse-depot').value = '';
+  updateCaissePreview();
+  renderCaisse();
+  toast('✅ Entrée ajoutée');
+}
+
+function deleteCaisseEntry(id) {
+  const data = loadCaisse();
+  const entry = data.find(e => e.id === id);
+  if(entry) {
+    // Annule l'effet de cette entrée sur le solde courant
+    const soldeCorrige = +(loadCaisseSolde() - entry.ventes + entry.depot).toFixed(2);
+    saveCaisseSolde(soldeCorrige);
+  }
+  saveCaisseData(data.filter(e => e.id !== id));
+  renderCaisse();
+}
+
+function renderCaisse() {
+  const listEl = document.getElementById('caisse-list');
+  const soldeEl = document.getElementById('caisse-solde');
+  const totalMoisEl = document.getElementById('caisse-total-mois');
+  if(!listEl) return;
+
+  const solde = loadCaisseSolde();
+  if(soldeEl) soldeEl.textContent = solde.toFixed(2) + '€';
+
+  const data = loadCaisse().slice().sort((a,b) => b.date.localeCompare(a.date));
+
+  if(!data.length) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">Aucune entrée</div>';
+  } else {
+    listEl.innerHTML = data.map(e => {
+      const dateLabel = new Date(e.date + 'T00:00').toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'});
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+        + '<div>'
+        +   '<div style="font-weight:700;font-size:13px">' + dateLabel + '</div>'
+        +   '<div style="font-size:11px;color:var(--muted)">Ventes : ' + e.ventes.toFixed(2) + '€ · Dépôt : ' + e.depot.toFixed(2) + '€</div>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        +   '<div style="font-weight:700;color:var(--accent)">' + e.soldeApres.toFixed(2) + '€</div>'
+        +   '<button onclick="deleteCaisseEntry(\'' + e.id + '\')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">🗑</button>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+  }
+
+  const ym = new Date().toISOString().slice(0,7);
+  const totalVentesMois = data.filter(e => e.date.startsWith(ym)).reduce((s,e) => s + e.ventes, 0);
+  if(totalMoisEl) totalMoisEl.textContent = totalVentesMois.toFixed(2) + '€';
 }
 
 // ══════════════════════════════════════════════
