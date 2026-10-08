@@ -432,7 +432,7 @@ select option { background: var(--bg2); }
       <!-- Prochain service -->
       <div id="next-service-bar" class="next-service-bar" style="display:none">
         <div style="flex:1">
-          <div class="next-service-label" style="font-size:10px">PROCHAIN <span id="next-svc-tripnum" style="color:var(--accent);font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700;margin-left:4px"></span></div>
+          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700"></span></div>
           <div class="next-service-info" id="next-svc-label">—</div>
         </div>
         <!-- Pause en haut, départ en bas — empilés à droite -->
@@ -985,6 +985,7 @@ function updateClock() {
   autoAdvanceByTime();
   updateLive();
   updateNextServiceCountdown();
+  checkHlpPopup();
 }
 
 // ── AUTO-AVANCEMENT PAR HEURE (si pas de GPS disponible) ──
@@ -1021,6 +1022,7 @@ function autoAdvanceByTime() {
   const firstSec = timeToSec(firstStop.time);
   // Passer au trip suivant 30 sec avant son premier arrêt
   if(nowSecAdj(firstSec) >= firstSec - 30) {
+    showHlpPopup(activeTripIdx);
     activeTripIdx = nextTripIdx;
     activeStopIdx = 0;
     trip.stops.forEach(s => delete s._previewing);
@@ -1243,6 +1245,7 @@ function validateCurrentStop() {
     if(nextIdx < activeService.trips.length) {
       const nextTrip = activeService.trips[nextIdx];
       const nextLabel = nextTrip.label || ('Trajet ' + (nextIdx+1));
+      showHlpPopup(activeTripIdx);
       activeTripIdx = nextIdx;
       activeStopIdx = 0;
       updateLive();
@@ -1287,6 +1290,7 @@ function nextTrip() {
   if(!activeService) return;
   const nextIdx = activeTripIdx + 1;
   if(nextIdx < activeService.trips.length) {
+    showHlpPopup(activeTripIdx);
     activeTripIdx = nextIdx;
     activeStopIdx = 0;
     regResetTracking(); // Nouveau trajet = nouveau suivi
@@ -1593,6 +1597,7 @@ function startGPS() {
                 const nextTripIdx2 = activeTripIdx + 1;
                 if(nextTripIdx2 < activeService.trips.length) {
                   const nextLabel = activeService.trips[nextTripIdx2].label || ('Trajet ' + (nextTripIdx2+1));
+                  showHlpPopup(activeTripIdx);
                   activeTripIdx = nextTripIdx2;
                   activeStopIdx = 0;
                   if(activeService.trips[activeTripIdx]) activeService.trips[activeTripIdx]._lastGPSMatch = Date.now();
@@ -1656,6 +1661,82 @@ function toggleGPS() {
 function effectiveLastStopIdx(trip, tripIdx) {
   const isLastTrip = activeService && tripIdx === activeService.trips.length - 1;
   return (isLastTrip && trip.stops.length >= 2) ? trip.stops.length - 2 : trip.stops.length - 1;
+}
+
+// ══════════════════════════════════════════════
+// POP-UP HLP — affiché 30 s à la fin d'un trajet
+// ══════════════════════════════════════════════
+let _hlpShown = {};
+let _hlpTimer = null;
+
+// HLP à faire juste après la fin du trajet tripIdx
+function hlpAfterTrip(tripIdx) {
+  if(!activeService || !activeService.hlp || !activeService.hlp.length) return [];
+  const trip = activeService.trips[tripIdx];
+  const next = activeService.trips[tripIdx + 1];
+  if(!trip || !next) return [];
+  const lastStop = trip.stops?.[trip.stops.length - 1];
+  const firstNext = next.stops?.[0];
+  if(!lastStop?.time || !firstNext?.time) return [];
+  const lastSec = timeToSec(lastStop.time);
+  const nextSec = timeToSec(firstNext.time);
+  return activeService.hlp.filter(h => {
+    const hs = timeToSec(h.heure);
+    return hs >= lastSec - 180 && hs <= nextSec;
+  });
+}
+
+function closeHlpPopup() {
+  if(_hlpTimer) { clearTimeout(_hlpTimer); _hlpTimer = null; }
+  const el = document.getElementById('hlp-popup');
+  if(el) el.remove();
+}
+
+function showHlpPopup(tripIdx) {
+  if(!activeService) return;
+  const key = activeService.id + '_' + tripIdx;
+  if(_hlpShown[key]) return;                 // une seule fois par fin de trajet
+  const list = hlpAfterTrip(tripIdx);
+  if(!list.length) return;
+  _hlpShown[key] = true;
+
+  closeHlpPopup();
+  const rows = list.map(h =>
+    '<div style="margin-bottom:12px">'
+    + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:#f0a500;line-height:1">'
+    +   '<span style="font-size:46px">' + h.heure + '</span>'
+    +   (h.arrivee ? '<span style="font-size:24px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
+    +   '<span style="font-size:20px;color:var(--accent);margin-left:10px">' + h.minutes + ' min</span>'
+    + '</div>'
+    + '<div style="font-size:14px;color:#e8edf5;margin-top:4px">' + cleanStopDisplay(h.de) + (h.deIneo ? ' <span style="color:var(--muted)">(' + h.deIneo + ')</span>' : '') + '</div>'
+    + '<div style="font-size:14px;color:var(--accent)">→ ' + cleanStopDisplay(h.a) + (h.aIneo ? ' <span style="color:var(--muted)">(' + h.aIneo + ')</span>' : '') + '</div>'
+    + '</div>'
+  ).join('');
+
+  const ov = document.createElement('div');
+  ov.id = 'hlp-popup';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.onclick = closeHlpPopup;
+  ov.innerHTML =
+      '<div style="width:100%;max-width:420px;background:#0d1626;border:2px solid #f0a500;border-radius:16px;padding:18px;box-shadow:0 0 40px rgba(240,165,0,.35)">'
+    +   '<div style="font-size:13px;letter-spacing:2px;font-weight:700;color:#f0a500;margin-bottom:12px">🚌 HLP À FAIRE</div>'
+    +   rows
+    +   '<div style="height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:6px 0 12px">'
+    +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 30s linear"></div>'
+    +   '</div>'
+    +   '<button style="width:100%;padding:12px;border-radius:10px;border:1px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:15px;font-weight:700">OK</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => { const b = document.getElementById('hlp-bar'); if(b) b.style.width = '0%'; });
+  if(navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  _hlpTimer = setTimeout(closeHlpPopup, 30000);
+}
+
+// Filet de sécurité : au dernier arrêt d'un trajet (hors GPS / saisie manuelle)
+function checkHlpPopup() {
+  if(!activeService || activeTripIdx === null) return;
+  const trip = activeService.trips[activeTripIdx];
+  if(trip && trip.stops && activeStopIdx >= trip.stops.length - 1) showHlpPopup(activeTripIdx);
 }
 
 function haversine(lat1, lng1, lat2, lng2) {
@@ -4421,6 +4502,7 @@ function startServiceAt(num, jour, tripIdx) {
     name: 'Service ' + num,
     lineNum: svc.trips[tripIdx]?.lineNum || svc.trips[0]?.lineNum || '?',
     day: jour === 'semaine' ? 'sem' : jour === 'samedi' ? 'sam' : 'dim',
+    hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
       stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
@@ -4455,6 +4537,7 @@ function startServiceDirect(num, jour) {
     name: 'Service ' + num,
     lineNum: svc.trips[0]?.lineNum || '?',
     day: jour === 'semaine' ? 'sem' : jour === 'samedi' ? 'sam' : 'dim',
+    hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
       stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
@@ -5728,6 +5811,7 @@ function restoreSession() {
     name: 'Service ' + sess.num,
     lineNum: svc.trips[sess.tripIdx]?.lineNum || svc.trips[0]?.lineNum || '?',
     day: sess.jour === 'semaine' ? 'sem' : sess.jour === 'samedi' ? 'sam' : 'dim',
+    hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
       stops: (t.stops || []).map(s => ({
@@ -5748,6 +5832,45 @@ function restoreSession() {
 // ══════════════════════════════════════════════
 // PWA — MANIFEST DYNAMIQUE
 // ══════════════════════════════════════════════
+(function setupPWA() {
+  try {
+    const makeIcon = size => {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const x = c.getContext('2d');
+      x.fillStyle = '#0a0e17'; x.fillRect(0, 0, size, size);
+      x.fillStyle = '#00d4ff';
+      x.beginPath(); x.arc(size/2, size/2, size*0.36, 0, Math.PI*2); x.fill();
+      x.fillStyle = '#0a0e17';
+      x.font = 'bold ' + Math.round(size*0.3) + 'px sans-serif';
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText('CL', size/2, size/2 + size*0.02);
+      return c.toDataURL('image/png');
+    };
+    const url = location.href.split('#')[0].split('?')[0];
+    const manifest = {
+      name: 'ChronoLigne PRO',
+      short_name: 'ChronoLigne',
+      start_url: url,
+      scope: url.substring(0, url.lastIndexOf('/') + 1),
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#0a0e17',
+      theme_color: '#0a0e17',
+      icons: [
+        { src: makeIcon(192), sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: makeIcon(512), sizes: '512x512', type: 'image/png', purpose: 'any' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+  } catch(e) {}
+
+  // Service worker (fichier sw.js à placer à côté de la page)
+  if('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
 
 
 // ══════════════════════════════════════════════
