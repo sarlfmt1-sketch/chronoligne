@@ -147,6 +147,13 @@ nav {
 
 /* Boutons actions EN DIRECT */
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.live-actions { display: flex; gap: 6px; margin-top: auto; position: sticky; bottom: 0; z-index: 5;
+  background: var(--bg); padding: 8px 0 2px; }
+.live-actions .btn { flex: 1; min-width: 0; min-height: 58px; padding: 8px 4px; font-size: 13px; line-height: 1.15;
+  display: flex; align-items: center; justify-content: center; text-align: center; }
+.live-actions .la-main { flex: 1.5; font-size: 14px; }
+.live-actions #gps-dot { width: 10px !important; height: 10px !important; min-width: 0 !important; padding: 0 !important; font-size: 0 !important; border-radius: 50% !important; }
+.live-actions #gps-dot::after { content: ''; }
 .btn { border: none; border-radius: 10px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: .5px; transition: all .15s; }
 .btn:active { transform: scale(.96); }
 .btn-primary { background: var(--accent); color: #000; padding: 12px 20px; font-size: 15px; flex: 1; }
@@ -385,7 +392,7 @@ select option { background: var(--bg2); }
     </div>
 
     <!-- Trajet actif -->
-    <div id="live-content" style="display:none;gap:10px;flex-direction:column">
+    <div id="live-content" style="display:none;gap:10px;flex-direction:column;flex:1">
 
       <!-- Arrêt SUIVANT +2 -->
       <div class="next2-card" id="live-next2-card">
@@ -452,25 +459,21 @@ select option { background: var(--bg2); }
         <button class="btn btn-green btn-sm" onclick="goToNextTrip()" style="font-size:13px;padding:10px 14px;flex-shrink:0">▶ Suivant</button>
       </div>
 
-      <!-- Actions -->
-      <div class="action-row">
-        <button class="btn btn-primary" onclick="validateCurrentStop()">✅ Arrêt suivant</button>
-        <button class="btn btn-secondary btn-sm" onclick="prevStop()">◀ Préc</button>
-      </div>
-      <div class="action-row">
-        <button class="btn btn-danger btn-sm" onclick="stopService()">⏹ Arrêter service</button>
+      <!-- Actions : 4 boutons en bas, sur une ligne -->
+      <div class="live-actions">
+        <button class="btn btn-primary la-main" onclick="validateCurrentStop()">✅ Arrêt suivant</button>
+        <button class="btn btn-danger" onclick="stopService()">⏹ Arrêter service</button>
         <button id="gps-toggle-btn" onclick="toggleGPS()" style="
-          display:flex;align-items:center;gap:8px;padding:6px 14px;
-          border-radius:10px;border:2px solid var(--muted);background:transparent;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+          padding:6px 4px;border-radius:10px;border:2px solid var(--muted);background:transparent;
           color:var(--muted);font-family:'Rajdhani',sans-serif;font-weight:700;
-          font-size:15px;cursor:pointer;transition:all .2s;letter-spacing:.5px;flex:1;justify-content:center">
-          <span id="gps-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s"></span>
-          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0px">
-            <span id="gps-btn-label">GPS OFF</span>
-            <span id="gps-status-text" style="font-size:10px;font-weight:400;letter-spacing:0;opacity:.8;font-family:'Share Tech Mono',monospace"></span>
-          </div>
-          <div id="gps-accuracy" class="accuracy-badge" style="display:none;margin-left:auto"></div>
+          font-size:13px;line-height:1.1;cursor:pointer;transition:all .2s;letter-spacing:.5px;flex:1;min-width:0;min-height:58px">
+          <span id="gps-dot" style="width:9px;height:9px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s"></span>
+          <span id="gps-btn-label">GPS OFF</span>
+          <span id="gps-status-text" style="display:none"></span>
+          <div id="gps-accuracy" class="accuracy-badge" style="display:none"></div>
         </button>
+        <button class="btn btn-secondary" onclick="prevStop()">◀ Préc</button>
       </div>
 
     </div>
@@ -1221,9 +1224,9 @@ function validateCurrentStop() {
     renderTrajetIfVisible();
     toast('▶ ' + trip.stops[activeStopIdx].name);
     saveSession();
-    // Avant-dernier arrêt du dernier trajet atteint → proposer la fin de service
+    // Avant-dernier arrêt du dernier trajet atteint → fin de service automatique
     if(activeStopIdx === lastIdx && activeTripIdx === activeService.trips.length - 1) {
-      setTimeout(() => confirmTerminus(), 300);
+      setTimeout(() => autoEndService(), 300);
     }
   } else {
     // Dernier arrêt : passage au trajet suivant
@@ -1291,6 +1294,13 @@ function nextTrip() {
     renderTrajetIfVisible();
     toast('✅ Fin de service');
   }
+}
+
+// Fin de service automatique (plus de fenêtre de confirmation)
+function autoEndService() {
+  if(!activeService) return;
+  stopService(true);
+  toast('🏁 Terminus atteint — service terminé');
 }
 
 function goToNextTrip() {
@@ -1587,8 +1597,8 @@ function startGPS() {
                   if(activeService.trips[activeTripIdx]) activeService.trips[activeTripIdx]._lastGPSMatch = Date.now();
                   toast('🚌 AUTO GPS → ' + nextLabel);
                 } else {
-                  // Avant-dernier arrêt du dernier trajet atteint → proposer la fin de service
-                  setTimeout(() => confirmTerminus(), 300);
+                  // Avant-dernier arrêt du dernier trajet atteint → fin de service automatique
+                  setTimeout(() => autoEndService(), 300);
                 }
               }
               updateLive();
@@ -1648,7 +1658,7 @@ function effectiveLastStopIdx(trip, tripIdx) {
 }
 
 // ══════════════════════════════════════════════
-// POP-UP HLP — affiché 30 s à la fin d'un trajet
+// POP-UP HLP — affiché 1 min à la fin d'un trajet
 // ══════════════════════════════════════════════
 let _hlpShown = {};
 let _hlpTimer = null;
@@ -1686,34 +1696,34 @@ function showHlpPopup(tripIdx) {
 
   closeHlpPopup();
   const rows = list.map(h =>
-    '<div style="margin-bottom:12px">'
+    '<div style="margin-bottom:18px">'
     + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:#f0a500;line-height:1">'
-    +   '<span style="font-size:46px">' + h.heure + '</span>'
-    +   (h.arrivee ? '<span style="font-size:24px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
-    +   '<span style="font-size:20px;color:var(--accent);margin-left:10px">' + h.minutes + ' min</span>'
+    +   '<span style="font-size:68px">' + h.heure + '</span>'
+    +   (h.arrivee ? '<span style="font-size:36px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
+    +   '<span style="font-size:30px;color:var(--accent);margin-left:12px">' + h.minutes + ' min</span>'
     + '</div>'
-    + '<div style="font-size:14px;color:#e8edf5;margin-top:4px">' + cleanStopDisplay(h.de) + (h.deIneo ? ' <span style="color:var(--muted)">(' + h.deIneo + ')</span>' : '') + '</div>'
-    + '<div style="font-size:14px;color:var(--accent)">→ ' + cleanStopDisplay(h.a) + (h.aIneo ? ' <span style="color:var(--muted)">(' + h.aIneo + ')</span>' : '') + '</div>'
+    + '<div style="font-size:28px;font-weight:700;color:#e8edf5;margin-top:10px;line-height:1.2">' + cleanStopDisplay(h.de) + '</div>'
+    + '<div style="font-size:28px;font-weight:700;color:var(--accent);margin-top:4px;line-height:1.2">→ ' + cleanStopDisplay(h.a) + '</div>'
     + '</div>'
   ).join('');
 
   const ov = document.createElement('div');
   ov.id = 'hlp-popup';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px';
   ov.onclick = closeHlpPopup;
   ov.innerHTML =
-      '<div style="width:100%;max-width:420px;background:#0d1626;border:2px solid #f0a500;border-radius:16px;padding:18px;box-shadow:0 0 40px rgba(240,165,0,.35)">'
-    +   '<div style="font-size:13px;letter-spacing:2px;font-weight:700;color:#f0a500;margin-bottom:12px">🚌 HLP À FAIRE</div>'
+      '<div style="width:100%;max-width:620px;background:#0d1626;border:3px solid #f0a500;border-radius:20px;padding:26px;box-shadow:0 0 40px rgba(240,165,0,.35)">'
+    +   '<div style="font-size:20px;letter-spacing:3px;font-weight:700;color:#f0a500;margin-bottom:16px">🚌 HLP À FAIRE</div>'
     +   rows
-    +   '<div style="height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:6px 0 12px">'
-    +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 30s linear"></div>'
+    +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:8px 0 16px">'
+    +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 60s linear"></div>'
     +   '</div>'
-    +   '<button style="width:100%;padding:12px;border-radius:10px;border:1px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:15px;font-weight:700">OK</button>'
+    +   '<button style="width:100%;padding:18px;border-radius:12px;border:2px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:24px;font-weight:700">OK</button>'
     + '</div>';
   document.body.appendChild(ov);
   requestAnimationFrame(() => { const b = document.getElementById('hlp-bar'); if(b) b.style.width = '0%'; });
   if(navigator.vibrate) navigator.vibrate([300, 150, 300]);
-  _hlpTimer = setTimeout(closeHlpPopup, 30000);
+  _hlpTimer = setTimeout(closeHlpPopup, 60000);
 }
 
 // Filet de sécurité : au dernier arrêt d'un trajet (hors GPS / saisie manuelle)
