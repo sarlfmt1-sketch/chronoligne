@@ -147,8 +147,9 @@ nav {
 
 /* Boutons actions EN DIRECT */
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.live-actions { display: flex; gap: 6px; margin-top: auto; position: sticky; bottom: 0; z-index: 5;
+.live-bottom { display: flex; flex-direction: column; gap: 10px; margin-top: auto; position: sticky; bottom: 0; z-index: 5;
   background: var(--bg); padding: 8px 0 2px; }
+.live-actions { display: flex; gap: 6px; }
 .live-actions .btn { flex: 1; min-width: 0; min-height: 58px; padding: 8px 4px; font-size: 13px; line-height: 1.15;
   display: flex; align-items: center; justify-content: center; text-align: center; }
 .live-actions .la-main { flex: 1.5; font-size: 14px; }
@@ -165,8 +166,8 @@ nav {
 /* Prochain service */
 .next-service-bar {
   background: rgba(0,212,255,.06); border: 1px solid rgba(0,212,255,.2);
-  border-radius: 12px; padding: 12px 14px;
-  display: flex; align-items: center; justify-content: space-between;
+  border-radius: 14px; padding: 20px 18px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .next-service-label { font-size: 11px; color: var(--accent); font-family: 'Rajdhani', sans-serif; letter-spacing: 1.5px; font-weight: 700; }
 .next-service-info { font-size: 15px; font-weight: 700; }
@@ -436,10 +437,11 @@ select option { background: var(--bg2); }
         </div>
       </div>
 
+      <div class="live-bottom">
       <!-- Prochain service -->
       <div id="next-service-bar" class="next-service-bar" style="display:none">
         <div style="flex:1">
-          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700"></span></div>
+          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
           <div class="next-service-info" id="next-svc-label">—</div>
         </div>
         <!-- Pause en haut, départ en bas — empilés à droite -->
@@ -475,6 +477,7 @@ select option { background: var(--bg2); }
         </button>
         <button class="btn btn-secondary" onclick="prevStop()">◀ Préc</button>
       </div>
+      </div><!-- /live-bottom -->
 
     </div>
   </div>
@@ -979,6 +982,7 @@ function updateClock() {
   updateLive();
   updateNextServiceCountdown();
   checkHlpPopup();
+  checkSegAlerts();
 }
 
 // ── AUTO-AVANCEMENT PAR HEURE (si pas de GPS disponible) ──
@@ -1375,8 +1379,8 @@ function updateNextServiceCountdown() {
   if(labelEl) {
     const rawLabel = (nextTrip.label || 'Prochain trajet').replace(/^Ligne \S+ — /,'');
     labelEl.textContent = cleanStopDisplay(rawLabel);
-    labelEl.style.fontSize = '12px';
-    labelEl.style.lineHeight = '1.3';
+    labelEl.style.fontSize = '17px';
+    labelEl.style.lineHeight = '1.25';
   }
 
   const lastStop = trip.stops?.[trip.stops.length - 1];
@@ -1391,7 +1395,7 @@ function updateNextServiceCountdown() {
     const pauseStr = pauseMin > 0
       ? pauseMin + 'min' + (pauseRemSec > 0 ? pauseRemSec + 's' : '')
       : pauseRemSec + 's';
-    pauseEl.innerHTML = '<span style="font-size:30px">' + pauseStr + '</span>';
+    pauseEl.innerHTML = '<span style="font-size:46px;line-height:1">' + pauseStr + '</span>';
 
     // Couleur selon durée de pause
     if(pauseMin < 3)       pauseEl.style.color = 'var(--red)';
@@ -1417,7 +1421,7 @@ function updateNextServiceCountdown() {
 
   if(departEl) {
     const heureDepart = firstStop.time?.substring(0,5) || '';
-    departEl.innerHTML = `🕐 <span style="font-size:22px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--text)">${heureDepart}</span>`;
+    departEl.innerHTML = `🕐 <span style="font-size:34px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--text)">${heureDepart}</span>`;
     departEl.style.color = sec < 120 ? 'var(--red)' : sec < 300 ? 'var(--orange)' : 'var(--muted)';
   }
 }
@@ -1539,7 +1543,7 @@ function startGPS() {
           // ET que le départ n'est pas confirmé (évite de détecter en étant à l'arrêt)
           if(distFromCurrent < radius && !_departureStarted) return;
           // 1. Vérifie d'abord le prochain arrêt immédiat (+1)
-          // 2. (plus de recherche sur +2/+3 : jamais de saut d'arrêt)
+          // 2. Saut d'arrêts seulement en cas de déviation (arrêts sautés loin de nous)
           // 3. Le terminus ne peut être détecté que si ≥80% des arrêts sont validés
 
           const totalStops = trip.stops.length;
@@ -1550,30 +1554,21 @@ function startGPS() {
           // Timestamp du dernier match GPS
           if(!trip._lastGPSMatch) trip._lastGPSMatch = Date.now();
 
-          // On ne vérifie QUE l'arrêt suivant : le GPS ne saute jamais d'arrêt.
-          // (Si un arrêt n'est pas détecté, le bouton « Arrêt suivant » permet de le passer à la main.)
-          const lookAhead = 1;
-
+          // L'arrêt suivant est validé normalement. Un arrêt plus loin n'est validé (déviation)
+          // que si tous les arrêts sautés sont loin de nous (> 150 m) — jamais au carrefour.
           let matched = false;
-          for(let li = 1; li <= lookAhead && !matched; li++) {
-            const checkIdx = activeStopIdx + li;
-            if(checkIdx >= totalStops) break;
-
-            // Garde-fou terminus : ne pas détecter le dernier arrêt trop tôt
-            if(isNearTerminus(checkIdx) && activeStopIdx < minStopsForTerminus) break;
-
-            const stop = trip.stops[checkIdx];
-            let coord = null;
-            if(stop.lat && stop.lng) {
-              coord = { lat: stop.lat, lng: stop.lng };
-            } else {
-              const key = gpsKey(activeService.id, activeTripIdx, checkIdx);
-              coord = db.gpsCoords[key] || null;
-            }
-            if(!coord) continue;
-
-            const d = haversine(lastGPSPos.lat, lastGPSPos.lng, coord.lat, coord.lng);
-            if(d <= radius) {
+          const pick = gpsFindCandidate({
+            from: activeStopIdx, total: totalStops, radius: radius, pos: lastGPSPos,
+            coordOf: (idx) => {
+              const st = trip.stops[idx];
+              if(st.lat && st.lng) return { lat: st.lat, lng: st.lng };
+              return db.gpsCoords[gpsKey(activeService.id, activeTripIdx, idx)] || null;
+            },
+            blocked: (idx) => isNearTerminus(idx) && activeStopIdx < minStopsForTerminus
+          });
+          if(pick) {
+            const checkIdx = pick.idx, li = pick.li, stop = trip.stops[checkIdx];
+            {
               matched = true;
               activeStopIdx = checkIdx;
               trip._lastGPSMatch = Date.now();
@@ -1583,7 +1578,7 @@ function startGPS() {
               _departureStarted = false;
               if(_departureTimer) { clearTimeout(_departureTimer); _departureTimer = null; }
 
-              if(li > 1) toast(`📍 GPS +${li} → ${cleanStopDisplay(stop.name)}`);
+              if(li > 1) toast(`📍 GPS (déviation) → ${cleanStopDisplay(stop.name)}`);
               else toast(`📍 GPS → ${cleanStopDisplay(stop.name)}`);
 
               // Dernier arrêt → trajet suivant
@@ -1726,11 +1721,204 @@ function showHlpPopup(tripIdx) {
   _hlpTimer = setTimeout(closeHlpPopup, 60000);
 }
 
+// ══════════════════════════════════════════════
+// TRONÇONS MODIFIÉS — durée entre deux arrêts différente de l'habituelle
+// ══════════════════════════════════════════════
+const SEG_MIN_SAMPLES = 4;    // nb de trajets différents nécessaires pour connaître la durée "habituelle"
+const SEG_MIN_SHARE   = 0.5;  // la durée habituelle doit concerner au moins la moitié des trajets
+const SEG_TOL         = 1;    // écart minimum (en minutes) pour signaler un tronçon
+
+function segMin(t) {
+  const p = String(t || '').split(':').map(Number);
+  if(p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return null;
+  return p[0] * 60 + p[1];
+}
+function segStopKey(s) { return s.ineo ? 'i' + s.ineo : 'n' + String(s.name || '').toLowerCase().trim(); }
+function segTripLine(t) { return t.lineNum || ((t.label || '').match(/\d{4}/) || ['?'])[0]; }
+function segDuree(a, b) { const x = segMin(a), y = segMin(b); if(x === null || y === null) return null; let d = y - x; if(d < 0) d += 1440; return d; }
+
+// Compte, pour chaque tronçon (ligne + arrêt A + arrêt B), les durées observées sur tous les trajets connus
+function segBuildBaseline(trips) {
+  const seen = new Set(), base = {};
+  trips.forEach(t => {
+    const stops = t.stops || [];
+    if(stops.length < 2) return;
+    const line = segTripLine(t), first = String(stops[0].time || '').substring(0, 5);
+    for(let i = 0; i < stops.length - 1; i++) {
+      const d = segDuree(stops[i].time, stops[i + 1].time);
+      if(d === null) continue;
+      const key = line + '|' + segStopKey(stops[i]) + '|' + segStopKey(stops[i + 1]);
+      const uniq = key + '|' + first;                  // un même trajet horaire n'est compté qu'une fois
+      if(seen.has(uniq)) continue;
+      seen.add(uniq);
+      const o = base[key] || (base[key] = { counts: {}, n: 0 });
+      o.counts[d] = (o.counts[d] || 0) + 1;
+      o.n++;
+    }
+  });
+  return base;
+}
+
+// Durée habituelle d'un tronçon (null si pas assez de données ou pas de durée dominante)
+function segUsual(base, line, A, B) {
+  const o = base[line + '|' + segStopKey(A) + '|' + segStopKey(B)];
+  if(!o || o.n < SEG_MIN_SAMPLES) return null;
+  let best = null, bc = 0, tie = false;
+  Object.keys(o.counts).forEach(d => {
+    const c = o.counts[d];
+    if(c > bc) { best = +d; bc = c; tie = false; } else if(c === bc) tie = true;
+  });
+  if(tie || bc / o.n < SEG_MIN_SHARE) return null;
+  return best;
+}
+
+// Tronçons d'un trajet dont la durée diffère de l'habituelle
+function segModified(trip, base) {
+  const out = [], stops = trip.stops || [], line = segTripLine(trip);
+  for(let i = 0; i < stops.length - 1; i++) {
+    const d = segDuree(stops[i].time, stops[i + 1].time);
+    if(d === null) continue;
+    const u = segUsual(base, line, stops[i], stops[i + 1]);
+    if(u === null) continue;
+    if(Math.abs(d - u) >= SEG_TOL) out.push({ i: i, de: stops[i].name, a: stops[i + 1].name, min: d, usual: u });
+  }
+  return out;
+}
+
+// ── Base des durées (tous les services connus) ──
+function segBaseFor(svc) {
+  if(!svc._segBase) {
+    loadRoadmapServices();
+    const all = [];
+    roadmapServices.forEach(sv => (sv.trips || []).forEach(t => all.push(t)));
+    Object.defineProperty(svc, '_segBase', { value: segBuildBaseline(all), enumerable: false, writable: true });
+  }
+  return svc._segBase;
+}
+
+let _segCtx = null, _segPopupDone = {}, _segBannerDone = '';
+let _segPopupTimer = null, _segBannerTimer = null;
+
+function segColor(m) { return m.min < m.usual ? '#e74c3c' : '#27ae60'; }   // rouge = plus court (retard), vert = plus long (avance)
+
+// ── 2) Pop-up au départ du trajet : liste des tronçons modifiés ──
+function closeSegPopup() {
+  if(_segPopupTimer) { clearTimeout(_segPopupTimer); _segPopupTimer = null; }
+  const el = document.getElementById('seg-popup'); if(el) el.remove();
+}
+function showSegPopup(list) {
+  closeSegPopup();
+  const rows = list.slice(0, 6).map(m => {
+    const col = segColor(m), court = m.min < m.usual;
+    return '<div style="margin-bottom:18px">'
+      + '<div style="font-size:24px;font-weight:700;color:#e8edf5;line-height:1.2">' + cleanStopDisplay(m.de) + ' → ' + cleanStopDisplay(m.a) + '</div>'
+      + '<div style="margin-top:4px">'
+      +   '<span style="font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:46px;color:' + col + '">' + m.min + ' min</span>'
+      +   ' <span style="font-size:20px;color:#9ca3af">habituel ' + m.usual + ' min</span>'
+      + '</div>'
+      + '<div style="font-size:20px;font-weight:700;color:' + col + '">' + (court ? 'Risque de retard' : 'Risque d\'avance') + '</div>'
+      + '</div>';
+  }).join('');
+  const more = list.length > 6 ? '<div style="font-size:18px;color:#9ca3af;margin-bottom:12px">+ ' + (list.length - 6) + ' autre(s)</div>' : '';
+  const ov = document.createElement('div');
+  ov.id = 'seg-popup';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto';
+  ov.onclick = closeSegPopup;
+  ov.innerHTML =
+      '<div style="width:100%;max-width:620px;background:#0d1626;border:3px solid #00d4ff;border-radius:20px;padding:26px;box-shadow:0 0 40px rgba(0,212,255,.3)">'
+    +   '<div style="font-size:20px;letter-spacing:3px;font-weight:700;color:#00d4ff;margin-bottom:16px">⏱ TRONÇONS MODIFIÉS</div>'
+    +   rows + more
+    +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:8px 0 16px">'
+    +     '<div id="seg-bar" style="height:100%;width:100%;background:#00d4ff;transition:width 30s linear"></div>'
+    +   '</div>'
+    +   '<button style="width:100%;padding:18px;border-radius:12px;border:2px solid #00d4ff;background:rgba(0,212,255,.12);color:#00d4ff;font-size:24px;font-weight:700">OK</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => { const b = document.getElementById('seg-bar'); if(b) b.style.width = '0%'; });
+  if(navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  _segPopupTimer = setTimeout(closeSegPopup, 30000);
+}
+
+// ── 3) Alerte avant un tronçon modifié (bandeau en haut, 8 s) ──
+function showSegBanner(m) {
+  const old = document.getElementById('seg-banner'); if(old) old.remove();
+  if(_segBannerTimer) { clearTimeout(_segBannerTimer); _segBannerTimer = null; }
+  const col = segColor(m), court = m.min < m.usual;
+  const el = document.createElement('div');
+  el.id = 'seg-banner';
+  el.style.cssText = 'position:fixed;top:78px;left:10px;right:10px;z-index:9000;background:#0d1626;border:3px solid ' + col
+    + ';border-radius:16px;padding:14px 16px;box-shadow:0 0 30px ' + col + '66;text-align:center';
+  el.innerHTML =
+      '<div style="font-size:15px;letter-spacing:2px;font-weight:700;color:' + col + '">⏱ PROCHAIN TRONÇON ' + (court ? 'PLUS COURT' : 'PLUS LONG') + '</div>'
+    + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:' + col + ';font-size:58px;line-height:1.05">' + m.min + ' min'
+    +   ' <span style="font-size:24px;color:#9ca3af">(habituel ' + m.usual + ')</span></div>'
+    + '<div style="font-size:22px;font-weight:700;color:#e8edf5">' + cleanStopDisplay(m.de) + ' → ' + cleanStopDisplay(m.a) + '</div>'
+    + '<div style="font-size:18px;font-weight:700;color:' + col + ';margin-top:4px">' + (court ? 'Risque de retard' : 'Risque d\'avance — ralentis') + '</div>';
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  _segBannerTimer = setTimeout(() => { const b = document.getElementById('seg-banner'); if(b) b.remove(); }, 8000);
+}
+
+// Vérifié chaque seconde : marche avec GPS, saisie manuelle, avance par l'heure
+function checkSegAlerts() {
+  if(!activeService || activeTripIdx === null) return;
+  if(_segCtx !== activeService) { _segCtx = activeService; _segPopupDone = {}; _segBannerDone = ''; }
+  const trip = activeService.trips[activeTripIdx];
+  if(!trip || !trip.stops || trip.stops.length < 2) return;
+  if(document.getElementById('hlp-popup') || document.getElementById('seg-popup')) return;   // on ne superpose pas
+
+  const tripKey = activeService.id + '_' + activeTripIdx;
+  if(activeStopIdx === 0) {                       // au départ : 2 min avant l'heure du 1er arrêt
+    if(_segPopupDone[tripKey]) return;
+    const t0 = trip.stops[0].time;
+    if(t0) { const s0 = timeToSec(t0); if(nowSecAdj(s0) < s0 - 120) return; }
+    _segPopupDone[tripKey] = true;
+    const list = segModified(trip, segBaseFor(activeService));
+    if(list.length) showSegPopup(list);
+    return;
+  }
+  const key = tripKey + '_' + activeStopIdx;      // en route : tronçon qui commence à l'arrêt actuel
+  if(_segBannerDone === key) return;
+  _segBannerDone = key;
+  const m = segModified(trip, segBaseFor(activeService)).find(x => x.i === activeStopIdx);
+  if(m) showSegBanner(m);
+}
+
 // Filet de sécurité : au dernier arrêt d'un trajet (hors GPS / saisie manuelle)
 function checkHlpPopup() {
   if(!activeService || activeTripIdx === null) return;
   const trip = activeService.trips[activeTripIdx];
   if(trip && trip.stops && activeStopIdx >= trip.stops.length - 1) showHlpPopup(activeTripIdx);
+}
+
+// ══════════════════════════════════════════════
+// CHOIX DE L'ARRÊT DÉTECTÉ PAR GPS (avec gestion des déviations)
+// ══════════════════════════════════════════════
+const GPS_SKIP_FAR = 150;   // m : un arrêt sauté doit être plus loin que ça (sinon carrefour → pas de saut)
+const GPS_MAX_SKIP = 8;     // nombre max d'arrêts regardés devant
+
+// Renvoie { idx, li } ou null.
+//  - l'arrêt suivant (li=1) est validé s'il est à moins de `radius`
+//  - un arrêt plus loin (li>=2) n'est validé que si TOUS les arrêts sautés sont à plus de GPS_SKIP_FAR
+//    (déviation). Si l'un d'eux est proche (carrefour, autre côté de la rue) → on n'avance pas.
+function gpsFindCandidate(o) {
+  const last = Math.min(o.total - 1, o.from + GPS_MAX_SKIP);
+  for(let idx = o.from + 1; idx <= last; idx++) {
+    if(o.blocked(idx)) break;                         // garde-fou terminus
+    const c = o.coordOf(idx);
+    if(!c) continue;
+    if(haversine(o.pos.lat, o.pos.lng, c.lat, c.lng) > o.radius) continue;
+    // arrêt candidat à portée : a-t-on le droit de sauter ceux d'avant ?
+    let sautBloque = false;
+    for(let k = o.from + 1; k < idx; k++) {
+      const sc = o.coordOf(k);
+      if(!sc) continue;                               // sans coordonnées : ne bloque pas
+      if(haversine(o.pos.lat, o.pos.lng, sc.lat, sc.lng) <= GPS_SKIP_FAR) { sautBloque = true; break; }
+    }
+    if(!sautBloque) return { idx: idx, li: idx - o.from };
+  }
+  return null;
 }
 
 function haversine(lat1, lng1, lat2, lng2) {
@@ -4499,6 +4687,7 @@ function startServiceAt(num, jour, tripIdx) {
     hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
+      lineNum: t.lineNum || null,
       stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
     }))
   };
@@ -4533,6 +4722,7 @@ function startServiceDirect(num, jour) {
     hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
+      lineNum: t.lineNum || null,
       stops: (t.stops || []).map(s => ({ name: s.name, time: s.time || '', isRef: s.isRef || false, ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null }))
     }))
   };
@@ -5670,6 +5860,7 @@ function restoreSession() {
     hlp: svc.hlp || [],
     trips: svc.trips.map(t => ({
       label: t.label || 'Trajet',
+      lineNum: t.lineNum || null,
       stops: (t.stops || []).map(s => ({
         name: s.name, time: s.time || '', isRef: s.isRef || false,
         ineo: s.ineo || null, lat: s.lat || null, lng: s.lng || null
