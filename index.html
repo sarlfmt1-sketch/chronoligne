@@ -85,7 +85,7 @@ nav {
 /* ── EN DIRECT ── */
 .live-card {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
-  padding: 14px; position: relative; overflow: hidden;
+  padding: 8px 14px 10px; position: relative; overflow: hidden;
 }
 .live-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
@@ -93,7 +93,7 @@ nav {
 }
 .stop-label { font-size: 11px; font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
 .stop-name { font-size: 16px; font-weight: 600; line-height: 1.2; color: var(--text); }
-.stop-time { font-family: 'Share Tech Mono', monospace; font-size: 62px; font-weight: 900; color: var(--accent); line-height: 1; }
+.stop-time { font-family: 'Share Tech Mono', monospace; font-size: 52px; font-weight: 900; color: var(--accent); line-height: 1; }
 .stop-time.late { color: var(--red); }
 .stop-time.early { color: var(--orange); }
 
@@ -135,7 +135,7 @@ nav {
 .delta-badge {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 12px; border-radius: 20px; font-family: 'Rajdhani', sans-serif;
-  font-weight: 700; font-size: 14px; letter-spacing: 1px; margin-top: 8px;
+  font-weight: 700; font-size: 13px; letter-spacing: 1px; margin-top: 4px;
 }
 .delta-badge.ok { background: rgba(39,174,96,.15); border: 1px solid rgba(39,174,96,.4); color: var(--green); }
 .delta-badge.late { background: rgba(231,76,60,.15); border: 1px solid rgba(231,76,60,.4); color: var(--red); }
@@ -444,11 +444,10 @@ select option { background: var(--bg2); }
 
       <!-- Arrêt ACTUEL -->
       <div class="live-card" id="live-current-card">
-        <div class="stop-label">ACTUEL</div>
         <div class="stop-time" id="live-current-time">--:--</div>
         <div class="stop-name" id="live-current-name">—</div>
         <div id="live-delta"></div>
-        <div class="progress-bar" style="margin-top:12px">
+        <div class="progress-bar" style="margin:6px 0 0">
           <div class="progress-fill" id="live-progress"></div>
         </div>
       </div>
