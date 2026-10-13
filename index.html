@@ -147,7 +147,7 @@ nav {
 
 /* Boutons actions EN DIRECT */
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.live-bottom { display: flex; flex-direction: column; gap: 10px; margin-top: auto; position: sticky; bottom: 0; z-index: 5;
+.live-bottom { display: flex; flex-direction: column; gap: 10px; margin-top: 0; position: sticky; bottom: 0; z-index: 5;
   background: var(--bg); padding: 8px 0 2px; }
 .live-actions { display: flex; gap: 6px; }
 .live-actions .btn { flex: 1; min-width: 0; min-height: 58px; padding: 8px 4px; font-size: 13px; line-height: 1.15;
@@ -409,6 +409,8 @@ select option { background: var(--bg2); }
       </div>
 
 
+      <!-- Groupe central : poussé vers le bas, collé aux boutons -->
+      <div id="live-middle" style="display:flex;flex-direction:column;gap:10px;margin-top:auto">
       <!-- Arrêt SUIVANT +2 -->
       <div class="next2-card" id="live-next2-card">
         <div class="next2-time" id="live-next2-time">--:--</div>
@@ -449,6 +451,8 @@ select option { background: var(--bg2); }
         <div class="progress-bar" style="margin-top:12px">
           <div class="progress-fill" id="live-progress"></div>
         </div>
+      </div>
+
       </div>
 
       <div class="live-bottom">
