@@ -395,6 +395,20 @@ select option { background: var(--bg2); }
     <!-- Trajet actif -->
     <div id="live-content" style="display:none;gap:10px;flex-direction:column;flex:1">
 
+      <!-- Trajet (en haut, sous l'horloge) -->
+      <div id="next-service-bar" class="next-service-bar" style="display:none">
+        <div style="flex:1">
+          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
+          <div class="next-service-info" id="next-svc-label">—</div>
+        </div>
+        <!-- Pause en haut, départ en bas — empilés à droite -->
+        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
+          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
+          <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
+        </div>
+      </div>
+
+
       <!-- Arrêt SUIVANT +2 -->
       <div class="next2-card" id="live-next2-card">
         <div class="next2-time" id="live-next2-time">--:--</div>
@@ -438,19 +452,6 @@ select option { background: var(--bg2); }
       </div>
 
       <div class="live-bottom">
-      <!-- Prochain service -->
-      <div id="next-service-bar" class="next-service-bar" style="display:none">
-        <div style="flex:1">
-          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
-          <div class="next-service-info" id="next-svc-label">—</div>
-        </div>
-        <!-- Pause en haut, départ en bas — empilés à droite -->
-        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
-          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
-          <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
-        </div>
-      </div>
-
       <!-- Trajet suivant -->
       <div id="next-trip-bar" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:12px;padding:12px 14px;align-items:center;gap:12px">
         <div style="flex:1">
