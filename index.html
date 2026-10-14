@@ -85,7 +85,7 @@ nav {
 /* ── EN DIRECT ── */
 .live-card {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
-  padding: 8px 14px 10px; position: relative; overflow: hidden;
+  padding: 14px; position: relative; overflow: hidden;
 }
 .live-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
@@ -93,7 +93,7 @@ nav {
 }
 .stop-label { font-size: 11px; font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
 .stop-name { font-size: 16px; font-weight: 600; line-height: 1.2; color: var(--text); }
-.stop-time { font-family: 'Share Tech Mono', monospace; font-size: 52px; font-weight: 900; color: var(--accent); line-height: 1; }
+.stop-time { font-family: 'Share Tech Mono', monospace; font-size: 62px; font-weight: 900; color: var(--accent); line-height: 1; }
 .stop-time.late { color: var(--red); }
 .stop-time.early { color: var(--orange); }
 
@@ -135,7 +135,7 @@ nav {
 .delta-badge {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 12px; border-radius: 20px; font-family: 'Rajdhani', sans-serif;
-  font-weight: 700; font-size: 13px; letter-spacing: 1px; margin-top: 4px;
+  font-weight: 700; font-size: 14px; letter-spacing: 1px; margin-top: 8px;
 }
 .delta-badge.ok { background: rgba(39,174,96,.15); border: 1px solid rgba(39,174,96,.4); color: var(--green); }
 .delta-badge.late { background: rgba(231,76,60,.15); border: 1px solid rgba(231,76,60,.4); color: var(--red); }
@@ -147,9 +147,10 @@ nav {
 
 /* Boutons actions EN DIRECT */
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.live-bottom { display: flex; flex-direction: column; gap: 10px; margin-top: 0; position: sticky; bottom: 0; z-index: 5;
+.live-bottom { display: flex; flex-direction: column; gap: 10px; margin-top: auto; position: sticky; bottom: 0; z-index: 5;
   background: var(--bg); padding: 8px 0 2px; }
 .live-actions { display: flex; gap: 6px; }
+.live-bottom.seg-on #next-service-bar { display: none !important; }
 .live-actions .btn { flex: 1; min-width: 0; min-height: 58px; padding: 8px 4px; font-size: 13px; line-height: 1.15;
   display: flex; align-items: center; justify-content: center; text-align: center; }
 .live-actions .la-main { flex: 1.5; font-size: 14px; }
@@ -395,22 +396,6 @@ select option { background: var(--bg2); }
     <!-- Trajet actif -->
     <div id="live-content" style="display:none;gap:10px;flex-direction:column;flex:1">
 
-      <!-- Trajet (en haut, sous l'horloge) -->
-      <div id="next-service-bar" class="next-service-bar" style="display:none">
-        <div style="flex:1">
-          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
-          <div class="next-service-info" id="next-svc-label">—</div>
-        </div>
-        <!-- Pause en haut, départ en bas — empilés à droite -->
-        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
-          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
-          <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
-        </div>
-      </div>
-
-
-      <!-- Groupe central : poussé vers le bas, collé aux boutons -->
-      <div id="live-middle" style="display:flex;flex-direction:column;gap:10px;margin-top:auto">
       <!-- Arrêt SUIVANT +2 -->
       <div class="next2-card" id="live-next2-card">
         <div class="next2-time" id="live-next2-time">--:--</div>
@@ -444,17 +429,29 @@ select option { background: var(--bg2); }
 
       <!-- Arrêt ACTUEL -->
       <div class="live-card" id="live-current-card">
+        <div class="stop-label">ACTUEL</div>
         <div class="stop-time" id="live-current-time">--:--</div>
         <div class="stop-name" id="live-current-name">—</div>
         <div id="live-delta"></div>
-        <div class="progress-bar" style="margin:6px 0 0">
+        <div class="progress-bar" style="margin-top:12px">
           <div class="progress-fill" id="live-progress"></div>
         </div>
       </div>
 
+      <div class="live-bottom">
+      <!-- Prochain service -->
+      <div id="next-service-bar" class="next-service-bar" style="display:none">
+        <div style="flex:1">
+          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
+          <div class="next-service-info" id="next-svc-label">—</div>
+        </div>
+        <!-- Pause en haut, départ en bas — empilés à droite -->
+        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
+          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
+          <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
+        </div>
       </div>
 
-      <div class="live-bottom">
       <!-- Trajet suivant -->
       <div id="next-trip-bar" style="display:none;background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.3);border-radius:12px;padding:12px 14px;align-items:center;gap:12px">
         <div style="flex:1">
@@ -1800,91 +1797,62 @@ function segBaseFor(svc) {
   return svc._segBase;
 }
 
-let _segCtx = null, _segPopupDone = {}, _segBannerDone = '';
-let _segPopupTimer = null, _segBannerTimer = null;
+let _segCtx = null, _segBannerDone = '';
+let _segBannerTimer = null;
 
 function segColor(m) { return m.min < m.usual ? '#e74c3c' : '#27ae60'; }   // rouge = plus court (retard), vert = plus long (avance)
 
-// ── 2) Pop-up au départ du trajet : liste des tronçons modifiés ──
-function closeSegPopup() {
-  if(_segPopupTimer) { clearTimeout(_segPopupTimer); _segPopupTimer = null; }
-  const el = document.getElementById('seg-popup'); if(el) el.remove();
-}
-function showSegPopup(list) {
-  closeSegPopup();
-  const rows = list.slice(0, 6).map(m => {
-    const col = segColor(m), court = m.min < m.usual;
-    return '<div style="margin-bottom:18px">'
-      + '<div style="font-size:24px;font-weight:700;color:#e8edf5;line-height:1.2">' + cleanStopDisplay(m.de) + ' → ' + cleanStopDisplay(m.a) + '</div>'
-      + '<div style="margin-top:4px">'
-      +   '<span style="font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:46px;color:' + col + '">' + m.min + ' min</span>'
-      +   ' <span style="font-size:20px;color:#9ca3af">habituel ' + m.usual + ' min</span>'
-      + '</div>'
-      + '<div style="font-size:20px;font-weight:700;color:' + col + '">' + (court ? 'Risque de retard' : 'Risque d\'avance') + '</div>'
-      + '</div>';
-  }).join('');
-  const more = list.length > 6 ? '<div style="font-size:18px;color:#9ca3af;margin-bottom:12px">+ ' + (list.length - 6) + ' autre(s)</div>' : '';
-  const ov = document.createElement('div');
-  ov.id = 'seg-popup';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto';
-  ov.onclick = closeSegPopup;
-  ov.innerHTML =
-      '<div style="width:100%;max-width:620px;background:#0d1626;border:3px solid #00d4ff;border-radius:20px;padding:26px;box-shadow:0 0 40px rgba(0,212,255,.3)">'
-    +   '<div style="font-size:20px;letter-spacing:3px;font-weight:700;color:#00d4ff;margin-bottom:16px">⏱ TRONÇONS MODIFIÉS</div>'
-    +   rows + more
-    +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:8px 0 16px">'
-    +     '<div id="seg-bar" style="height:100%;width:100%;background:#00d4ff;transition:width 30s linear"></div>'
-    +   '</div>'
-    +   '<button style="width:100%;padding:18px;border-radius:12px;border:2px solid #00d4ff;background:rgba(0,212,255,.12);color:#00d4ff;font-size:24px;font-weight:700">OK</button>'
-    + '</div>';
-  document.body.appendChild(ov);
-  requestAnimationFrame(() => { const b = document.getElementById('seg-bar'); if(b) b.style.width = '0%'; });
-  if(navigator.vibrate) navigator.vibrate([300, 150, 300]);
-  _segPopupTimer = setTimeout(closeSegPopup, 30000);
+// ── Alerte avant un tronçon modifié : bandeau à la place de la carte Trajet (45 s) ──
+function hideSegBanner() {
+  if(_segBannerTimer) { clearTimeout(_segBannerTimer); _segBannerTimer = null; }
+  const b = document.getElementById('seg-banner'); if(b) b.remove();
+  const box = document.querySelector('.live-bottom'); if(box) box.classList.remove('seg-on');
 }
 
-// ── 3) Alerte avant un tronçon modifié (bandeau en haut, 8 s) ──
+// Le bandeau prend la place de la carte « Trajet » (qui est masquée) pendant 45 s
 function showSegBanner(m) {
-  const old = document.getElementById('seg-banner'); if(old) old.remove();
-  if(_segBannerTimer) { clearTimeout(_segBannerTimer); _segBannerTimer = null; }
+  hideSegBanner();
   const col = segColor(m), court = m.min < m.usual;
   const el = document.createElement('div');
   el.id = 'seg-banner';
-  el.style.cssText = 'position:fixed;top:78px;left:10px;right:10px;z-index:9000;background:#0d1626;border:3px solid ' + col
-    + ';border-radius:16px;padding:14px 16px;box-shadow:0 0 30px ' + col + '66;text-align:center';
+  el.style.cssText = 'background:#0d1626;border:3px solid ' + col + ';border-radius:14px;padding:16px 14px;'
+    + 'box-shadow:0 0 30px ' + col + '55;text-align:center';
   el.innerHTML =
       '<div style="font-size:15px;letter-spacing:2px;font-weight:700;color:' + col + '">⏱ PROCHAIN TRONÇON ' + (court ? 'PLUS COURT' : 'PLUS LONG') + '</div>'
     + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:' + col + ';font-size:58px;line-height:1.05">' + m.min + ' min'
     +   ' <span style="font-size:24px;color:#9ca3af">(habituel ' + m.usual + ')</span></div>'
     + '<div style="font-size:22px;font-weight:700;color:#e8edf5">' + cleanStopDisplay(m.de) + ' → ' + cleanStopDisplay(m.a) + '</div>'
     + '<div style="font-size:18px;font-weight:700;color:' + col + ';margin-top:4px">' + (court ? 'Risque de retard' : 'Risque d\'avance — ralentis') + '</div>';
-  el.onclick = () => el.remove();
-  document.body.appendChild(el);
+  el.onclick = hideSegBanner;
+  const box = document.querySelector('.live-bottom');
+  if(box) {
+    box.insertBefore(el, box.firstChild);
+    box.classList.add('seg-on');                    // masque la carte Trajet
+  } else {                                           // secours : bandeau flottant
+    el.style.cssText += ';position:fixed;top:78px;left:10px;right:10px;z-index:9000';
+    document.body.appendChild(el);
+  }
   if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  _segBannerTimer = setTimeout(() => { const b = document.getElementById('seg-banner'); if(b) b.remove(); }, 8000);
+  _segBannerTimer = setTimeout(hideSegBanner, 45000);
 }
 
 // Vérifié chaque seconde : marche avec GPS, saisie manuelle, avance par l'heure
 function checkSegAlerts() {
   if(!activeService || activeTripIdx === null) return;
-  if(_segCtx !== activeService) { _segCtx = activeService; _segPopupDone = {}; _segBannerDone = ''; }
+  if(_segCtx !== activeService) { _segCtx = activeService; _segBannerDone = ''; }
   const trip = activeService.trips[activeTripIdx];
   if(!trip || !trip.stops || trip.stops.length < 2) return;
-  if(document.getElementById('hlp-popup') || document.getElementById('seg-popup')) return;   // on ne superpose pas
+  if(document.getElementById('hlp-popup')) return;   // on ne superpose pas la fenêtre HLP
 
-  const tripKey = activeService.id + '_' + activeTripIdx;
-  if(activeStopIdx === 0) {                       // au départ : 2 min avant l'heure du 1er arrêt
-    if(_segPopupDone[tripKey]) return;
+  // 1er tronçon : on attend d'être à 2 min du départ (pas pendant la pause)
+  if(activeStopIdx === 0) {
     const t0 = trip.stops[0].time;
     if(t0) { const s0 = timeToSec(t0); if(nowSecAdj(s0) < s0 - 120) return; }
-    _segPopupDone[tripKey] = true;
-    const list = segModified(trip, segBaseFor(activeService));
-    if(list.length) showSegPopup(list);
-    return;
   }
-  const key = tripKey + '_' + activeStopIdx;      // en route : tronçon qui commence à l'arrêt actuel
+  const key = activeService.id + '_' + activeTripIdx + '_' + activeStopIdx;   // tronçon qui commence à l'arrêt actuel
   if(_segBannerDone === key) return;
   _segBannerDone = key;
+  hideSegBanner();                                    // l'ancien bandeau ne concerne plus le tronçon en cours
   const m = segModified(trip, segBaseFor(activeService)).find(x => x.i === activeStopIdx);
   if(m) showSegBanner(m);
 }
