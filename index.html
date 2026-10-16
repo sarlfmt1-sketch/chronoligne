@@ -1193,7 +1193,16 @@ function calcDelta(targetTime) {
 function cleanStopDisplay(name) {
   if(!name) return '';
   // Retire " - 214", " - 528", etc. (tiret + espace + nombre à la fin)
-  return name.replace(/\s*-\s*\d+\s*$/, '').trim();
+  let base = name.replace(/\s*-\s*\d+\s*$/, '').trim();
+  // Retire aussi le numéro de poteau placé avant une flèche : « … - 251 > … » / « … - 251 → … »
+  base = base.replace(/\s*-\s*\d+(?=\s*(?:>|→|-->))/g, '').trim();
+  let n = base;
+  // Retire « Gare de / d' / du / des » devant le nom (au début ou après un séparateur : - > → —)
+  n = n.replace(/(^|[-–—>→]\s*)gare\s+(?:de\s+la\s+|d['’]\s*|de\s+|du\s+|des\s+)/gi, '$1');
+  // Retire le mot « RER »
+  n = n.replace(/\s+RER\b/gi, '');
+  n = n.replace(/\s{2,}/g, ' ').trim();
+  return n || base;
 }
 
 function nowTimeStr() {
@@ -2376,7 +2385,7 @@ function renderTrajet() {
   document.getElementById('trajet-header').innerHTML = `
     <div class="line-badge">${activeService.lineNum || '?'}</div>
     <div>
-      <div class="trip-title">${trip.label || 'Trajet'}</div>
+      <div class="trip-title">${cleanStopDisplay(trip.label || 'Trajet')}</div>
       <div class="trip-subtitle">${trip.stops.length} arrêts · ${trip.stops[0]?.time||'--:--'} → ${trip.stops[trip.stops.length-1]?.time||'--:--'}</div>
     </div>`;
 
@@ -2388,7 +2397,7 @@ function renderTrajet() {
     return `<div class="stop-row ${isCurrent?'active-stop':''} ${passed?'passed':''} ${s.isRef?'ref-stop':''}">
       <div class="stop-dot ${s.isRef?'ref':''} ${isCurrent?'active':''}"></div>
       <div class="stop-row-time ${s.isRef?'ref':''}">${s.time||'--:--'}</div>
-      <div class="stop-row-name">${s.name}</div>
+      <div class="stop-row-name">${cleanStopDisplay(s.name)}</div>
       ${hasGPS ? '<div class="stop-gps-icon">📍</div>' : ''}
     </div>`;
   }).join('');
