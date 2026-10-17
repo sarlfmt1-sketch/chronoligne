@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ChronoLigne PRO</title>
 <meta name="theme-color" content="#0a0e17">
+<script>try{if(localStorage.getItem('chronoligne_sun')==='1')document.documentElement.classList.add('sun')}catch(e){}</script>
 <link rel="manifest" id="pwa-manifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;700;900&display=swap" rel="stylesheet">
@@ -57,9 +58,10 @@ nav {
   flex-shrink: 0;
 }
 #clock-display {
-  font-family: 'Share Tech Mono', monospace; font-size: 48px; color: var(--text);
-  letter-spacing: 3px; line-height: 1;
+  font-family: 'Share Tech Mono', monospace; font-size: 44px; color: var(--text);
+  letter-spacing: 1px; line-height: 1;
 }
+@media (max-width: 390px) { #clock-display { font-size: 34px; } }
 .clock-badges { display: flex; gap: 8px; align-items: center; }
 #gps-dot {
   padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700;
@@ -286,6 +288,41 @@ nav {
   font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; width: 100%;
 }
 
+/* ── MODE SOLEIL : fond blanc, textes noirs, couleurs foncées (lisible en plein soleil) ── */
+html.sun {
+  --bg: #ffffff; --bg2: #eef1f5; --bg3: #dfe5ee;
+  --accent: #0040a8; --green: #0a6a24; --red: #b3001b; --orange: #9a4a00;
+  --muted: #2c3440; --text: #000000;
+  --border: rgba(0,0,0,.45); --card: rgba(0,0,0,.06);
+}
+html.sun .next-time { color: #000; }
+html.sun .next2-card { opacity: 1; background: #ffffff; }
+html.sun .next2-time { color: #3a4350; }
+html.sun .next2-name { color: #1d2430; }
+html.sun .stop-time { font-weight: 900; }
+html.sun .btn-primary { background: #0040a8; color: #fff; }
+html.sun .btn-danger { background: #fde8ea; border-color: #b3001b; color: #b3001b; }
+html.sun .pause-bar { background: rgba(110,50,150,.12); border-color: rgba(110,50,150,.7); }
+html.sun .pause-duration { color: #5b2a86; }
+html.sun .next-service-bar { background: #e7effd; border-color: #0040a8; }
+html.sun .delta-badge.ok    { background: rgba(10,106,36,.15);  border-color: #0a6a24; }
+html.sun .delta-badge.late  { background: rgba(179,0,27,.12);   border-color: #b3001b; }
+html.sun .delta-badge.early { background: rgba(154,74,0,.14);   border-color: #9a4a00; }
+html.sun #terminus-btn { background: #fde8ea; border-color: #b3001b; color: #b3001b; }
+/* couleurs écrites en dur dans les fenêtres / bandeaux générés par le code */
+html.sun [style*="#e8edf5"], html.sun [style*="#e8eaf0"] { color: #000 !important; }
+html.sun [style*="#9ca3af"], html.sun [style*="#6b7280"] { color: #2c3440 !important; }
+html.sun [style*="#f0a500"] { color: #8a4b00 !important; border-color: #8a4b00 !important; }
+html.sun [style*="#00d4ff"] { color: #0040a8 !important; border-color: #0040a8 !important; }
+html.sun [style*="#ffc107"] { color: #6b4700 !important; }
+html.sun [style*="#27ae60"] { color: #0a6a24 !important; border-color: #0a6a24 !important; }
+html.sun [style*="#e74c3c"] { color: #b3001b !important; border-color: #b3001b !important; }
+html.sun [style*="#0d1626"] { background: #ffffff !important; }
+html.sun #hlp-bar { background: #8a4b00 !important; }
+html.sun #hlp-popup div[style*="height:8px"] { background: rgba(0,0,0,.15) !important; }
+html.sun #seg-banner { background: #ffffff !important; }
+html.sun #hlp-popup > div, html.sun #seg-banner { box-shadow: 0 0 0 3px rgba(0,0,0,.25) !important; }
+
 /* ── OPTIONS ── */
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
 .card-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; }
@@ -376,6 +413,7 @@ select option { background: var(--bg2); }
   <div id="clock-bar">
     <div id="clock-display">--:--:--</div>
     <div class="clock-badges">
+      <button id="sun-btn" onclick="toggleSunMode()" title="Mode soleil" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">☀️</button>
       <button id="terminus-btn" onclick="confirmTerminus()">🏁 TERMINUS</button>
     </div>
   </div>
@@ -699,6 +737,12 @@ select option { background: var(--bg2); }
         📲 Installer automatiquement
       </button>
       <div id="install-hint" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">☀️ MODE SOLEIL</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4">Fond blanc et textes noirs pour bien lire l'écran en plein soleil. Le bouton ☀️ en haut de l'écran permet aussi de le changer.</div>
+      <button id="sun-opt-btn" class="btn btn-secondary" style="width:100%" onclick="toggleSunMode()">☀️ Activer le mode soleil</button>
     </div>
 
     <div class="card" style="border-color:rgba(255,193,7,.3)">
@@ -1661,6 +1705,30 @@ function effectiveLastStopIdx(trip, tripIdx) {
   const isLastTrip = activeService && tripIdx === activeService.trips.length - 1;
   return (isLastTrip && trip.stops.length >= 2) ? trip.stops.length - 2 : trip.stops.length - 1;
 }
+
+// ══════════════════════════════════════════════
+// MODE SOLEIL
+// ══════════════════════════════════════════════
+const SUN_KEY = 'chronoligne_sun';
+function applySun(on) {
+  document.documentElement.classList.toggle('sun', !!on);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', on ? '#ffffff' : '#0a0e17');
+  const b = document.getElementById('sun-btn');
+  if(b) b.textContent = on ? '🌙' : '☀️';
+  const o = document.getElementById('sun-opt-btn');
+  if(o) o.textContent = on ? '🌙 Repasser en mode nuit' : '☀️ Activer le mode soleil';
+}
+function toggleSunMode() {
+  const on = !document.documentElement.classList.contains('sun');
+  try { localStorage.setItem(SUN_KEY, on ? '1' : '0'); } catch(e) {}
+  applySun(on);
+}
+(function initSun() {
+  let on = false;
+  try { on = localStorage.getItem(SUN_KEY) === '1'; } catch(e) {}
+  applySun(on);
+})();
 
 // ══════════════════════════════════════════════
 // POP-UP HLP — affiché 1 min à la fin d'un trajet
