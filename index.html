@@ -638,6 +638,11 @@ select option { background: var(--bg2); }
       <select id="map-line" onchange="mapTabSelect()"></select>
       <div id="map-dir-btns" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"></div>
       <div id="map-mode-btns" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
+      <div id="map-valid-row" style="margin-top:10px"></div>
+      <div style="margin-top:10px">
+        <button class="btn btn-sm btn-secondary" style="width:100%" onclick="cartesSyncAsk()">☁️ Synchroniser les cartes avec Google Drive</button>
+        <div class="cartes-sync-status" style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4"></div>
+      </div>
     </div>
     <div class="card" style="padding:0;overflow:hidden;flex-shrink:0">
       <div id="map-tab-box" onclick="openFullMapTab()" style="position:relative;height:300px;cursor:pointer">
@@ -762,7 +767,9 @@ select option { background: var(--bg2); }
       </button>
       <div id="drive-actions" style="display:none">
         <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="driveUpload()">⬆️ Sauvegarder sur Drive</button>
-        <button class="btn btn-secondary" style="width:100%" onclick="driveDownload()">⬇️ Charger depuis Drive</button>
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="driveDownload()">⬇️ Charger depuis Drive</button>
+        <button class="btn btn-primary" style="width:100%" onclick="cartesSyncAsk()">🗺 Synchroniser les cartes (PC ↔ téléphone)</button>
+        <div class="cartes-sync-status" style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4"></div>
       </div>
     </div>
 
@@ -1772,6 +1779,7 @@ function loadDB() {
   if(!db.parcours) db.parcours = {};
   if(!db.routeCustom) db.routeCustom = {};
   if(!db.traceIdx) db.traceIdx = [];
+  if(!db.routeValid) db.routeValid = {};
   if(!db.options.departRadius) db.options.departRadius = 50;
   // 1. Fusionner GPS_LIBRARY_DEFAULTS (arrêts manuels)
   const a1 = applyLibraryDefaults();
@@ -2781,7 +2789,7 @@ function fmtHM(ms) { return new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-
 function r5(x) { return Math.round(x * 1e5) / 1e5; }
 
 function traceMeta(t) {
-  return { id: t.id, date: t.date, svc: t.svc, svcId: t.svcId, jour: t.jour, tripIdx: t.tripIdx, line: t.line, label: t.label,
+  return { id: t.id, date: t.date, svc: t.svc, svcId: t.svcId, jour: t.jour, tripIdx: t.tripIdx, line: t.line, label: t.label, dir: t.dir,
            t0: t.t0, t1: t.t1 || Date.now(), dist: Math.round(t.dist), n: t.pts.length };
 }
 function traceSave(t) {
@@ -2813,7 +2821,7 @@ function traceOnFix(p) {
   if(!_trace || _trace.key !== key) {
     traceFlush();
     _trace = { key: key, id: 'tr_' + now.toString(36), date: localDateISO(), svc: activeService.name || '', svcId: activeService.id, jour: activeService.day || '',
-               tripIdx: activeTripIdx, line: segTripLine(trip), label: trip.label || '', t0: now, pts: [], stops: [], dist: 0, lastSave: now, lastT: 0 };
+               tripIdx: activeTripIdx, line: segTripLine(trip), label: trip.label || '', dir: PRELOADED_TRIPS[segTripLine(trip)] ? mapPickDir(segTripLine(trip), trip) : null, t0: now, pts: [], stops: [], dist: 0, lastSave: now, lastT: 0 };
     tracePrune();
     if(mapViewActive()) renderMapTab();   // l'onglet MAP passe sur le nouveau trajet
   }
@@ -2908,7 +2916,8 @@ function traceListRender() {
     return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
       + '<div style="flex:1;min-width:0;font-size:13px"><b>' + fmtDateShort(m.date) + '</b> · ' + (m.svc || 'Service') + ' · trajet ' + ((m.tripIdx || 0) + 1)
       + '<div style="font-size:11px;color:var(--muted)">' + fmtHM(m.t0) + ' → ' + fmtHM(m.t1) + ' · ' + fmtDist(m.dist) + ' · ' + m.n + ' points</div></div>'
-      + '<button class="btn btn-sm ' + (shown ? 'btn-primary' : 'btn-secondary') + '" onclick="' + (shown ? 'traceHide()' : "traceShow('" + m.id + "')") + '">' + (shown ? 'Masquer' : '👁 Voir') + '</button>'
+      + '<button class="btn btn-sm ' + (shown ? 'btn-primary' : 'btn-secondary') + '" onclick="' + (shown ? 'traceHide()' : "traceShow('" + m.id + "')") + '">' + (shown ? 'Masquer' : '👁') + '</button>'
+      + (m.dir !== undefined && m.dir !== null ? '<button class="btn btn-sm btn-secondary" title="Utiliser cette trace comme tracé de la ligne" onclick="traceValidate(\'' + m.id + '\')">✅ Valider</button>' : '')
       + '<button class="btn btn-sm btn-danger" onclick="traceDelete(\'' + m.id + '\')">🗑</button></div>';
   }).join('');
   el.innerHTML = html || '<div style="color:var(--muted);font-size:12px;padding:6px 0">Aucune trace pour cette ligne. Elles s\'enregistrent toutes seules quand tu conduis avec le GPS actif dans EN DIRECT.</div>';
@@ -2944,9 +2953,10 @@ function mapTabDirs(line) {   // un trajet de référence par sens (le plus long
   return order.map(d => best[d]);
 }
 
-function mapTabModel() {
-  const dirs = mapTabDirs(_mapTab.line);
-  const main = dirs[_mapTab.dir] || dirs[0];
+function mapTabModel(lineArg, dirArg) {
+  const ln = lineArg || _mapTab.line, di = (dirArg === undefined || dirArg === null) ? _mapTab.dir : dirArg;
+  const dirs = mapTabDirs(ln);
+  const main = dirs[di] || dirs[0];
   if(!main) return null;
   const other = dirs.find(t => t !== main);
   const stopsAll = main.stops.map(s => { const c = mapStopXY(s, null, 0); return { name: s.name, ineo: s.ineo, lat: c ? c.lat : null, lng: c ? c.lng : null }; });
@@ -2954,7 +2964,7 @@ function mapTabModel() {
   stopsAll.forEach((s, i) => { if(s.lat) cur.push({ i: i, name: s.name, lat: s.lat, lng: s.lng }); });
   const oth = [];
   if(other) other.stops.forEach(s => { const c = mapStopXY(s, null, 0); if(c) oth.push({ name: s.name, lat: c.lat, lng: c.lng }); });
-  return { line: _mapTab.line, cur: cur, other: oth, stopsAll: stopsAll, hl: { cur: -1, next: -1 },
+  return { line: ln, cur: cur, other: oth, stopsAll: stopsAll, hl: { cur: -1, next: -1 },
            title: cleanStopDisplay(main.label || main.direction || '') };
 }
 
@@ -2989,6 +2999,7 @@ function renderMapTab() {
   else svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" style="fill:var(--muted)" font-size="13">Pas de points GPS pour cette ligne</text>';
   renderMapTable(model);
   traceListRender();
+  mapValidRender();
   mapOfflineRefresh();
 }
 
@@ -3357,24 +3368,124 @@ function routeApplyCustom(model, legs) {
   });
 }
 
+// ── Tracés validés : gardés tels quels, plus jamais recalculés ──
+// Les points sont dans IndexedDB ('valid:<clé>'), un petit index est dans db.routeValid
+let _validKey = null;
+function routeValidGet(pts) {
+  const k = routeKey(pts, 'ok');
+  if(!db.routeValid || !db.routeValid[k]) return Promise.resolve(null);
+  return tdbGet('assets', 'valid:' + k).then(r => (r && r.legs && r.legs.length === pts.length - 1) ? r.legs : null).catch(() => null);
+}
+// Tracé validé (complet) sinon calcul ; un tracé validé partiel (trace GPS incomplète) complète le calcul
+async function routeBest(pts) {
+  const vl = await routeValidGet(pts);
+  if(vl && vl.every(g => g)) return { legs: vl, complete: true, cached: true, engine: 'valid', valid: true };
+  let res = await routeLegs(pts);
+  if(vl) {
+    if(!res) res = { legs: routeStraightLegs(pts), complete: false, cached: true, engine: 'car' };
+    res = Object.assign({}, res, { legs: res.legs.map((g, k) => vl[k] || g) });
+  }
+  return res;
+}
+
+function mapValidRender() {
+  const el = document.getElementById('map-valid-row'); if(!el) return;
+  if(!_mapTab.real || !_validKey) { el.innerHTML = ''; return; }
+  const info = db.routeValid ? db.routeValid[_validKey] : null;
+  el.innerHTML = info
+    ? '<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:12px;line-height:1.35"><b style="color:var(--green)">✅ Tracé validé</b> le ' + fmtDateShort(info.date) + (info.src === 'trace' ? ' (ta trace GPS)' : ' (tracé calculé)') + '<br><span style="color:var(--muted)">Il n\'est plus recalculé.</span></div>'
+      + '<button class="btn btn-sm btn-secondary" onclick="mapValidReset()">↺ Recalculer</button></div>'
+    : '<button class="btn btn-sm btn-secondary" style="width:100%" onclick="mapValidateCurrent()">✅ Valider ce tracé (ne plus le recalculer)</button>';
+}
+async function mapValidateCurrent() {
+  if(!_curRoute || !_curRoute.complete || !_validKey) { toast('Active 🛣 Routes et attends que le tracé soit calculé'); return; }
+  if(_curRoute.src === 'valid') return;
+  const key = _validKey, legs = _curRoute.legs.map(g => g.map(c => [r5(c[0]), r5(c[1])]));
+  try { await tdbPut('assets', 'valid:' + key, { legs: legs }); }
+  catch(e) { toast('❌ Enregistrement impossible sur ce navigateur'); return; }
+  if(!db.routeValid) db.routeValid = {};
+  db.routeValid[key] = { date: localDateISO(), src: 'calc', line: _mapTab.line, n: legs.length };
+  saveDB();
+  if(_validKey === key) { _curRoute.src = 'valid'; mapValidRender(); }
+  toast('✅ Tracé validé : il ne sera plus recalculé');
+}
+function mapValidReset() {
+  if(!_validKey || !confirm('Recalculer ce tracé ? Le tracé validé sera remplacé par un nouveau calcul.')) return;
+  const key = _validKey;
+  if(db.routeValid) delete db.routeValid[key];
+  saveDB();
+  tdbReq('assets', 'readwrite', s => s.delete('valid:' + key)).catch(() => {});
+  const m = mapTabModel();
+  if(m) mapRealRoutes(m); else mapValidRender();
+}
+
+// Découpe une trace GPS en tronçons entre les arrêts : null = tronçon non couvert par la trace
+function traceToLegs(tp, cur) {
+  const idx = []; let from = 0;
+  cur.forEach(p => {
+    let bi = -1, bd = 1e9;
+    for(let i = from; i < tp.length; i++) { const d = haversine(p.lat, p.lng, tp[i][0], tp[i][1]); if(d < bd) { bd = d; bi = i; } }
+    if(bi >= 0 && bd <= 120) { idx.push(bi); from = bi; } else idx.push(-1);
+  });
+  const legs = [];
+  for(let k = 0; k < cur.length - 1; k++) {
+    const A = cur[k], B = cur[k + 1];
+    if(idx[k] < 0 || idx[k + 1] < 0) { legs.push(null); continue; }
+    const seg = tp.slice(idx[k], idx[k + 1] + 1).map(q => [q[0], q[1]]);
+    const g = [[A.lat, A.lng]].concat(seg, [[B.lat, B.lng]]);
+    legs.push(routeLen(g) > haversine(A.lat, A.lng, B.lat, B.lng) * 3 + 500 ? null : g);   // trace qui s'écarte trop : on ne l'utilise pas
+  }
+  return legs;
+}
+async function traceValidate(id) {
+  const rec = await tdbGet('assets', 'trace:' + id).catch(() => null);
+  if(!rec || !rec.pts || !rec.meta) { toast('Trace introuvable'); return; }
+  const mt = rec.meta;
+  if(mt.dir === undefined || mt.dir === null || !PRELOADED_TRIPS[mt.line]) { toast('Cette trace n\'est pas rattachée à un sens de ligne'); return; }
+  const model = mapTabModel(mt.line, mt.dir);
+  if(!model || model.cur.length < 2) { toast('Pas de points GPS pour cette ligne'); return; }
+  const legs = traceToLegs(rec.pts, model.cur), ok = legs.filter(g => g).length;
+  if(ok < Math.ceil(legs.length * 0.5)) { toast('Trace trop incomplète : ' + ok + ' / ' + legs.length + ' tronçons couverts'); return; }
+  if(!confirm('Valider cette trace comme tracé de la ligne ' + mt.line + ' ?\n' + ok + ' tronçons sur ' + legs.length + ' suivent ta trace GPS' + (ok < legs.length ? ' (les autres restent calculés)' : '') + '.\nCe tracé ne sera plus recalculé.')) return;
+  const pts = model.cur.map(p => ({ lat: p.lat, lng: p.lng })), key = routeKey(pts, 'ok');
+  const store = legs.map(g => g ? g.map(c => [r5(c[0]), r5(c[1])]) : null);
+  try { await tdbPut('assets', 'valid:' + key, { legs: store }); }
+  catch(e) { toast('❌ Enregistrement impossible sur ce navigateur'); return; }
+  if(!db.routeValid) db.routeValid = {};
+  db.routeValid[key] = { date: localDateISO(), src: 'trace', line: mt.line, n: legs.length, from: id };
+  // les corrections à la main sont remplacées par la trace réelle
+  model.cur.forEach((a, k) => { const b = model.cur[k + 1]; if(b && legs[k] && b.i === a.i + 1 && db.routeCustom) delete db.routeCustom[parcKey(model.line, model.stopsAll[a.i], model.stopsAll[b.i])]; });
+  saveDB();
+  toast('✅ Tracé validé à partir de ta trace');
+  if(mt.line === _mapTab.line && mt.dir === _mapTab.dir) { const m = mapTabModel(); if(m) mapRealRoutes(m); }
+  traceListRender();
+}
+
 function mapRealRoutes(model) {
   const tok = ++_routeTok;
-  _curRoute = null;
-  if(!model || !_lroute) return;
+  _curRoute = null; _validKey = null;
+  if(!model || !_lroute) { mapValidRender(); return; }
   const pts = model.cur.map(p => ({ lat: p.lat, lng: p.lng })), oth = model.other.map(p => ({ lat: p.lat, lng: p.lng })), dir = _mapTab.dir;
-  const show = legs => {
-    const L2 = routeApplyCustom(model, legs);
-    _curRoute = { line: model.line, dir: dir, idx: model.cur.map(p => p.i), legs: L2 };
+  _validKey = routeKey(pts, 'ok');
+  const show = (legs, complete, src) => {
+    const L2 = src === 'valid' ? legs : routeApplyCustom(model, legs);   // un tracé validé n'est plus modifié
+    _curRoute = { line: model.line, dir: dir, idx: model.cur.map(p => p.i), legs: L2, complete: !!complete, src: src || '' };
     _lroute.setLatLngs(routeFlat(L2));
+    mapValidRender();
   };
-  show(routeStraightLegs(pts));   // tout de suite : lignes droites + tracés corrigés à la main
-  if(!routeOn()) return;
-  routeLegs(pts).then(res => {
-    if(tok !== _routeTok || !res || !_lroute) return;
-    show(res.legs);
-    if(!res.complete) toast('Tracé sur routes incomplet — réessaie avec internet');
-    else if(!res.cached) toast(res.engine === 'bus' || routeProfile() === 'car' ? '✅ Tracé sur routes enregistré' : '⚠️ Profil bus indisponible : tracé voiture');
-    if(oth.length > 1) return routeLegs(oth).then(r2 => { if(tok === _routeTok && r2 && _lroute2) _lroute2.setLatLngs(routeFlat(r2.legs)); });
+  show(routeStraightLegs(pts), false);   // tout de suite : lignes droites + tracés corrigés à la main
+  const other = () => { if(oth.length > 1) return routeBest(oth).then(r2 => { if(tok === _routeTok && r2 && _lroute2) _lroute2.setLatLngs(routeFlat(r2.legs)); }); };
+  routeValidGet(pts).then(vl => {
+    if(tok !== _routeTok) return;
+    if(vl && vl.every(g => g)) { show(vl, true, 'valid'); return other(); }   // validé : aucun calcul
+    if(!routeOn()) return;
+    return routeBest(pts).then(res => {
+      if(tok !== _routeTok || !res || !_lroute) return;
+      show(res.legs, res.complete, 'calc');
+      if(!res.complete) toast('Tracé sur routes incomplet — réessaie avec internet');
+      else if(!res.cached) toast(res.engine === 'bus' || routeProfile() === 'car' ? '✅ Tracé sur routes enregistré' : '⚠️ Profil bus indisponible : tracé voiture');
+      return other();
+    });
   }).catch(() => {});
 }
 
@@ -3447,7 +3558,7 @@ async function routePrefetchAll() {
   let ok = 0, bad = 0;
   for(let i = 0; i < jobs.length && !_routePre.cancel; i++) {
     if(btn) btn.textContent = '⏹ Routes ' + (i + 1) + ' / ' + jobs.length + ' (toucher pour arrêter)';
-    const r = await routeLegs(jobs[i]).catch(() => null);
+    const r = await routeBest(jobs[i]).catch(() => null);   // un tracé déjà validé n'est pas recalculé
     if(r && r.complete) ok++; else bad++;
   }
   const stopped = _routePre.cancel;
@@ -7131,6 +7242,7 @@ async function driveSignIn() {
         document.getElementById('drive-signin-btn').style.display = 'none';
         document.getElementById('drive-actions').style.display = '';
         toast('✅ Connecté à Google Drive');
+        cartesSync();      // synchro automatique des cartes dès la connexion
       }
     });
     client.requestAccessToken();
@@ -7224,6 +7336,197 @@ async function driveDownload() {
     toast('☁️ Chargé depuis Drive' + ts);
   } catch(e) {
     toast('❌ Erreur chargement : ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════
+// SYNCHRO DES CARTES VIA GOOGLE DRIVE (PC ↔ téléphone)
+// Fichier séparé : chronoligne_cartes.json (celui du planning n'est pas touché).
+// Fusion à 3 voies : on compare chaque élément avec la dernière synchro,
+// donc les ajouts, modifications et suppressions faits sur les deux appareils sont conservés.
+// ══════════════════════════════════════════════
+const CARTES_FILE = 'chronoligne_cartes.json';
+const CARTES_BASE_KEY = 'chronoligne_cartes_base';
+const CARTES_LAST_KEY = 'chronoligne_cartes_last';
+const CARTES_TRACE_DAYS = 30;       // les traces plus anciennes restent sur l'appareil qui les a enregistrées
+const CARTES_NAMES = ['routeCustom', 'routeValid', 'traces', 'stopLibrary', 'gpsCoords', 'parcours'];
+let _cartesBusy = false, _cartesAfterSignIn = false;
+
+function syncHash(v) {
+  if(v === undefined || v === null) return null;
+  const str = JSON.stringify(v);
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36) + '.' + str.length;
+}
+
+async function gzipB64(str) {
+  if(!window.CompressionStream) return null;
+  const cs = new CompressionStream('gzip'), w = cs.writable.getWriter();
+  w.write(new TextEncoder().encode(str)); w.close();
+  const u = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  let bin = '';
+  for(let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function gunzipB64(b64) {
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  const ds = new DecompressionStream('gzip'), w = ds.writable.getWriter();
+  w.write(u); w.close();
+  return await new Response(ds.readable).text();
+}
+
+function cartesStatus(txt) { document.querySelectorAll('.cartes-sync-status').forEach(e => { e.textContent = txt; }); }
+function cartesShowLast() {
+  let last = null; try { last = JSON.parse(localStorage.getItem(CARTES_LAST_KEY) || 'null'); } catch(e) {}
+  cartesStatus(last ? 'Dernière synchro : ' + new Date(last.t).toLocaleString('fr-FR') + ' — reçu ' + last.recv + ', envoyé ' + last.sent : 'Pas encore synchronisé.');
+}
+function cartesLoadBase() { try { return JSON.parse(localStorage.getItem(CARTES_BASE_KEY) || '{}'); } catch(e) { return {}; } }
+function cartesSaveBase(merged) {
+  const base = {};
+  CARTES_NAMES.forEach(n => { base[n] = {}; Object.keys(merged[n]).forEach(k => { base[n][k] = syncHash(merged[n][k]); }); });
+  try { localStorage.setItem(CARTES_BASE_KEY, JSON.stringify(base)); } catch(e) {}
+}
+
+// Éléments gardés dans IndexedDB (tracés validés, traces GPS récentes)
+async function cartesGatherIdb() {
+  const out = { routeValid: {}, traces: {} };
+  for(const k of Object.keys(db.routeValid || {})) {
+    const rec = await tdbGet('assets', 'valid:' + k).catch(() => null);
+    if(rec && rec.legs) out.routeValid[k] = { i: db.routeValid[k], legs: rec.legs };
+  }
+  const lim = Date.now() - CARTES_TRACE_DAYS * 86400000;
+  for(const m of (db.traceIdx || [])) {
+    if(m.t0 < lim) continue;
+    const rec = await tdbGet('assets', 'trace:' + m.id).catch(() => null);
+    if(rec && rec.pts) out.traces[m.id] = rec;
+  }
+  return out;
+}
+// Éléments gardés dans db (lus d'un seul coup, sans attente)
+function cartesGatherPlain() {
+  return { routeCustom: Object.assign({}, db.routeCustom || {}), stopLibrary: Object.assign({}, db.stopLibrary || {}),
+           gpsCoords: Object.assign({}, db.gpsCoords || {}), parcours: Object.assign({}, db.parcours || {}) };
+}
+
+// Fusion à 3 voies d'une collection { clé: valeur }
+function cartesMerge3(local, remote, base, resolve) {
+  const merged = {}, keys = new Set(Object.keys(local).concat(Object.keys(remote)));
+  keys.forEach(k => {
+    const l = local[k], r = remote[k], hl = syncHash(l), hr = syncHash(r), b = base[k] === undefined ? null : base[k];
+    let v;
+    if(hl === hr) v = l;                            // identique
+    else if(b === hl) v = r;                        // seul l'autre appareil a changé
+    else if(b === hr) v = l;                        // seul cet appareil a changé
+    else if(l === undefined) v = r;                 // supprimé ici mais modifié ailleurs → on garde
+    else if(r === undefined) v = l;
+    else v = resolve ? resolve(l, r) : l;           // modifié des deux côtés
+    if(v !== undefined) merged[k] = v;
+  });
+  return merged;
+}
+// Mesures de distance : on réunit les passages des deux appareils (sans doublon)
+function cartesUnionParcours(l, r) {
+  const seen = new Set(), d = [], t = [];
+  [l, r].forEach(e => (e.d || []).forEach((x, i) => { const kk = x + '|' + (e.t || [])[i]; if(!seen.has(kk)) { seen.add(kk); d.push(x); t.push((e.t || [])[i]); } }));
+  while(d.length > 20) { d.shift(); t.shift(); }
+  return { a: l.a, b: l.b, d: d, t: t };
+}
+
+async function cartesFileId() {
+  const res = await fetch("https://www.googleapis.com/drive/v3/files?q=name='" + CARTES_FILE + "'+and+trashed=false&fields=files(id)",
+    { headers: { Authorization: 'Bearer ' + _driveToken } });
+  if(!res.ok) throw new Error('Drive ' + res.status);
+  const data = await res.json();
+  return (data.files && data.files[0] && data.files[0].id) || null;
+}
+async function cartesDownload(fileId) {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', { headers: { Authorization: 'Bearer ' + _driveToken } });
+  if(!res.ok) throw new Error('Drive ' + res.status);
+  const j = JSON.parse(await res.text());
+  const data = j.enc === 'gzip-b64' ? JSON.parse(await gunzipB64(j.z)).data : (j.data || {});
+  CARTES_NAMES.forEach(n => { data[n] = data[n] || {}; });
+  return data;
+}
+async function cartesUpload(fileId, merged) {
+  const inner = JSON.stringify({ v: 2, t: Date.now(), data: merged });
+  const z = await gzipB64(inner);
+  const body = z ? JSON.stringify({ v: 2, enc: 'gzip-b64', z: z }) : JSON.stringify({ v: 2, enc: 'json', data: merged });
+  if(body.length > 4800000) throw new Error('fichier trop gros (' + Math.round(body.length / 1e6) + ' Mo)');
+  const url = fileId ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
+                     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const meta = JSON.stringify(Object.assign({ name: CARTES_FILE }, fileId ? {} : { parents: ['root'] }));
+  const form = new FormData();
+  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('file', new Blob([body], { type: 'application/json' }));
+  const res = await fetch(url, { method: fileId ? 'PATCH' : 'POST', headers: { Authorization: 'Bearer ' + _driveToken }, body: form });
+  if(!res.ok) throw new Error('envoi Drive ' + res.status);
+}
+
+// Applique le résultat de la fusion sur cet appareil
+async function cartesApply(merged, local) {
+  // 1) ce qui est dans db : tout de suite (sans attente)
+  db.routeCustom = merged.routeCustom; db.stopLibrary = merged.stopLibrary; db.gpsCoords = merged.gpsCoords; db.parcours = merged.parcours;
+  db.routeValid = db.routeValid || {};
+  Object.keys(db.routeValid).forEach(k => { if(!merged.routeValid[k]) delete db.routeValid[k]; });
+  Object.keys(merged.routeValid).forEach(k => { db.routeValid[k] = merged.routeValid[k].i; });
+  const lim = Date.now() - CARTES_TRACE_DAYS * 86400000;
+  db.traceIdx = (db.traceIdx || []).filter(m => m.t0 < lim).concat(Object.keys(merged.traces).map(id => merged.traces[id].meta)).sort((a, b) => a.t0 - b.t0);
+  saveDB();
+  // 2) ce qui est dans IndexedDB : seulement ce qui change
+  const tasks = [];
+  Object.keys(merged.routeValid).forEach(k => { if(syncHash(merged.routeValid[k]) !== syncHash(local.routeValid[k])) tasks.push(tdbPut('assets', 'valid:' + k, { legs: merged.routeValid[k].legs })); });
+  Object.keys(local.routeValid).forEach(k => { if(!merged.routeValid[k]) tasks.push(tdbReq('assets', 'readwrite', s => s.delete('valid:' + k))); });
+  Object.keys(merged.traces).forEach(id => { if(syncHash(merged.traces[id]) !== syncHash(local.traces[id])) tasks.push(tdbPut('assets', 'trace:' + id, merged.traces[id])); });
+  Object.keys(local.traces).forEach(id => { if(!merged.traces[id]) tasks.push(tdbReq('assets', 'readwrite', s => s.delete('trace:' + id))); });
+  await Promise.all(tasks.map(t => t.catch(() => {})));
+}
+
+function cartesCount(a, b) {   // nombre d'éléments différents entre deux jeux de collections
+  let n = 0;
+  CARTES_NAMES.forEach(name => {
+    const x = a[name] || {}, y = b[name] || {};
+    new Set(Object.keys(x).concat(Object.keys(y))).forEach(k => { if(syncHash(x[k]) !== syncHash(y[k])) n++; });
+  });
+  return n;
+}
+
+function cartesSyncAsk() {
+  if(_driveToken) { cartesSync(); return; }
+  toast('Connexion à Google Drive…');
+  driveSignIn();       // la synchro se lance toute seule après la connexion
+}
+
+async function cartesSync() {
+  if(_cartesBusy) return;
+  if(!_driveToken) { cartesSyncAsk(); return; }
+  _cartesBusy = true;
+  cartesStatus('⏳ Synchronisation des cartes…');
+  try {
+    const idb = await cartesGatherIdb();                     // lectures longues d'abord
+    const fileId = await cartesFileId();
+    const remote = fileId ? await cartesDownload(fileId) : {};
+    CARTES_NAMES.forEach(n => { remote[n] = remote[n] || {}; });
+    const local = Object.assign(cartesGatherPlain(), idb);   // puis lecture de db, sans attente jusqu'à l'application
+    const base = cartesLoadBase(), merged = {};
+    CARTES_NAMES.forEach(n => { merged[n] = cartesMerge3(local[n], remote[n], base[n] || {}, n === 'parcours' ? cartesUnionParcours : null); });
+    const recv = cartesCount(merged, local), sent = cartesCount(merged, remote);
+    await cartesApply(merged, local);
+    if(sent > 0 || !fileId) await cartesUpload(fileId, merged);
+    cartesSaveBase(merged);
+    try { localStorage.setItem(CARTES_LAST_KEY, JSON.stringify({ t: Date.now(), recv: recv, sent: sent })); } catch(e) {}
+    cartesShowLast();
+    toast('☁️ Cartes synchronisées — reçu ' + recv + ', envoyé ' + sent);
+    if(typeof traceListRender === 'function') traceListRender();
+    if(typeof mapViewActive === 'function' && mapViewActive()) renderMapTab();
+  } catch(e) {
+    cartesStatus('❌ Synchro impossible : ' + e.message);
+    toast('❌ Synchro des cartes : ' + e.message);
+  } finally {
+    _cartesBusy = false;
   }
 }
 
