@@ -48,7 +48,6 @@ nav {
   transition: color .2s;
 }
 .nav-btn .ico { font-size: 20px; line-height: 1; }
-@media (max-width: 460px) { .nav-btn { letter-spacing: 0; font-size: 9.5px; padding: 10px 2px 8px; } }
 .nav-btn.active { color: var(--accent); }
 .nav-btn.active .ico { filter: drop-shadow(0 0 6px var(--accent)); }
 
@@ -632,41 +631,6 @@ select option { background: var(--bg2); }
 
   <!-- ══ GPS ══ -->
   <!-- ══ OPTIONS ══ -->
-  <div class="view" id="view-map">
-    <div class="card">
-      <div class="card-title">🧭 CARTE DES LIGNES</div>
-      <select id="map-line" onchange="mapTabSelect()"></select>
-      <div id="map-dir-btns" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"></div>
-      <div id="map-mode-btns" style="display:flex;gap:8px;margin-top:8px"></div>
-    </div>
-    <div class="card" style="padding:0;overflow:hidden;flex-shrink:0">
-      <div id="map-tab-box" onclick="openFullMapTab()" style="position:relative;height:300px;cursor:pointer">
-        <svg id="map-tab-svg" style="position:absolute;inset:0;width:100%;height:100%;display:block"></svg>
-        <div style="position:absolute;right:10px;bottom:6px;font-size:11px;color:var(--muted);pointer-events:none">🔍 touche pour agrandir</div>
-      </div>
-      <div id="map-real-box" style="display:none;position:relative;height:400px;isolation:isolate">
-        <div id="map-real-div" style="position:absolute;inset:0"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">📥 CARTE HORS LIGNE</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5">Enregistre dans le téléphone les cartes OpenStreetMap autour de tes lignes (Cergy / Pontoise, zooms 13 à 16) pour les voir sans réseau. Les tuiles que tu regardes en ligne sont aussi gardées automatiquement.</div>
-      <div id="off-status" style="font-size:13px;margin-bottom:8px">…</div>
-      <div id="off-bar" style="display:none;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:10px"><div id="off-fill" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div></div>
-      <div style="display:flex;gap:8px">
-        <button id="off-dl-btn" class="btn btn-primary" style="flex:1" onclick="mapOfflineToggle()">⬇ Télécharger la zone</button>
-        <button class="btn btn-danger btn-sm" onclick="mapOfflineClear()">🗑</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">📏 DISTANCES ET TEMPS MESURÉS</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">Mesurés par le GPS pendant que tu conduis, entre deux arrêts validés l'un après l'autre. En gris : distance à vol d'oiseau, tant qu'aucune mesure n'existe.</div>
-      <div id="map-tab-table"></div>
-      <div id="map-tab-total" style="margin-top:10px;font-weight:700;font-size:14px"></div>
-      <button class="btn btn-danger btn-sm" style="width:100%;margin-top:12px" onclick="parcoursClearLine()">🗑 Effacer les mesures de cette ligne</button>
-    </div>
-  </div>
-
   <div class="view" id="view-caisse">
     <div class="card">
       <div class="card-title">💰 ARGENT QUE JE DOIS</div>
@@ -825,9 +789,6 @@ select option { background: var(--bg2); }
     </button>
     <button class="nav-btn" data-view="view-options" onclick="showView('view-options')">
       <span class="ico">⚙</span>OPTIONS
-    </button>
-    <button class="nav-btn" data-view="view-map" onclick="showView('view-map')">
-      <span class="ico">🧭</span>MAP
     </button>
     <button class="nav-btn" data-view="view-caisse" onclick="showView('view-caisse')">
       <span class="ico">💰</span>CAISSE
@@ -1051,7 +1012,6 @@ function loadDB() {
   if(!db.gpsCoords) db.gpsCoords = {};
   if(!db.stopLibrary) db.stopLibrary = {};
   if(!db.options) db.options = { gpsRadius: 80, departRadius: 50, earlyTol: 30, lateTol: 120 };
-  if(!db.parcours) db.parcours = {};
   if(!db.options.departRadius) db.options.departRadius = 50;
   // 1. Fusionner GPS_LIBRARY_DEFAULTS (arrêts manuels)
   const a1 = applyLibraryDefaults();
@@ -1135,7 +1095,6 @@ function showView(id) {
   if(id === 'view-options') loadOptions();
   if(id === 'view-live' && !activeService) updateLiveTodaySvc();
   if(id === 'view-caisse') { initCaisseView(); renderCaisse(); }
-  if(id === 'view-map') renderMapTab();
 }
 
 
@@ -1548,7 +1507,6 @@ function _checkDeparture(speedMs) {
       _departureTimer = setTimeout(() => {
         _departureStarted = true;
         _departureTimer = null;
-        parcoursOnDeparture();          // début de mesure du 1er tronçon
       }, 5000); // 5 secondes de confirmation
     }
   } else {
@@ -1571,7 +1529,6 @@ function startGPS() {
 
       lastGPSPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
       gpsActive = true;
-      parcoursOnFix(lastGPSPos);      // mesure de la distance parcourue
 
       // Détection départ (vitesse + temps)
       _checkDeparture(pos.coords.speed);
@@ -1676,7 +1633,6 @@ function startGPS() {
             {
               matched = true;
               activeStopIdx = checkIdx;
-              parcoursOnStop(checkIdx, li);   // enregistre le tronçon (distance + temps)
               trip._lastGPSMatch = Date.now();
               trip.stops.forEach(s => delete s._previewing);
 
@@ -1775,10 +1731,7 @@ function mapStopXY(s, tripIdx, idx) {
 }
 
 // Données du schéma : trajet en cours + sens opposé de la même ligne
-let _mapModelOverride = null;
-function mapBuildModel() { return _mapModelOverride || mapBuildLiveModel(); }
-
-function mapBuildLiveModel() {
+function mapBuildModel() {
   if(!activeService || activeTripIdx === null) return null;
   const trip = activeService.trips[activeTripIdx];
   if(!trip || !trip.stops) return null;
@@ -1853,8 +1806,7 @@ function mapSvg(model, W, H, view, labels) {
   let lastLab = null;
   model.cur.forEach((p, k) => {
     const a = P(p), x = a[0], y = a[1];
-    const hlCur = model.hl ? model.hl.cur : activeStopIdx, hlNext = model.hl ? model.hl.next : activeStopIdx + 1;
-    const passed = p.i < hlCur, isCur = p.i === hlCur, isNext = p.i === hlNext;
+    const passed = p.i < activeStopIdx, isCur = p.i === activeStopIdx, isNext = p.i === activeStopIdx + 1;
     const isEnd = k === 0 || k === model.cur.length - 1;
     if(isCur)       out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" style="fill:var(--bg);stroke:var(--accent)" stroke-width="4"/>';
     else if(isNext) out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="7" style="fill:var(--orange);stroke:var(--bg)" stroke-width="2"/>';
@@ -1897,9 +1849,8 @@ function mapRenderInto(svg, model, labels, useStoredView) {
 function updateLiveMap() {
   const box = document.getElementById('live-map');
   if(!box) return;
-  const model = mapBuildLiveModel();
-  mapRealUpdateMe();
-  if(!model || model.cur.length < 2) { box.style.display = 'none'; if(!_mapModelOverride) closeFullMap(); return; }
+  const model = mapBuildModel();
+  if(!model || model.cur.length < 2) { box.style.display = 'none'; closeFullMap(); return; }
   box.style.display = '';
   const svg = document.getElementById('live-map-svg');
   const sig = [activeService.id, activeTripIdx, activeStopIdx,
@@ -1911,14 +1862,13 @@ function updateLiveMap() {
     const nxt = trip.stops[activeStopIdx + 1];
     document.getElementById('live-map-cap').textContent = 'Ligne ' + model.line + (nxt ? ' · prochain : ' + cleanStopDisplay(nxt.name) : '');
     mapRenderInto(svg, model, false, false);
-    if(document.getElementById('map-full') && !_mapModelOverride) mapRenderFull();
+    if(document.getElementById('map-full')) mapRenderFull();
   }
 }
 
 // ── Plein écran : déplacer (1 doigt), zoomer (2 doigts / molette) ──
-function openFullMap(model) {
+function openFullMap() {
   if(document.getElementById('map-full')) return;
-  _mapModelOverride = model || null;
   const ov = document.createElement('div');
   ov.id = 'map-full';
   ov.style.cssText = 'position:fixed;inset:0;z-index:9800;background:var(--bg);display:flex;flex-direction:column';
@@ -1945,7 +1895,6 @@ function openFullMap(model) {
   mapRenderFull();
 }
 function closeFullMap() {
-  _mapModelOverride = null;
   const ov = document.getElementById('map-full'); if(ov) ov.remove();
   _mapPtrs = {}; _mapPinch = 0;
 }
@@ -1955,7 +1904,7 @@ function mapRenderFull() {
   const model = mapBuildModel();
   if(!model) { closeFullMap(); return; }
   const t = document.getElementById('map-full-title');
-  if(t) t.textContent = 'Ligne ' + model.line + (model.title ? ' · ' + model.title : '');
+  if(t) t.textContent = 'Ligne ' + model.line;
   mapRenderInto(svg, model, true, true);
 }
 function mapFit() { _mapView = null; mapRenderFull(); }
@@ -1992,423 +1941,6 @@ function mapPtrMove(e) {
   }
 }
 function mapPtrUp(e) { delete _mapPtrs[e.pointerId]; _mapPinch = 0; }
-
-// ══════════════════════════════════════════════
-// DISTANCES RÉELLES ET TEMPS ENTRE ARRÊTS (mesurés en conduisant)
-// ══════════════════════════════════════════════
-let _parc = null;   // mesure en cours : { tripKey, idx, t, dist, last:{lat,lng,t} }
-
-function parcKey(line, A, B) { return line + '|' + segStopKey(A) + '|' + segStopKey(B); }
-function parcMedian(a) { if(!a.length) return null; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
-
-// Chaque position GPS : on ajoute la distance parcourue depuis la dernière position retenue
-function parcoursOnFix(p) {
-  const r = _parc;
-  if(!r || !activeService || activeTripIdx === null) return;
-  if(r.tripKey !== activeService.id + '_' + activeTripIdx) return;
-  const now = Date.now();
-  const d = haversine(r.last.lat, r.last.lng, p.lat, p.lng);
-  const dt = (now - r.last.t) / 1000;
-  if(d >= 4 && dt > 0 && d / dt < 40) { r.dist += d; r.last = { lat: p.lat, lng: p.lng, t: now }; }   // ignore la gigue (< 4 m) et les sauts (> 144 km/h)
-}
-
-// Départ du 1er arrêt d'un trajet : on commence à mesurer (sans compter l'attente au terminus)
-function parcoursOnDeparture() {
-  if(!activeService || activeTripIdx === null || !lastGPSPos || activeStopIdx !== 0) return;
-  const tripKey = activeService.id + '_' + activeTripIdx;
-  if(_parc && _parc.tripKey === tripKey) return;
-  const trip = activeService.trips[activeTripIdx];
-  const c = trip && trip.stops[0] ? mapStopXY(trip.stops[0], activeTripIdx, 0) : null;
-  const now = Date.now();
-  _parc = { tripKey: tripKey, idx: 0, t: now,
-            dist: c ? haversine(c.lat, c.lng, lastGPSPos.lat, lastGPSPos.lng) : 0,
-            last: { lat: lastGPSPos.lat, lng: lastGPSPos.lng, t: now } };
-}
-
-// Le GPS vient de valider l'arrêt idx : si c'est l'arrêt juste après le précédent, on enregistre le tronçon
-function parcoursOnStop(idx, li) {
-  if(!activeService || activeTripIdx === null || !lastGPSPos) return;
-  const trip = activeService.trips[activeTripIdx];
-  const tripKey = activeService.id + '_' + activeTripIdx;
-  const now = Date.now(), r = _parc;
-  if(trip && r && r.tripKey === tripKey && r.idx === idx - 1 && li === 1) {
-    const A = trip.stops[idx - 1], B = trip.stops[idx];
-    let dist = r.dist, dur = (now - r.t) / 1000;
-    const ca = mapStopXY(A, activeTripIdx, idx - 1), cb = mapStopXY(B, activeTripIdx, idx);
-    // 1er tronçon : la mesure commence au départ et finit un peu avant l'arrêt (validation à l'approche) → on rajoute ce reste
-    if(r.idx === 0 && cb && dist > 0) {
-      const reste = haversine(lastGPSPos.lat, lastGPSPos.lng, cb.lat, cb.lng);
-      dur = dur * (dist + reste) / dist;
-      dist += reste;
-    }
-    const straight = (ca && cb) ? haversine(ca.lat, ca.lng, cb.lat, cb.lng) : null;
-    const ok = dist >= 15 && dur >= 5 && dur <= 3600
-            && (straight === null || (dist >= straight * 0.6 && dist <= straight * 6 + 600));   // écarte les mesures aberrantes (déviation, GPS perdu…)
-    if(ok) parcoursSaveSample(segTripLine(trip), A, B, dist, dur);
-  }
-  _parc = { tripKey: tripKey, idx: idx, t: now, dist: 0, last: { lat: lastGPSPos.lat, lng: lastGPSPos.lng, t: now } };
-}
-
-function parcoursSaveSample(line, A, B, dist, dur) {
-  if(!db.parcours) db.parcours = {};
-  const k = parcKey(line, A, B);
-  const e = db.parcours[k] || (db.parcours[k] = { a: { ineo: A.ineo || '', name: A.name }, b: { ineo: B.ineo || '', name: B.name }, d: [], t: [] });
-  e.d.push(Math.round(dist)); e.t.push(Math.round(dur));
-  if(e.d.length > 20) { e.d.shift(); e.t.shift(); }
-  saveDB();
-}
-
-// ══════════════════════════════════════════════
-// ONGLET MAP
-// ══════════════════════════════════════════════
-let _mapTab = { line: null, dir: 0, real: false };
-try { _mapTab.real = localStorage.getItem('chronoligne_maptab_real') === '1'; } catch(e) {}
-
-function fmtDist(m) { return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(2).replace('.', ',') + ' km'; }
-function fmtDur(sec) { sec = Math.round(sec); const m = Math.floor(sec / 60), s = sec % 60; return m ? m + ' min ' + String(s).padStart(2, '0') + ' s' : s + ' s'; }
-
-function mapTabDirs(line) {   // un trajet de référence par sens (le plus long)
-  const pre = (typeof PRELOADED_TRIPS !== 'undefined' && PRELOADED_TRIPS[line]) || [], best = {}, order = [];
-  pre.forEach(t => {
-    if(!best[t.direction]) { best[t.direction] = t; order.push(t.direction); }
-    else if(t.stops.length > best[t.direction].stops.length) best[t.direction] = t;
-  });
-  return order.map(d => best[d]);
-}
-
-function mapTabModel() {
-  const dirs = mapTabDirs(_mapTab.line);
-  const main = dirs[_mapTab.dir] || dirs[0];
-  if(!main) return null;
-  const other = dirs.find(t => t !== main);
-  const stopsAll = main.stops.map(s => { const c = mapStopXY(s, null, 0); return { name: s.name, ineo: s.ineo, lat: c ? c.lat : null, lng: c ? c.lng : null }; });
-  const cur = [];
-  stopsAll.forEach((s, i) => { if(s.lat) cur.push({ i: i, name: s.name, lat: s.lat, lng: s.lng }); });
-  const oth = [];
-  if(other) other.stops.forEach(s => { const c = mapStopXY(s, null, 0); if(c) oth.push({ name: s.name, lat: c.lat, lng: c.lng }); });
-  return { line: _mapTab.line, cur: cur, other: oth, stopsAll: stopsAll, hl: { cur: -1, next: -1 },
-           title: cleanStopDisplay(main.label || main.direction || '') };
-}
-
-function renderMapTab() {
-  const sel = document.getElementById('map-line');
-  if(!sel) return;
-  const lines = Object.keys(PRELOADED_TRIPS).sort((a, b) => a - b);
-  if(!_mapTab.line || lines.indexOf(_mapTab.line) < 0) {
-    const live = (activeService && activeTripIdx !== null) ? segTripLine(activeService.trips[activeTripIdx]) : null;
-    _mapTab.line = (live && lines.indexOf(live) >= 0) ? live : lines[0];
-    _mapTab.dir = 0;
-  }
-  sel.innerHTML = lines.map(l => '<option value="' + l + '"' + (l === _mapTab.line ? ' selected' : '') + '>Ligne ' + l + '</option>').join('');
-  const dirs = mapTabDirs(_mapTab.line);
-  document.getElementById('map-dir-btns').innerHTML = dirs.map((t, i) =>
-    '<button class="btn btn-sm ' + (i === _mapTab.dir ? 'btn-primary' : 'btn-secondary') + '" style="flex:1;min-width:0;font-size:12px;line-height:1.2" onclick="mapTabDir(' + i + ')">'
-    + (t.direction === 'retour' ? '↩ ' : '↪ ') + cleanStopDisplay(t.label || t.direction) + '</button>').join('');
-  document.getElementById('map-mode-btns').innerHTML =
-      '<button class="btn btn-sm ' + (!_mapTab.real ? 'btn-primary' : 'btn-secondary') + '" style="flex:1" onclick="mapTabSetMode(false)">📐 Schéma</button>'
-    + '<button class="btn btn-sm ' + (_mapTab.real ? 'btn-primary' : 'btn-secondary') + '" style="flex:1" onclick="mapTabSetMode(true)">🌍 Carte réelle</button>';
-  const model = mapTabModel();
-  const svg = document.getElementById('map-tab-svg');
-  document.getElementById('map-tab-box').style.display = _mapTab.real ? 'none' : '';
-  document.getElementById('map-real-box').style.display = _mapTab.real ? '' : 'none';
-  if(_mapTab.real) mapRealRender(model);
-  else if(model && model.cur.length > 1) mapRenderInto(svg, model, false, false);
-  else svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" style="fill:var(--muted)" font-size="13">Pas de points GPS pour cette ligne</text>';
-  renderMapTable(model);
-  mapOfflineRefresh();
-}
-
-function renderMapTable(model) {
-  const tbl = document.getElementById('map-tab-table'), tot = document.getElementById('map-tab-total');
-  if(!model) { tbl.innerHTML = ''; tot.textContent = ''; return; }
-  const st = model.stopsAll;
-  let html = '', nMeasured = 0, sumMeasured = 0, sumStraight = 0, sumTime = 0;
-  for(let i = 0; i < st.length - 1; i++) {
-    const A = st[i], B = st[i + 1];
-    const straight = (A.lat && B.lat) ? haversine(A.lat, A.lng, B.lat, B.lng) : null;
-    const e = db.parcours && db.parcours[parcKey(_mapTab.line, A, B)];
-    const d = e ? parcMedian(e.d) : null, t = e ? parcMedian(e.t) : null;
-    if(d !== null) { nMeasured++; sumMeasured += d; sumTime += t; }
-    sumStraight += (d !== null ? d : (straight || 0));
-    html += '<div onclick="mapTabFocus(' + i + ')" style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center' + (_mapTab.real ? ';cursor:pointer' : '') + '">'
-      + '<div style="font-size:13px;font-weight:600;min-width:0">' + cleanStopDisplay(A.name) + ' <span style="color:var(--muted)">→</span> ' + cleanStopDisplay(B.name) + '</div>'
-      + (d !== null
-          ? '<div style="text-align:right;font-weight:800;color:var(--green)">' + fmtDist(d) + '</div>'
-          : '<div style="text-align:right;color:var(--muted)">' + (straight !== null ? '~' + fmtDist(straight) : '—') + '</div>')
-      + '<div style="font-size:11px;color:var(--muted)">' + (e ? e.d.length + ' passage' + (e.d.length > 1 ? 's' : '') + (e.d.length > 1 ? ' · ' + fmtDist(Math.min.apply(null, e.d)) + ' à ' + fmtDist(Math.max.apply(null, e.d)) : '') : 'pas encore mesuré') + '</div>'
-      + '<div style="text-align:right;font-size:12px;color:var(--text)">' + (t !== null ? fmtDur(t) : '') + '</div>'
-      + '</div>';
-  }
-  tbl.innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:12px">Aucun arrêt</div>';
-  tot.innerHTML = 'Mesuré : ' + nMeasured + ' / ' + Math.max(st.length - 1, 0) + ' tronçons'
-    + '<br>Distance totale : ' + fmtDist(sumStraight) + (nMeasured < st.length - 1 ? ' <span style="font-weight:400;color:var(--muted)">(estimation)</span>' : '')
-    + (nMeasured ? '<br>Temps des tronçons mesurés : ' + fmtDur(sumTime) : '');
-}
-
-// ── Carte réelle OpenStreetMap (Leaflet chargé seulement quand on l'utilise) ──
-let _leafletP = null, _lmap = null, _lgroup = null, _lfocus = null, _lme = null, _ltileWarned = false;
-
-// ── Stockage hors ligne (IndexedDB) : tuiles de carte + code de Leaflet ──
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const LEAFLET_ASSETS = [
-  { key: 'leaflet.css', url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', sri: 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' },
-  { key: 'leaflet.js',  url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',  sri: 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' }
-];
-let _tdbP = null;
-
-function tdb() {
-  if(_tdbP) return _tdbP;
-  _tdbP = new Promise((resolve, reject) => {
-    if(!window.indexedDB) { reject(new Error('IndexedDB indisponible')); return; }
-    const r = indexedDB.open('chronoligne_tiles', 1);
-    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('tiles'); d.createObjectStore('assets'); };
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => { _tdbP = null; reject(r.error); };
-  });
-  return _tdbP;
-}
-function tdbReq(store, mode, fn) {
-  return tdb().then(d => new Promise((resolve, reject) => {
-    const tx = d.transaction(store, mode), req = fn(tx.objectStore(store));
-    tx.oncomplete = () => resolve(req ? req.result : undefined);
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  }));
-}
-const tdbGet   = (store, key)      => tdbReq(store, 'readonly',  s => s.get(key));
-const tdbHas   = (store, key)      => tdbReq(store, 'readonly',  s => s.getKey(key)).then(k => k !== undefined);
-const tdbPut   = (store, key, val) => tdbReq(store, 'readwrite', s => s.put(val, key));
-const tdbClear = (store)           => tdbReq(store, 'readwrite', s => s.clear());
-
-function tdbStats() {   // { n, bytes }
-  return tdb().then(d => new Promise((resolve, reject) => {
-    const tx = d.transaction('tiles', 'readonly');
-    let n = 0, bytes = 0;
-    tx.objectStore('tiles').openCursor().onsuccess = e => {
-      const c = e.target.result;
-      if(c) { n++; bytes += (c.value && c.value.blob ? c.value.blob.size : 0); c.continue(); }
-    };
-    tx.oncomplete = () => resolve({ n: n, bytes: bytes });
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  }));
-}
-
-// Récupère une tuile : cache d'abord, sinon réseau (et on la garde)
-function tileBlob(z, x, y) {
-  const key = z + '/' + x + '/' + y;
-  return tdbGet('tiles', key).catch(() => null).then(rec => {
-    if(rec && rec.blob) return rec.blob;
-    return fetch(TILE_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y), { mode: 'cors' })
-      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
-      .then(blob => { tdbPut('tiles', key, { blob: blob, t: Date.now() }).catch(() => {}); return blob; });
-  });
-}
-
-// Charge Leaflet : depuis le cache s'il y est (marche sans réseau), sinon depuis internet puis on le garde
-function mapLoadLeaflet() {
-  if(window.L) return Promise.resolve();
-  if(_leafletP) return _leafletP;
-  const inject = (cssText, jsText) => {
-    const st = document.createElement('style'); st.textContent = cssText; document.head.appendChild(st);
-    const sc = document.createElement('script'); sc.textContent = jsText; document.head.appendChild(sc);
-    if(!window.L) throw new Error('Leaflet invalide');
-  };
-  const fromNet = () => Promise.all(LEAFLET_ASSETS.map(a =>
-      fetch(a.url, { integrity: a.sri, mode: 'cors' }).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })))
-    .then(txt => {
-      LEAFLET_ASSETS.forEach((a, i) => tdbPut('assets', a.key, txt[i]).catch(() => {}));
-      inject(txt[0], txt[1]);
-    });
-  _leafletP = Promise.all(LEAFLET_ASSETS.map(a => tdbGet('assets', a.key).catch(() => null)))
-    .then(c => (c[0] && c[1]) ? inject(c[0], c[1]) : fromNet())
-    .catch(err => { _leafletP = null; throw err; });
-  return _leafletP;
-}
-
-// Couche de tuiles qui lit d'abord le cache hors ligne
-function mapMakeTileLayer() {
-  const Cached = L.TileLayer.extend({
-    createTile: function(coords, done) {
-      const img = document.createElement('img');
-      img.alt = ''; img.setAttribute('role', 'presentation');
-      tileBlob(coords.z, coords.x, coords.y).then(blob => {
-        const u = URL.createObjectURL(blob);
-        img.onload = () => { URL.revokeObjectURL(u); done(null, img); };
-        img.onerror = () => { URL.revokeObjectURL(u); done(new Error('tuile illisible'), img); };
-        img.src = u;
-      }).catch(err => done(err, img));
-      return img;
-    }
-  });
-  return new Cached(TILE_URL, {
-    maxZoom: 19,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-  });
-}
-
-// ── Téléchargement de la zone des lignes ──
-const OFFLINE_ZOOMS = [13, 14, 15, 16];
-let _offDl = null;   // { cancel:boolean } pendant un téléchargement
-
-function tileXY(lat, lng, z) {
-  const n = Math.pow(2, z), r = lat * Math.PI / 180;
-  return { x: Math.floor((lng + 180) / 360 * n),
-           y: Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n) };
-}
-
-// Toutes les tuiles autour du tracé de TOUTES les lignes préchargées (+ 1 tuile de marge)
-function offlineTileList() {
-  const set = new Set();
-  const add = (lat, lng) => OFFLINE_ZOOMS.forEach(z => {
-    const t = tileXY(lat, lng, z);
-    for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++) set.add(z + '/' + (t.x + dx) + '/' + (t.y + dy));
-  });
-  const trips = [];
-  Object.keys(PRELOADED_TRIPS).forEach(l => PRELOADED_TRIPS[l].forEach(t => trips.push(t)));
-  trips.forEach(t => {
-    let prev = null;
-    (t.stops || []).forEach(s => {
-      const c = (s.lat && s.lng) ? { lat: s.lat, lng: s.lng } : (libLookup(s.ineo, s.name, t.direction) || null);
-      if(!c || !c.lat || !c.lng) { prev = null; return; }
-      if(prev) {
-        const d = haversine(prev.lat, prev.lng, c.lat, c.lng);
-        if(d < 3000) {                                   // on relie les arrêts pour couvrir la route entre deux
-          const steps = Math.max(1, Math.ceil(d / 80));
-          for(let i = 1; i < steps; i++) add(prev.lat + (c.lat - prev.lat) * i / steps, prev.lng + (c.lng - prev.lng) * i / steps);
-        }
-      }
-      add(c.lat, c.lng);
-      prev = c;
-    });
-  });
-  return Array.from(set).map(k => { const p = k.split('/').map(Number); return { z: p[0], x: p[1], y: p[2] }; });
-}
-
-function fmtMo(b) { return (b / 1048576).toFixed(b < 10485760 ? 1 : 0).replace('.', ',') + ' Mo'; }
-
-function mapOfflineRefresh() {
-  const st = document.getElementById('off-status'); if(!st) return;
-  const dl = document.getElementById('off-dl-btn');
-  if(_offDl) { dl.textContent = '⏹ Arrêter'; return; }
-  dl.textContent = '⬇ Télécharger la zone';
-  tdbStats().then(s => {
-    st.innerHTML = s.n
-      ? '<b style="color:var(--green)">' + s.n + ' tuiles</b> en mémoire · ' + fmtMo(s.bytes)
-      : '<span style="color:var(--orange)">Aucune tuile en mémoire</span>';
-  }).catch(() => { st.textContent = 'Stockage hors ligne indisponible sur ce navigateur'; });
-}
-
-async function mapOfflineToggle() {
-  if(_offDl) { _offDl.cancel = true; return; }
-  if(!navigator.onLine) { toast('Il faut internet pour télécharger'); return; }
-  const list = offlineTileList();
-  if(!confirm('Télécharger ' + list.length + ' tuiles (~' + fmtMo(list.length * 18000) + ') autour de tes lignes ?\nFais-le de préférence en Wi-Fi.')) return;
-  const st = document.getElementById('off-status'), bar = document.getElementById('off-bar'), fill = document.getElementById('off-fill');
-  _offDl = { cancel: false };
-  bar.style.display = '';
-  mapOfflineRefresh();
-  try { if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e) {}
-  try { await mapLoadLeaflet(); } catch(e) { toast('Impossible de charger Leaflet'); }   // garde aussi le code de la carte pour le hors ligne
-  let done = 0, ok = 0, fail = 0, idx = 0;
-  const total = list.length;
-  const worker = async () => {
-    while(!_offDl.cancel) {
-      const i = idx++; if(i >= total) return;
-      const t = list[i], key = t.z + '/' + t.x + '/' + t.y;
-      try {
-        if(await tdbHas('tiles', key)) { ok++; }
-        else { await tileBlob(t.z, t.x, t.y); ok++; await new Promise(r => setTimeout(r, 150)); }   // pause : on ménage le serveur OpenStreetMap
-      } catch(e) { fail++; }
-      done++;
-      fill.style.width = (done / total * 100) + '%';
-      st.textContent = 'Téléchargement ' + done + ' / ' + total + (fail ? ' · ' + fail + ' échec(s)' : '');
-    }
-  };
-  await Promise.all([worker(), worker()]);
-  const cancelled = _offDl.cancel;
-  _offDl = null;
-  bar.style.display = 'none'; fill.style.width = '0%';
-  mapOfflineRefresh();
-  toast(cancelled ? '⏹ Téléchargement arrêté' : (fail ? '⚠️ Terminé avec ' + fail + ' échec(s) — relance pour compléter' : '✅ Carte hors ligne prête'));
-}
-
-function mapOfflineClear() {
-  if(_offDl) return;
-  if(!confirm('Supprimer toutes les tuiles enregistrées pour la carte hors ligne ?')) return;
-  tdbClear('tiles').then(() => { mapOfflineRefresh(); toast('🗑 Tuiles supprimées'); }).catch(() => toast('Erreur de suppression'));
-}
-
-function mapTabSetMode(real) {
-  _mapTab.real = !!real;
-  try { localStorage.setItem('chronoligne_maptab_real', real ? '1' : '0'); } catch(e) {}
-  renderMapTab();
-}
-
-function mapRealRender(model) {
-  mapLoadLeaflet().then(() => {
-    const box = document.getElementById('map-real-box');
-    if(!box || box.style.display === 'none') return;
-    if(!model || model.cur.length < 2) { toast('Pas de points GPS pour cette ligne'); return; }
-    if(!_lmap) {
-      _lmap = L.map('map-real-div', { zoomControl: true });
-      const tiles = mapMakeTileLayer().addTo(_lmap);
-      tiles.on('tileerror', () => { if(!_ltileWarned) { _ltileWarned = true; toast('Tuiles manquantes hors ligne — télécharge la zone avec internet'); } });
-      _lgroup = L.layerGroup().addTo(_lmap);
-      _lfocus = L.layerGroup().addTo(_lmap);
-    }
-    _lgroup.clearLayers(); _lfocus.clearLayers();
-    const ll = p => [p.lat, p.lng];
-    if(model.other.length > 1)
-      L.polyline(model.other.map(ll), { color: '#6b7280', weight: 3, opacity: .7, dashArray: '6 6' }).addTo(_lgroup);
-    L.polyline(model.cur.map(ll), { color: '#00a8cc', weight: 5, opacity: .9 }).addTo(_lgroup);
-    model.cur.forEach((p, k) => {
-      const end = k === 0 || k === model.cur.length - 1;
-      L.circleMarker(ll(p), { radius: end ? 8 : 5, color: '#003f52', weight: 2, fillColor: end ? '#ffffff' : '#ffd54f', fillOpacity: 1 })
-        .bindTooltip(cleanStopDisplay(p.name), { direction: 'top', offset: [0, -6] }).addTo(_lgroup);
-    });
-    _lmap.invalidateSize();
-    _lmap.fitBounds(L.latLngBounds(model.cur.concat(model.other).map(ll)), { padding: [24, 24] });
-    mapRealUpdateMe();
-  }).catch(() => {
-    toast('Carte réelle indisponible hors connexion');
-    _mapTab.real = false;
-    renderMapTab();
-  });
-}
-
-// Ma position sur la carte réelle
-function mapRealUpdateMe() {
-  if(!_lmap || !window.L || !lastGPSPos || !_mapTab.real) return;
-  const box = document.getElementById('map-real-box');
-  if(!box || box.style.display === 'none') return;
-  const ll = [lastGPSPos.lat, lastGPSPos.lng];
-  if(!_lme) _lme = L.circleMarker(ll, { radius: 9, color: '#ffffff', weight: 3, fillColor: '#1e88e5', fillOpacity: 1 }).addTo(_lmap);
-  else _lme.setLatLng(ll);
-}
-
-// Clic sur une ligne du tableau : zoom sur le tronçon (carte réelle)
-function mapTabFocus(i) {
-  if(!_mapTab.real || !_lmap || !window.L) return;
-  const m = mapTabModel(); if(!m) return;
-  const A = m.stopsAll[i], B = m.stopsAll[i + 1];
-  if(!A || !B || !A.lat || !B.lat) { toast('Points GPS manquants pour ce tronçon'); return; }
-  _lfocus.clearLayers();
-  L.polyline([[A.lat, A.lng], [B.lat, B.lng]], { color: '#ff6d00', weight: 7, opacity: .9 }).addTo(_lfocus);
-  document.getElementById('map-real-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  _lmap.fitBounds(L.latLngBounds([[A.lat, A.lng], [B.lat, B.lng]]), { padding: [60, 60], maxZoom: 18 });
-}
-
-function mapTabSelect() { _mapTab.line = document.getElementById('map-line').value; _mapTab.dir = 0; renderMapTab(); }
-function mapTabDir(i) { _mapTab.dir = i; renderMapTab(); }
-function openFullMapTab() { const m = mapTabModel(); if(m && m.cur.length > 1) openFullMap(m); }
-
-function parcoursClearLine() {
-  const line = _mapTab.line;
-  const n = Object.keys(db.parcours || {}).filter(k => k.indexOf(line + '|') === 0).length;
-  if(!n) { toast('Aucune mesure pour cette ligne'); return; }
-  if(!confirm('Effacer les ' + n + ' tronçons mesurés de la ligne ' + line + ' ?')) return;
-  Object.keys(db.parcours).forEach(k => { if(k.indexOf(line + '|') === 0) delete db.parcours[k]; });
-  saveDB(); renderMapTab(); toast('🗑 Mesures effacées');
-}
 
 // ══════════════════════════════════════════════
 // MODE SOLEIL
