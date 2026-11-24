@@ -1625,7 +1625,8 @@ function startGPS() {
             }
             if(curCoord) {
               const distFromCurrent = haversine(lastGPSPos.lat, lastGPSPos.lng, curCoord.lat, curCoord.lng);
-              if(distFromCurrent > departRadius) {
+              // Départ réel = éloigné (marge = précision GPS) ET en mouvement confirmé (>15 km/h pendant 5 s)
+              if(distFromCurrent > Math.max(departRadius, (lastGPSPos.accuracy || 0) + 20) && _departureStarted) {
                 // On s'est éloigné — prévisualiser le prochain arrêt sans valider
                 const nextPreview = trip.stops[activeStopIdx + 1];
                 if(nextPreview && !nextPreview._previewing) {
