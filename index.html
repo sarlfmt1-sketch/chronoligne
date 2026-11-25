@@ -48,7 +48,6 @@ nav {
   transition: color .2s;
 }
 .nav-btn .ico { font-size: 20px; line-height: 1; }
-@media (max-width: 460px) { .nav-btn { letter-spacing: 0; font-size: 9.5px; padding: 10px 2px 8px; } }
 .nav-btn.active { color: var(--accent); }
 .nav-btn.active .ico { filter: drop-shadow(0 0 6px var(--accent)); }
 
@@ -477,6 +476,13 @@ select option { background: var(--bg2); }
         </div>
       </div>
 
+      <!-- Schéma de la ligne (touche pour agrandir) -->
+      <div id="live-map" onclick="openFullMap()" style="display:none;flex:1;min-height:120px;position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer">
+        <svg id="live-map-svg" style="position:absolute;inset:0;width:100%;height:100%;display:block"></svg>
+        <div id="live-map-cap" style="position:absolute;left:10px;top:6px;right:10px;font-size:12px;font-weight:700;color:var(--muted);pointer-events:none"></div>
+        <div style="position:absolute;right:10px;bottom:6px;font-size:11px;color:var(--muted);pointer-events:none">🔍 touche pour agrandir</div>
+      </div>
+
       <div class="live-bottom">
       <!-- Prochain service -->
       <div id="next-service-bar" class="next-service-bar" style="display:none">
@@ -673,12 +679,6 @@ select option { background: var(--bg2); }
       <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="saveOptions()">💾 Sauvegarder</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">💾 STOCKAGE DE L'APPLI</div>
-      <div id="storage-info" style="font-size:12px;color:var(--muted);line-height:1.5"></div>
-      <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px" onclick="storageCompactNow()">🧹 Compacter maintenant</button>
-    </div>
-
     <div class="card" style="border-color:rgba(39,174,96,.3)">
       <div class="card-title">💾 SAUVEGARDE</div>
       <div style="font-size:12px;color:#ffc107;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.3);border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.6">
@@ -701,7 +701,7 @@ select option { background: var(--bg2); }
       </button>
       <div id="drive-actions" style="display:none">
         <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="driveUpload()">⬆️ Sauvegarder sur Drive</button>
-        <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="driveDownload()">⬇️ Charger depuis Drive</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="driveDownload()">⬇️ Charger depuis Drive</button>
       </div>
     </div>
 
@@ -811,59 +811,6 @@ select option { background: var(--bg2); }
 <script>
 'use strict';
 
-// ═══════════════════════════════════════
-// STOCKAGE COMPRESSÉ (transparent) — le téléphone limite le stockage à ~5 Mo ;
-// les gros enregistrements (db, services, planning…) sont compressés automatiquement.
-// lz-string 1.5.0 © Pieroxy — licence MIT / WTFPL
-// ═══════════════════════════════════════
-const LZString = (function() { var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}(); return LZString; })();
-(function lsCompress() {
-  const MARK = '\u0001Z', MIN = 10000;
-  const proto = Storage.prototype, rawGet = proto.getItem, rawSet = proto.setItem;
-  const cache = {};   // clé → { comp, raw } : évite de recompresser / décompresser pour rien
-  window.__lsRaw = { get: rawGet, set: rawSet };
-  proto.getItem = function(k) {
-    const v = rawGet.call(this, k);
-    if(this !== localStorage || typeof v !== 'string' || v.charCodeAt(0) !== 1 || v.charAt(1) !== 'Z') return v;
-    const c = cache[k];
-    if(c && c.comp === v) return c.raw;
-    const raw = LZString.decompressFromUTF16(v.slice(2));
-    if(raw === null || raw === undefined) return v;
-    cache[k] = { comp: v, raw: raw };
-    return raw;
-  };
-  proto.setItem = function(k, v) {
-    if(this === localStorage) {
-      if(typeof v === 'string' && v.length >= MIN) {
-        const c = cache[k];
-        const comp = (c && c.raw === v) ? c.comp : MARK + LZString.compressToUTF16(v);
-        if(comp.length < v.length) { cache[k] = { comp: comp, raw: v }; return rawSet.call(this, k, comp); }
-      }
-      delete cache[k];
-    }
-    return rawSet.call(this, k, v);
-  };
-})();
-
-// Compacte ce qui est déjà enregistré en clair (libère la place tout de suite)
-function compactLocalStorage() {
-  let before = 0, after = 0;
-  Object.keys(localStorage).forEach(k => {
-    const stored = window.__lsRaw.get.call(localStorage, k);
-    if(typeof stored !== 'string') return;
-    before += k.length + stored.length;
-    if(stored.length >= 10000 && stored.charCodeAt(0) !== 1) { try { localStorage.setItem(k, stored); } catch(e) {} }
-    const now = window.__lsRaw.get.call(localStorage, k);
-    after += k.length + (typeof now === 'string' ? now.length : 0);
-  });
-  return { before: before, after: after };
-}
-try { compactLocalStorage(); } catch(e) {}
-function errTxt(e) {
-  const m = (e && e.message) || String(e);
-  return /quota/i.test(m) ? 'stockage du téléphone plein (Options › Stockage › Compacter)' : m;
-}
-
 // ══════════════════════════════════════════════
 // ÉTAT GLOBAL
 // ══════════════════════════════════════════════
@@ -892,7 +839,7 @@ let gpsRecordStopIdx = 0;
 const STORE_KEY = 'cl_v2_db';
 
 function saveDB() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) { toast('❌ Échec de sauvegarde : ' + errTxt(e)); }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) { toast('❌ Échec de sauvegarde : ' + e.message); }
 }
 // ══════════════════════════════════════════════
 // BIBLIOTHÈQUE GPS PAR DÉFAUT
@@ -1088,6 +1035,7 @@ function updateClock() {
   updateNextServiceCountdown();
   checkHlpPopup();
   checkSegAlerts();
+  updateLiveMap();
 }
 
 // ── AUTO-AVANCEMENT PAR HEURE (si pas de GPS disponible) ──
@@ -1145,7 +1093,6 @@ function showView(id) {
   if(id === 'view-trajet') renderPlanning();
   if(id === 'view-service') renderSvcList();
   if(id === 'view-options') loadOptions();
-  if(id === 'view-options') renderStorageInfo();
   if(id === 'view-live' && !activeService) updateLiveTodaySvc();
   if(id === 'view-caisse') { initCaisseView(); renderCaisse(); }
 }
@@ -1625,8 +1572,7 @@ function startGPS() {
             }
             if(curCoord) {
               const distFromCurrent = haversine(lastGPSPos.lat, lastGPSPos.lng, curCoord.lat, curCoord.lng);
-              // Départ réel = éloigné (marge = précision GPS) ET en mouvement confirmé (>15 km/h pendant 5 s)
-              if(distFromCurrent > Math.max(departRadius, (lastGPSPos.accuracy || 0) + 20) && _departureStarted) {
+              if(distFromCurrent > departRadius) {
                 // On s'est éloigné — prévisualiser le prochain arrêt sans valider
                 const nextPreview = trip.stops[activeStopIdx + 1];
                 if(nextPreview && !nextPreview._previewing) {
@@ -1768,37 +1714,233 @@ function effectiveLastStopIdx(trip, tripIdx) {
   return (isLastTrip && trip.stops.length >= 2) ? trip.stops.length - 2 : trip.stops.length - 1;
 }
 
-// ── Panneau Stockage (Options) ──
-const LS_QUOTA_CHARS = 5100000;   // mesuré : environ 5,1 millions de caractères
-function fmtKo(n) { return n >= 1e6 ? (n / 1e6).toFixed(2).replace('.', ',') + ' Mo' : Math.round(n / 1000) + ' Ko'; }
-function renderStorageInfo() {
-  const el = document.getElementById('storage-info');
-  if(!el) return;
-  const rows = []; let tot = 0;
-  Object.keys(localStorage).forEach(k => {
-    const st = window.__lsRaw.get.call(localStorage, k) || '';
-    const logical = (localStorage.getItem(k) || '').length;
-    rows.push({ k: k, st: k.length + st.length, logical: logical });
-    tot += k.length + st.length;
+// ══════════════════════════════════════════════
+// SCHÉMA DE LA LIGNE — arrêts dans l'ordre (aller + retour) et position en direct
+// ══════════════════════════════════════════════
+let _mapSig = '', _mapView = null, _mapRaf = 0, _mapPtrs = {}, _mapPinch = 0;
+
+function mapStopXY(s, tripIdx, idx) {
+  if(s.lat && s.lng) return { lat: s.lat, lng: s.lng };
+  if(tripIdx !== null && activeService) {
+    const c = db.gpsCoords[gpsKey(activeService.id, tripIdx, idx)];
+    if(c && c.lat && c.lng) return { lat: c.lat, lng: c.lng };
+  }
+  const e = libLookup(s.ineo, s.name, null);
+  if(e && e.lat && e.lng) return { lat: e.lat, lng: e.lng };
+  return null;
+}
+
+// Données du schéma : trajet en cours + sens opposé de la même ligne
+function mapBuildModel() {
+  if(!activeService || activeTripIdx === null) return null;
+  const trip = activeService.trips[activeTripIdx];
+  if(!trip || !trip.stops) return null;
+  const line = segTripLine(trip);
+  const cur = [];
+  trip.stops.forEach((s, i) => {
+    const c = mapStopXY(s, activeTripIdx, i);
+    if(c) cur.push({ i: i, name: s.name, lat: c.lat, lng: c.lng });
   });
-  rows.sort((a, b) => b.st - a.st);
-  const pct = Math.round(tot / LS_QUOTA_CHARS * 100);
-  const col = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--green)';
-  el.innerHTML = '<div style="font-size:15px;font-weight:800;color:' + col + '">' + fmtKo(tot) + ' utilisés sur ~' + fmtKo(LS_QUOTA_CHARS) + ' (' + pct + ' %)</div>'
-    + rows.slice(0, 5).map(r => '<div>' + r.k + ' : ' + fmtKo(r.st) + (r.logical > r.st * 1.5 ? ' <span style="opacity:.7">(' + fmtKo(r.logical) + ' avant compression)</span>' : '') + '</div>').join('')
-    + '<div id="storage-idb" style="margin-top:4px"></div>';
-  if(navigator.storage && navigator.storage.estimate) {
-    navigator.storage.estimate().then(e => {
-      const x = document.getElementById('storage-idb');
-      if(x) x.textContent = 'Cartes hors ligne, tracés et traces : ' + fmtKo(e.usage || 0);
-    }).catch(() => {});
+  const other = [];
+  const pre = (typeof PRELOADED_TRIPS !== 'undefined' && PRELOADED_TRIPS[line]) || [];
+  if(pre.length) {
+    const mine = new Set(trip.stops.map(s => String(s.ineo || '')).filter(Boolean));
+    let myDir = null, bestOv = -1;
+    pre.forEach(t => {
+      const ov = t.stops.filter(s => mine.has(String(s.ineo))).length;
+      if(ov > bestOv) { bestOv = ov; myDir = t.direction; }
+    });
+    let best = null;
+    pre.forEach(t => { if(t.direction !== myDir && (!best || t.stops.length > best.stops.length)) best = t; });
+    if(best) best.stops.forEach(s => {
+      const c = mapStopXY(s, null, 0);
+      if(c) other.push({ name: s.name, lat: c.lat, lng: c.lng });
+    });
+  }
+  return { line: line, cur: cur, other: other };
+}
+
+// Projection locale en mètres (x vers l'est, y vers le sud)
+function mapProj(model) {
+  const all = model.cur.concat(model.other);
+  if(lastGPSPos) all.push({ lat: lastGPSPos.lat, lng: lastGPSPos.lng });
+  let lat0 = 0, lng0 = 0;
+  all.forEach(p => { lat0 += p.lat; lng0 += p.lng; });
+  lat0 /= all.length; lng0 /= all.length;
+  const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+  return {
+    xy: p => ({ x: (p.lng - lng0) * kx, y: -(p.lat - lat0) * ky }),
+    all: all
+  };
+}
+
+function mapFitView(model, proj, W, H) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  model.cur.concat(model.other).forEach(p => {       // le trait de la ligne (sans la position, pour ne pas dézoomer)
+    const q = proj.xy(p);
+    x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+  });
+  const pad = 22;
+  const mpp = Math.max((x1 - x0) / Math.max(W - 2 * pad, 10), (y1 - y0) / Math.max(H - 2 * pad, 10), 0.5);
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, mpp: mpp };
+}
+
+function mapSvg(model, W, H, view, labels) {
+  const proj = mapProj(model);
+  const sx = q => (q.x - view.cx) / view.mpp + W / 2;
+  const sy = q => (q.y - view.cy) / view.mpp + H / 2;
+  const P = p => { const q = proj.xy(p); return [sx(q), sy(q)]; };
+  let out = '';
+  // sens opposé : trait pointillé gris
+  if(model.other.length > 1) {
+    out += '<polyline fill="none" style="stroke:var(--muted)" stroke-opacity=".6" stroke-width="2" stroke-dasharray="5 4" points="'
+      + model.other.map(p => P(p).map(v => v.toFixed(1)).join(',')).join(' ') + '"/>';
+    model.other.forEach(p => { const a = P(p); out += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="2.5" style="fill:var(--muted)" fill-opacity=".6"/>'; });
+  }
+  // trajet en cours : trait épais
+  if(model.cur.length > 1) {
+    out += '<polyline fill="none" style="stroke:var(--accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="'
+      + model.cur.map(p => P(p).map(v => v.toFixed(1)).join(',')).join(' ') + '"/>';
+  }
+  // arrêts
+  let lastLab = null;
+  model.cur.forEach((p, k) => {
+    const a = P(p), x = a[0], y = a[1];
+    const passed = p.i < activeStopIdx, isCur = p.i === activeStopIdx, isNext = p.i === activeStopIdx + 1;
+    const isEnd = k === 0 || k === model.cur.length - 1;
+    if(isCur)       out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" style="fill:var(--bg);stroke:var(--accent)" stroke-width="4"/>';
+    else if(isNext) out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="7" style="fill:var(--orange);stroke:var(--bg)" stroke-width="2"/>';
+    else            out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isEnd ? 5 : 3.5) + '" style="fill:' + (passed ? 'var(--muted)' : 'var(--text)') + ';stroke:var(--bg)" stroke-width="1.5"/>';
+    if(labels) {
+      const far = !lastLab || Math.abs(lastLab[0] - x) > 70 || Math.abs(lastLab[1] - y) > 16;
+      if(isCur || isNext || isEnd || far) {
+        if(x > -20 && x < W + 20 && y > -20 && y < H + 20) {
+          const left = x > W * 0.55;                       // à droite de l'écran : le nom s'écrit vers la gauche
+          out += '<text x="' + (left ? x - 9 : x + 9).toFixed(1) + '" y="' + (y - 7).toFixed(1) + '" text-anchor="' + (left ? 'end' : 'start')
+            + '" font-size="' + (isCur || isNext ? 13 : 11)
+            + '" font-weight="' + (isCur || isNext ? 800 : 600) + '" style="fill:var(--text);paint-order:stroke;stroke:var(--bg2)" stroke-width="3">'
+            + cleanStopDisplay(p.name).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</text>';
+          lastLab = [x, y];
+        }
+      }
+    }
+  });
+  // ma position
+  if(lastGPSPos) {
+    const a = P(lastGPSPos), r = Math.min(Math.max((lastGPSPos.accuracy || 0) / view.mpp, 8), 60);
+    out += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="' + r.toFixed(1) + '" fill="#1e88e5" fill-opacity=".18"/>'
+         + '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="7" fill="#1e88e5" stroke="#fff" stroke-width="2.5"/>';
+  }
+  return out;
+}
+
+function mapRenderInto(svg, model, labels, useStoredView) {
+  const W = svg.clientWidth, H = svg.clientHeight;
+  if(W < 40 || H < 40) return;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const proj = mapProj(model);
+  let view;
+  if(useStoredView && _mapView) view = _mapView;
+  else { view = mapFitView(model, proj, W, H); if(useStoredView) _mapView = view; }
+  svg.innerHTML = mapSvg(model, W, H, view, labels);
+}
+
+// Petit schéma dans l'écran « En direct » (rafraîchi chaque seconde si quelque chose a changé)
+function updateLiveMap() {
+  const box = document.getElementById('live-map');
+  if(!box) return;
+  const model = mapBuildModel();
+  if(!model || model.cur.length < 2) { box.style.display = 'none'; closeFullMap(); return; }
+  box.style.display = '';
+  const svg = document.getElementById('live-map-svg');
+  const sig = [activeService.id, activeTripIdx, activeStopIdx,
+    lastGPSPos ? lastGPSPos.lat.toFixed(5) + ',' + lastGPSPos.lng.toFixed(5) : '-',
+    svg.clientWidth, svg.clientHeight, document.documentElement.className].join('|');
+  if(sig !== _mapSig) {
+    _mapSig = sig;
+    const trip = activeService.trips[activeTripIdx];
+    const nxt = trip.stops[activeStopIdx + 1];
+    document.getElementById('live-map-cap').textContent = 'Ligne ' + model.line + (nxt ? ' · prochain : ' + cleanStopDisplay(nxt.name) : '');
+    mapRenderInto(svg, model, false, false);
+    if(document.getElementById('map-full')) mapRenderFull();
   }
 }
-function storageCompactNow() {
-  const r = compactLocalStorage();
-  renderStorageInfo();
-  toast('🧹 ' + fmtKo(r.before) + ' → ' + fmtKo(r.after));
+
+// ── Plein écran : déplacer (1 doigt), zoomer (2 doigts / molette) ──
+function openFullMap() {
+  if(document.getElementById('map-full')) return;
+  const ov = document.createElement('div');
+  ov.id = 'map-full';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9800;background:var(--bg);display:flex;flex-direction:column';
+  ov.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)">'
+    +   '<div id="map-full-title" style="flex:1;font-weight:800;font-size:17px;min-width:0"></div>'
+    +   '<button class="btn btn-secondary btn-sm" onclick="mapFit()">Ligne</button>'
+    +   '<button class="btn btn-secondary btn-sm" onclick="mapCenterOnMe()">📍 Moi</button>'
+    +   '<button class="btn btn-danger btn-sm" onclick="closeFullMap()">✕</button>'
+    + '</div>'
+    + '<div id="map-full-box" style="flex:1;position:relative;overflow:hidden;touch-action:none">'
+    +   '<svg id="map-full-svg" style="position:absolute;inset:0;width:100%;height:100%;display:block;background:var(--bg2)"></svg>'
+    + '</div>'
+    + '<div style="padding:6px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)">'
+    +   '<b style="color:var(--accent)">━</b> ce sens &nbsp; <b>┄</b> sens opposé &nbsp; <span style="color:#1e88e5;font-weight:800">●</span> toi &nbsp; <span style="color:var(--orange);font-weight:800">●</span> prochain arrêt</div>';
+  document.body.appendChild(ov);
+  _mapView = null;
+  const box = document.getElementById('map-full-box');
+  box.addEventListener('pointerdown', mapPtrDown);
+  box.addEventListener('pointermove', mapPtrMove);
+  box.addEventListener('pointerup', mapPtrUp);
+  box.addEventListener('pointercancel', mapPtrUp);
+  box.addEventListener('wheel', e => { e.preventDefault(); mapZoomAt(e.offsetX, e.offsetY, e.deltaY < 0 ? 1.25 : 0.8); }, { passive: false });
+  mapRenderFull();
 }
+function closeFullMap() {
+  const ov = document.getElementById('map-full'); if(ov) ov.remove();
+  _mapPtrs = {}; _mapPinch = 0;
+}
+function mapRenderFull() {
+  const svg = document.getElementById('map-full-svg');
+  if(!svg) return;
+  const model = mapBuildModel();
+  if(!model) { closeFullMap(); return; }
+  const t = document.getElementById('map-full-title');
+  if(t) t.textContent = 'Ligne ' + model.line;
+  mapRenderInto(svg, model, true, true);
+}
+function mapFit() { _mapView = null; mapRenderFull(); }
+function mapCenterOnMe() {
+  const svg = document.getElementById('map-full-svg'), model = mapBuildModel();
+  if(!svg || !model || !lastGPSPos) { toast('Position GPS pas encore disponible'); return; }
+  mapRenderFull();                                   // s'assure que _mapView existe
+  const q = mapProj(model).xy(lastGPSPos);
+  _mapView = { cx: q.x, cy: q.y, mpp: Math.min(_mapView.mpp, 3) };
+  mapRenderFull();
+}
+function mapSchedule() { if(!_mapRaf) _mapRaf = requestAnimationFrame(() => { _mapRaf = 0; mapRenderFull(); }); }
+function mapZoomAt(px, py, f) {
+  const svg = document.getElementById('map-full-svg'); if(!svg || !_mapView) return;
+  const W = svg.clientWidth, H = svg.clientHeight, v = _mapView;
+  const wx = v.cx + (px - W / 2) * v.mpp, wy = v.cy + (py - H / 2) * v.mpp;
+  const mpp = Math.min(Math.max(v.mpp / f, 0.3), 200);
+  _mapView = { cx: wx - (px - W / 2) * mpp, cy: wy - (py - H / 2) * mpp, mpp: mpp };
+  mapSchedule();
+}
+function mapPtrDown(e) { _mapPtrs[e.pointerId] = { x: e.offsetX, y: e.offsetY }; e.currentTarget.setPointerCapture(e.pointerId); _mapPinch = 0; }
+function mapPtrMove(e) {
+  const p = _mapPtrs[e.pointerId]; if(!p || !_mapView) return;
+  const ids = Object.keys(_mapPtrs);
+  if(ids.length === 1) {                             // un doigt : déplacer
+    _mapView = { cx: _mapView.cx - (e.offsetX - p.x) * _mapView.mpp, cy: _mapView.cy - (e.offsetY - p.y) * _mapView.mpp, mpp: _mapView.mpp };
+    p.x = e.offsetX; p.y = e.offsetY; mapSchedule();
+  } else if(ids.length === 2) {                      // deux doigts : zoomer
+    p.x = e.offsetX; p.y = e.offsetY;
+    const a = _mapPtrs[ids[0]], b = _mapPtrs[ids[1]];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if(_mapPinch > 0 && d > 0) mapZoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / _mapPinch);
+    _mapPinch = d;
+  }
+}
+function mapPtrUp(e) { delete _mapPtrs[e.pointerId]; _mapPinch = 0; }
 
 // ══════════════════════════════════════════════
 // MODE SOLEIL
@@ -2608,7 +2750,7 @@ function isFerie(d) {
 function loadPlanning() {
   try { return JSON.parse(localStorage.getItem(PLANNING_KEY)||'{}'); } catch(e) { return {}; }
 }
-function savePlanning(p) { try { localStorage.setItem(PLANNING_KEY, JSON.stringify(p)); } catch(e) { toast('❌ Échec de sauvegarde du planning : ' + errTxt(e)); } }
+function savePlanning(p) { try { localStorage.setItem(PLANNING_KEY, JSON.stringify(p)); } catch(e) { toast('❌ Échec de sauvegarde du planning : ' + e.message); } }
 
 function planDateKey(d) {
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -5304,9 +5446,7 @@ function saveAll() {
   const dataJson = JSON.stringify(data);
   // Injecter dans CL_DATA ET télécharger le HTML
   document.getElementById('CL_DATA').textContent = dataJson;
-  const clone = document.documentElement.cloneNode(true);
-  clone.querySelectorAll('.cl-inj').forEach(el => el.remove());   // ne pas sauvegarder deux fois les bibliothèques de carte
-  let html = clone.outerHTML;
+  let html = document.documentElement.outerHTML;
   html = html.replace(
     /(<script[^>]*id="CL_DATA"[^>]*>)([\s\S]*?)(<\/script>)/,
     `$1${dataJson}$3`
@@ -5490,7 +5630,7 @@ async function driveDownload() {
     const ts = data.updatedAt ? ' (maj: ' + new Date(data.updatedAt).toLocaleString('fr-FR') + ')' : '';
     toast('☁️ Chargé depuis Drive' + ts);
   } catch(e) {
-    toast('❌ Erreur chargement : ' + errTxt(e));
+    toast('❌ Erreur chargement : ' + e.message);
   }
 }
 
