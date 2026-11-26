@@ -479,13 +479,13 @@ select option { background: var(--bg2); }
       <div class="live-bottom">
       <!-- Prochain service -->
       <div id="next-service-bar" class="next-service-bar" style="display:none">
-        <div style="flex:1">
-          <div class="next-service-label" style="font-size:10px"><span id="next-svc-tripnum" style="color:var(--accent);font-size:36px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.1"></span></div>
+        <div style="flex:1;min-width:0">
           <div class="next-service-info" id="next-svc-label">—</div>
         </div>
         <!-- Pause en haut, départ en bas — empilés à droite -->
         <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
           <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
+          <div id="next-svc-tripnum" style="color:var(--accent);font-size:34px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1;text-align:right"></div>
           <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
         </div>
       </div>
@@ -1427,14 +1427,14 @@ function updateNextServiceCountdown() {
 
   // Numéro du trajet suivant (ex: "Trajet 6/8")
   const total = activeService.trips.length;
-  if(tripNumEl) tripNumEl.textContent = `Trajet ${nextIdx+1}/${total}`;
+  if(tripNumEl) tripNumEl.textContent = `${nextIdx+1}/${total}`;
 
   // Label trajet
   if(labelEl) {
     const rawLabel = (nextTrip.label || 'Prochain trajet').replace(/^Ligne \S+ — /,'');
     labelEl.textContent = cleanStopDisplay(rawLabel);
-    labelEl.style.fontSize = '17px';
-    labelEl.style.lineHeight = '1.25';
+    labelEl.style.fontSize = '24px';
+    labelEl.style.lineHeight = '1.2';
   }
 
   const lastStop = trip.stops?.[trip.stops.length - 1];
