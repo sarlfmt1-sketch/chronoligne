@@ -171,8 +171,8 @@ nav {
 /* Prochain service */
 .next-service-bar {
   background: rgba(0,212,255,.06); border: 1px solid rgba(0,212,255,.2);
-  border-radius: 14px; padding: 20px 18px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-radius: 10px; padding: 2px 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
 }
 .next-service-label { font-size: 11px; color: var(--accent); font-family: 'Rajdhani', sans-serif; letter-spacing: 1.5px; font-weight: 700; }
 .next-service-info { font-size: 15px; font-weight: 700; }
@@ -483,10 +483,10 @@ select option { background: var(--bg2); }
           <div class="next-service-info" id="next-svc-label">—</div>
         </div>
         <!-- Pause en haut, départ en bas — empilés à droite -->
-        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px">
-          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;text-align:right"></div>
-          <div id="next-svc-tripnum" style="color:var(--accent);font-size:34px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1;text-align:right"></div>
-          <div id="next-svc-depart" style="font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:0">
+          <div id="next-svc-pause" style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;line-height:1;text-align:right"></div>
+          <div id="next-svc-tripnum" style="color:var(--accent);font-size:26px;font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1.05;text-align:right"></div>
+          <div id="next-svc-depart" style="line-height:1;font-size:11px;font-family:'Share Tech Mono',monospace;text-align:right"></div>
         </div>
       </div>
 
@@ -1433,8 +1433,8 @@ function updateNextServiceCountdown() {
   if(labelEl) {
     const rawLabel = (nextTrip.label || 'Prochain trajet').replace(/^Ligne \S+ — /,'');
     labelEl.textContent = cleanStopDisplay(rawLabel);
-    labelEl.style.fontSize = '24px';
-    labelEl.style.lineHeight = '1.2';
+    labelEl.style.fontSize = '22px';
+    labelEl.style.lineHeight = '1.15';
   }
 
   const lastStop = trip.stops?.[trip.stops.length - 1];
@@ -1449,7 +1449,7 @@ function updateNextServiceCountdown() {
     const pauseStr = pauseMin > 0
       ? pauseMin + 'min' + (pauseRemSec > 0 ? pauseRemSec + 's' : '')
       : pauseRemSec + 's';
-    pauseEl.innerHTML = '<span style="font-size:46px;line-height:1">' + pauseStr + '</span>';
+    pauseEl.innerHTML = '<span style="font-size:36px;line-height:1">' + pauseStr + '</span>';
 
     // Couleur selon durée de pause
     if(pauseMin < 3)       pauseEl.style.color = 'var(--red)';
@@ -1475,7 +1475,7 @@ function updateNextServiceCountdown() {
 
   if(departEl) {
     const heureDepart = firstStop.time?.substring(0,5) || '';
-    departEl.innerHTML = `🕐 <span style="font-size:34px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--text)">${heureDepart}</span>`;
+    departEl.innerHTML = `🕐 <span style="font-size:28px;font-weight:700;line-height:1.05;font-family:'Rajdhani',sans-serif;color:var(--text)">${heureDepart}</span>`;
     departEl.style.color = sec < 120 ? 'var(--red)' : sec < 300 ? 'var(--orange)' : 'var(--muted)';
   }
 }
