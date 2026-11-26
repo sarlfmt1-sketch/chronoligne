@@ -502,7 +502,7 @@ select option { background: var(--bg2); }
 
       <!-- Actions : 4 boutons en bas, sur une ligne -->
       <div class="live-actions">
-        <button class="btn btn-primary la-main" onclick="validateCurrentStop()">✅ Arrêt suivant</button>
+        <button class="btn btn-primary la-main" id="btn-next-stop" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">✅ Arrêt suivant</button>
         <button class="btn btn-danger" onclick="stopService()">⏹ Arrêter service</button>
         <button id="gps-toggle-btn" onclick="toggleGPS()" style="
           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -514,7 +514,7 @@ select option { background: var(--bg2); }
           <span id="gps-status-text" style="display:none"></span>
           <div id="gps-accuracy" class="accuracy-badge" style="display:none"></div>
         </button>
-        <button class="btn btn-secondary" onclick="prevStop()">◀ Préc</button>
+        <button class="btn btn-green" id="ticket-btn" onclick="sellTicket()">🎫 Ticket<br><span id="ticket-btn-count" style="font-size:11px;font-weight:600;opacity:.85"></span></button>
       </div>
       </div><!-- /live-bottom -->
 
@@ -631,6 +631,13 @@ select option { background: var(--bg2); }
         <div id="caisse-solde" style="font-size:34px;font-weight:800;color:var(--accent)">0.00€</div>
         <button class="btn btn-secondary btn-sm" onclick="editCaisseSolde()">✏️ Corriger</button>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎫 BOUTON TICKET (EN DIRECT)</div>
+      <div class="form-label">PRIX D'UN TICKET (€)</div>
+      <input type="number" id="ticket-prix" min="0" step="0.05" oninput="saveTicketPrix()">
+      <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px" onclick="undoTicket()">↩️ Annuler le dernier ticket vendu</button>
     </div>
 
     <div class="card">
@@ -5426,6 +5433,8 @@ function initCaisseView() {
   _caisseInit = true;
   const dateEl = document.getElementById('caisse-date');
   if(dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+  const prixEl = document.getElementById('ticket-prix');
+  if(prixEl) prixEl.value = loadTicketPrix();
   updateCaissePreview();
 }
 
@@ -5473,6 +5482,96 @@ function addCaisseEntry() {
   toast('✅ Entrée ajoutée');
 }
 
+// ── Bouton TICKET (EN DIRECT) : 1 appui = 1 vente enregistrée dans la caisse ──
+const TICKET_PRIX_KEY = 'chronoligne_ticket_prix';
+function loadTicketPrix() {
+  const v = parseFloat(localStorage.getItem(TICKET_PRIX_KEY));
+  return isNaN(v) || v <= 0 ? 2.5 : v;
+}
+function saveTicketPrix() {
+  const v = parseFloat(document.getElementById('ticket-prix').value);
+  if(isNaN(v) || v <= 0) return;
+  try { localStorage.setItem(TICKET_PRIX_KEY, String(v)); } catch(e) {}
+  updateTicketBtn();
+}
+function _ticketToday() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function updateTicketBtn() {
+  const el = document.getElementById('ticket-btn-count');
+  if(!el) return;
+  const e = loadCaisse().find(x => x.date === _ticketToday());
+  const n = e && e.tickets ? e.tickets : 0;
+  el.textContent = n > 0 ? n + ' vendu' + (n > 1 ? 's' : '') : loadTicketPrix().toFixed(2) + '€';
+}
+function sellTicket() {
+  const prix = loadTicketPrix();
+  const today = _ticketToday();
+  const data = loadCaisse();
+  const soldeApres = +(loadCaisseSolde() + prix).toFixed(2);
+  saveCaisseSolde(soldeApres);
+  let entry = data.find(e => e.date === today);
+  if(entry) {
+    entry.ventes = +((entry.ventes || 0) + prix).toFixed(2);
+    entry.tickets = (entry.tickets || 0) + 1;
+    entry.soldeApres = soldeApres;
+  } else {
+    entry = { id: 'c_' + Date.now(), date: today, ventes: prix, depot: 0, tickets: 1, soldeApres };
+    data.push(entry);
+  }
+  saveCaisseData(data);
+  updateTicketBtn();
+  if(navigator.vibrate) navigator.vibrate(40);
+  toast('🎫 +' + prix.toFixed(2) + '€ — ' + entry.tickets + ' ticket' + (entry.tickets > 1 ? 's' : '') + ' aujourd\'hui (' + entry.ventes.toFixed(2) + '€)');
+  if(document.getElementById('view-caisse').classList.contains('active')) renderCaisse();
+}
+function undoTicket() {
+  const today = _ticketToday();
+  const data = loadCaisse();
+  const entry = data.find(e => e.date === today);
+  if(!entry || !entry.tickets) { toast('⚠️ Aucun ticket vendu aujourd\'hui'); return; }
+  const retrait = Math.min(loadTicketPrix(), entry.ventes || 0);
+  entry.tickets -= 1;
+  entry.ventes = +((entry.ventes || 0) - retrait).toFixed(2);
+  const soldeApres = +(loadCaisseSolde() - retrait).toFixed(2);
+  saveCaisseSolde(soldeApres);
+  entry.soldeApres = soldeApres;
+  const vide = entry.ventes <= 0 && (entry.depot || 0) <= 0 && entry.tickets <= 0;
+  saveCaisseData(vide ? data.filter(e => e.id !== entry.id) : data);
+  updateTicketBtn();
+  renderCaisse();
+  toast('↩️ Ticket annulé (−' + retrait.toFixed(2) + '€)');
+}
+setTimeout(updateTicketBtn, 0);
+
+// ── « Arrêt suivant » : appui court = arrêt suivant, appui long (0,6 s) = arrêt précédent ──
+function initNextStopLongPress() {
+  const b = document.getElementById('btn-next-stop');
+  if(!b || b._lpInit) return;
+  b._lpInit = true;
+  let timer = null, longFired = false;
+  const cancel = () => { if(timer) { clearTimeout(timer); timer = null; } };
+  b.addEventListener('pointerdown', () => {
+    longFired = false;
+    cancel();
+    timer = setTimeout(() => {
+      timer = null;
+      longFired = true;
+      if(navigator.vibrate) navigator.vibrate([30, 40, 30]);
+      prevStop();
+      toast('◀ Arrêt précédent');
+    }, 600);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, cancel));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+  b.addEventListener('click', () => {
+    if(longFired) { longFired = false; return; }
+    validateCurrentStop();
+  });
+}
+setTimeout(initNextStopLongPress, 0);
+
 function deleteCaisseEntry(id) {
   const data = loadCaisse();
   const entry = data.find(e => e.id === id);
@@ -5493,6 +5592,7 @@ function renderCaisse() {
 
   const solde = loadCaisseSolde();
   if(soldeEl) soldeEl.textContent = solde.toFixed(2) + '€';
+  updateTicketBtn();
 
   const data = loadCaisse().slice().sort((a,b) => b.date.localeCompare(a.date));
 
@@ -5504,7 +5604,7 @@ function renderCaisse() {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
         + '<div>'
         +   '<div style="font-weight:700;font-size:13px">' + dateLabel + '</div>'
-        +   '<div style="font-size:11px;color:var(--muted)">Ventes : ' + e.ventes.toFixed(2) + '€ · Dépôt : ' + e.depot.toFixed(2) + '€</div>'
+        +   '<div style="font-size:11px;color:var(--muted)">Ventes : ' + e.ventes.toFixed(2) + '€' + (e.tickets ? ' (' + e.tickets + ' ticket' + (e.tickets > 1 ? 's' : '') + ')' : '') + ' · Dépôt : ' + e.depot.toFixed(2) + '€</div>'
         + '</div>'
         + '<div style="display:flex;align-items:center;gap:10px">'
         +   '<div style="font-weight:700;color:var(--accent)">' + e.soldeApres.toFixed(2) + '€</div>'
