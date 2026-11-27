@@ -83,6 +83,7 @@ nav {
   padding: 5px 12px; border-radius: 8px; cursor: pointer; display: none;
 }
 #terminus-btn.visible { display: block; }
+#terminus-btn.holding { background: rgba(231,76,60,.75); color: #fff; transition: background .8s linear, color .8s linear; }
 
 /* ── EN DIRECT ── */
 .live-card {
@@ -321,7 +322,7 @@ html.sun [style*="#0d1626"] { background: #ffffff !important; }
 html.sun #hlp-bar { background: #8a4b00 !important; }
 html.sun #hlp-popup div[style*="height:8px"] { background: rgba(0,0,0,.15) !important; }
 html.sun #seg-banner { background: #ffffff !important; }
-html.sun #hlp-popup > div, html.sun #seg-banner { box-shadow: 0 0 0 3px rgba(0,0,0,.25) !important; }
+html.sun #hlp-popup, html.sun #hlp-popup > div, html.sun #seg-banner { box-shadow: 0 0 0 3px rgba(0,0,0,.25) !important; }
 
 /* ── OPTIONS ── */
 .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
@@ -414,7 +415,7 @@ select option { background: var(--bg2); }
     <div id="clock-display">--:--:--</div>
     <div class="clock-badges">
       <button id="sun-btn" onclick="toggleSunMode()" title="Mode soleil" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;width:40px;height:40px;font-size:20px;cursor:pointer;flex-shrink:0">☀️</button>
-      <button id="terminus-btn" onclick="confirmTerminus()">🏁 TERMINUS</button>
+      <button id="terminus-btn" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">🏁 TERMINUS</button>
     </div>
   </div>
 
@@ -466,14 +467,18 @@ select option { background: var(--bg2); }
       </div>
 
       <!-- Arrêt ACTUEL -->
-      <div class="live-card" id="live-current-card">
-        <div class="stop-label">ACTUEL</div>
-        <div class="stop-time" id="live-current-time">--:--</div>
-        <div class="stop-name" id="live-current-name">—</div>
-        <div id="live-delta"></div>
-        <div class="progress-bar" style="margin-top:12px">
-          <div class="progress-fill" id="live-progress"></div>
+      <div class="live-card" id="live-current-card" style="display:flex;align-items:stretch;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div class="stop-label">ACTUEL</div>
+          <div class="stop-time" id="live-current-time">--:--</div>
+          <div class="stop-name" id="live-current-name">—</div>
+          <div id="live-delta"></div>
+          <div class="progress-bar" style="margin-top:12px">
+            <div class="progress-fill" id="live-progress"></div>
+          </div>
         </div>
+        <!-- Appui court = arrêt suivant · appui long = arrêt précédent -->
+        <button class="btn btn-primary" id="btn-next-stop" style="flex:0 0 66px;min-width:0;padding:4px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;line-height:1.15;text-align:center;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none"><span style="font-size:24px;line-height:1">✅</span><span>Arrêt<br>suivant</span></button>
       </div>
 
       <div class="live-bottom">
@@ -502,8 +507,6 @@ select option { background: var(--bg2); }
 
       <!-- Actions : 4 boutons en bas, sur une ligne -->
       <div class="live-actions">
-        <button class="btn btn-primary la-main" id="btn-next-stop" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">✅ Arrêt suivant</button>
-        <button class="btn btn-danger" onclick="stopService()">⏹ Arrêter service</button>
         <button id="gps-toggle-btn" onclick="toggleGPS()" style="
           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
           padding:6px 4px;border-radius:10px;border:2px solid var(--muted);background:transparent;
@@ -1738,7 +1741,7 @@ function toggleSunMode() {
 })();
 
 // ══════════════════════════════════════════════
-// POP-UP HLP — affiché 1 min à la fin d'un trajet
+// POP-UP HLP — affiché 1 min dès l'avant-dernier arrêt d'un trajet
 // ══════════════════════════════════════════════
 let _hlpShown = {};
 let _hlpTimer = null;
@@ -1775,32 +1778,64 @@ function showHlpPopup(tripIdx) {
   _hlpShown[key] = true;
 
   closeHlpPopup();
+  // Mode « dans l'espace » : le pop-up s'insère entre la carte de l'arrêt actuel et le bloc Trajet.
+  // Si l'onglet EN DIRECT n'est pas affiché, on garde l'ancienne fenêtre plein écran.
+  const live = document.getElementById('live-content');
+  const bottom = live ? live.querySelector('.live-bottom') : null;
+  const inline = !!(live && bottom && live.offsetParent !== null);
+
   const rows = list.map(h =>
-    '<div style="margin-bottom:18px">'
-    + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:#f0a500;line-height:1">'
-    +   '<span style="font-size:68px">' + h.heure + '</span>'
-    +   (h.arrivee ? '<span style="font-size:36px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
-    +   '<span style="font-size:30px;color:var(--accent);margin-left:12px">' + h.minutes + ' min</span>'
-    + '</div>'
-    + '<div style="font-size:28px;font-weight:700;color:#e8edf5;margin-top:10px;line-height:1.2">' + cleanStopDisplay(h.de) + '</div>'
-    + '<div style="font-size:28px;font-weight:700;color:var(--accent);margin-top:4px;line-height:1.2">→ ' + cleanStopDisplay(h.a) + '</div>'
-    + '</div>'
+    inline
+    ? '<div style="margin-bottom:8px">'
+      + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:#f0a500;line-height:1;white-space:nowrap">'
+      +   '<span style="font-size:46px">' + h.heure + '</span>'
+      +   (h.arrivee ? '<span style="font-size:26px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
+      +   '<span style="font-size:20px;color:var(--accent);margin-left:8px">' + h.minutes + ' min</span>'
+      + '</div>'
+      + '<div style="font-size:19px;font-weight:700;color:#e8edf5;margin-top:4px;line-height:1.15">' + cleanStopDisplay(h.de) + '</div>'
+      + '<div style="font-size:19px;font-weight:700;color:var(--accent);margin-top:2px;line-height:1.15">→ ' + cleanStopDisplay(h.a) + '</div>'
+      + '</div>'
+    : '<div style="margin-bottom:18px">'
+      + '<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:#f0a500;line-height:1">'
+      +   '<span style="font-size:68px">' + h.heure + '</span>'
+      +   (h.arrivee ? '<span style="font-size:36px;color:#e8edf5"> → ' + h.arrivee + '</span>' : '')
+      +   '<span style="font-size:30px;color:var(--accent);margin-left:12px">' + h.minutes + ' min</span>'
+      + '</div>'
+      + '<div style="font-size:28px;font-weight:700;color:#e8edf5;margin-top:10px;line-height:1.2">' + cleanStopDisplay(h.de) + '</div>'
+      + '<div style="font-size:28px;font-weight:700;color:var(--accent);margin-top:4px;line-height:1.2">→ ' + cleanStopDisplay(h.a) + '</div>'
+      + '</div>'
   ).join('');
 
   const ov = document.createElement('div');
   ov.id = 'hlp-popup';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px';
   ov.onclick = closeHlpPopup;
-  ov.innerHTML =
-      '<div style="width:100%;max-width:620px;background:#0d1626;border:3px solid #f0a500;border-radius:20px;padding:26px;box-shadow:0 0 40px rgba(240,165,0,.35)">'
-    +   '<div style="font-size:20px;letter-spacing:3px;font-weight:700;color:#f0a500;margin-bottom:16px">🚌 HLP À FAIRE</div>'
-    +   rows
-    +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:8px 0 16px">'
-    +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 60s linear"></div>'
-    +   '</div>'
-    +   '<button style="width:100%;padding:18px;border-radius:12px;border:2px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:24px;font-weight:700">OK</button>'
-    + '</div>';
-  document.body.appendChild(ov);
+  if(inline) {
+    ov.style.cssText = 'flex:1 1 0;min-height:150px;overflow-y:auto;box-sizing:border-box;background:#0d1626;'
+      + 'border:2px solid #f0a500;border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;'
+      + 'box-shadow:0 0 24px rgba(240,165,0,.3)';
+    ov.innerHTML =
+        '<div style="margin:auto 0">'
+      +   '<div style="font-size:13px;letter-spacing:2px;font-weight:700;color:#f0a500;margin-bottom:6px">🚌 HLP À FAIRE</div>'
+      +   rows
+      +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:4px 0 8px">'
+      +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 60s linear"></div>'
+      +   '</div>'
+      +   '<button style="width:100%;padding:8px;border-radius:10px;border:2px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:18px;font-weight:700">OK</button>'
+      + '</div>';
+    live.insertBefore(ov, bottom);
+  } else {
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px';
+    ov.innerHTML =
+        '<div style="width:100%;max-width:620px;background:#0d1626;border:3px solid #f0a500;border-radius:20px;padding:26px;box-shadow:0 0 40px rgba(240,165,0,.35)">'
+      +   '<div style="font-size:20px;letter-spacing:3px;font-weight:700;color:#f0a500;margin-bottom:16px">🚌 HLP À FAIRE</div>'
+      +   rows
+      +   '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin:8px 0 16px">'
+      +     '<div id="hlp-bar" style="height:100%;width:100%;background:#f0a500;transition:width 60s linear"></div>'
+      +   '</div>'
+      +   '<button style="width:100%;padding:18px;border-radius:12px;border:2px solid #f0a500;background:rgba(240,165,0,.12);color:#f0a500;font-size:24px;font-weight:700">OK</button>'
+      + '</div>';
+    document.body.appendChild(ov);
+  }
   requestAnimationFrame(() => { const b = document.getElementById('hlp-bar'); if(b) b.style.width = '0%'; });
   if(navigator.vibrate) navigator.vibrate([300, 150, 300]);
   _hlpTimer = setTimeout(closeHlpPopup, 60000);
@@ -1941,11 +1976,11 @@ function checkSegAlerts() {
   if(m) showSegBanner(m);
 }
 
-// Filet de sécurité : au dernier arrêt d'un trajet (hors GPS / saisie manuelle)
+// Vérifié chaque seconde : le pop-up HLP s'affiche dès l'avant-dernier arrêt du trajet (GPS, manuel ou horaire)
 function checkHlpPopup() {
   if(!activeService || activeTripIdx === null) return;
   const trip = activeService.trips[activeTripIdx];
-  if(trip && trip.stops && activeStopIdx >= trip.stops.length - 1) showHlpPopup(activeTripIdx);
+  if(trip && trip.stops && trip.stops.length >= 2 && activeStopIdx >= trip.stops.length - 2) showHlpPopup(activeTripIdx);   // dès l'avant-dernier arrêt
 }
 
 // ══════════════════════════════════════════════
@@ -5571,6 +5606,34 @@ function initNextStopLongPress() {
   });
 }
 setTimeout(initNextStopLongPress, 0);
+
+// ── « TERMINUS » : appui court = terminus du trajet, appui long (0,8 s) = arrêter le service ──
+function initTerminusLongPress() {
+  const b = document.getElementById('terminus-btn');
+  if(!b || b._lpInit) return;
+  b._lpInit = true;
+  let timer = null, longFired = false;
+  const cancel = () => { if(timer) { clearTimeout(timer); timer = null; } b.classList.remove('holding'); };
+  b.addEventListener('pointerdown', () => {
+    longFired = false;
+    cancel();
+    b.classList.add('holding');
+    timer = setTimeout(() => {
+      timer = null;
+      longFired = true;
+      b.classList.remove('holding');
+      if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+      stopService();
+    }, 800);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, cancel));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+  b.addEventListener('click', () => {
+    if(longFired) { longFired = false; return; }
+    confirmTerminus();
+  });
+}
+setTimeout(initTerminusLongPress, 0);
 
 function deleteCaisseEntry(id) {
   const data = loadCaisse();
